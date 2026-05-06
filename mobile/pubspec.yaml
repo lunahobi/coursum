@@ -1,0 +1,33 @@
+name: coursum_mobile
+description: Learner mobile app for Coursum.
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  http: ^1.2.2
+  html: ^0.15.6
+  shared_preferences: ^2.3.2
+  flutter_secure_storage: ^9.2.2
+  url_launcher: ^6.3.1
+  video_player: ^2.9.2
+  vector_math: ^2.1.4
+  flutter_svg: ^2.2.4
+  file_picker: ^8.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/brand/app_icon.svg
+    - assets/brand/website_logo.svg

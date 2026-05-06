@@ -1,0 +1,64 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: corporate-lms-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: lms
+      POSTGRES_USER: lms
+      POSTGRES_PASSWORD: lms
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lms -d lms"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    container_name: corporate-lms-backend
+    restart: unless-stopped
+    environment:
+      LMS_DATABASE_URL: postgresql+psycopg://lms:lms@db:5432/lms
+      LMS_SECRET_KEY: docker-dev-secret-key
+      LMS_ALLOW_TENANT_HEADER_FALLBACK: "true"
+      LMS_CORS_ORIGINS: '["https://coursum.online","https://www.coursum.online"]'
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - /var/www/lms/media:/app/app/static/media
+
+  web:
+    build:
+      context: ./web
+      args:
+        VITE_API_BASE: https://api.coursum.online/api/v1
+    container_name: corporate-lms-web
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "127.0.0.1:8081:80"
+
+  seed:
+    build:
+      context: ./backend
+    restart: "no"
+    profiles: ["tools"]
+    environment:
+      LMS_DATABASE_URL: postgresql+psycopg://lms:lms@db:5432/lms
+      LMS_SECRET_KEY: docker-dev-secret-key
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["python", "-m", "scripts.seed_demo"]
+
+volumes:
+  postgres_data:

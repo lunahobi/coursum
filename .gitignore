@@ -1,0 +1,86 @@
+# --- OS / editors ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.tmp
+*.bak
+.idea/
+.vscode/
+.cursor/
+
+# --- Local env / secrets ---
+.env
+.env.*
+!.env.example
+
+# --- Python backend ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.python-version
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+.venv/
+venv/
+env/
+ENV/
+backend/.venv/
+backend/venv/
+backend/*.db
+*.sqlite3
+
+# --- Node / web ---
+node_modules/
+web/node_modules/
+dist/
+build/
+coverage/
+.npm/
+.pnpm-store/
+.yarn/
+.turbo/
+.next/
+.nuxt/
+.cache/
+*.tsbuildinfo
+
+# --- Flutter / mobile ---
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+mobile/build/
+mobile/.dart_tool/
+
+# Generated Flutter platform artifacts
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/ios/Pods/
+mobile/ios/.symlinks/
+mobile/macos/Pods/
+mobile/macos/Flutter/ephemeral/
+mobile/windows/flutter/ephemeral/
+mobile/linux/flutter/ephemeral/
+
+# --- Backend uploaded/generated media ---
+backend/app/static/media/
+
+# --- Logs / runtime ---
+*.log
+logs/
+
+# --- Archives / temporary helper dirs ---
+*.zip
+.codex_tmp_backup/
+.codex_tmp_pdf/
+.codex_tmp_text/

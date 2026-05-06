@@ -1,0 +1,23 @@
+{
+  "name": "Coursum",
+  "short_name": "Coursum",
+  "description": "Coursum learning platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F7F3E6",
+  "theme_color": "#0B1D3A",
+  "icons": [
+    {
+      "src": "/app_icon.svg?v=20260503",
+      "sizes": "1024x1024",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/app_icon.png?v=20260503",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
