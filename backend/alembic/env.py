@@ -8,7 +8,11 @@ from app.models import models  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    try:
+        fileConfig(config.config_file_name)
+    except KeyError:
+        # Allow minimal alembic.ini files without logging sections.
+        pass
 
 target_metadata = Base.metadata
 

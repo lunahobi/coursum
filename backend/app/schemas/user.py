@@ -30,3 +30,4 @@ class UserRead(ORMModel):
     email: str
     full_name: str
     is_active: bool
+    role_name: str | None = None

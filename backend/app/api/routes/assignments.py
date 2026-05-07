@@ -105,6 +105,13 @@ def _ensure_course_and_lesson_in_tenant(
         raise HTTPException(status_code=404, detail="Lesson not found")
 
 
+def _normalize_page_id(raw: str | None) -> str | None:
+    if raw is None:
+        return None
+    value = raw.strip()
+    return value or None
+
+
 def _validate_status(status: str) -> str:
     normalized = status.strip().lower()
     if normalized not in ASSIGNMENT_STATUSES:
@@ -183,6 +190,7 @@ def create_assignment(
         tenant_id=tenant.id,
         course_id=payload.course_id,
         lesson_id=payload.lesson_id,
+        page_id=_normalize_page_id(payload.page_id),
         title=payload.title,
         description=payload.description,
         is_active=payload.is_active,
@@ -218,6 +226,7 @@ def update_assignment(
     assignment.description = payload.description
     assignment.is_active = payload.is_active
     assignment.due_at = payload.due_at
+    assignment.page_id = _normalize_page_id(payload.page_id)
     db.add(assignment)
     db.commit()
     db.refresh(assignment)
@@ -441,6 +450,7 @@ def review_submission(
         reviewer_user_id=membership.user_id,
         status=review_status,
         comment=payload.comment,
+        grade=payload.grade,
     )
     db.add(submission)
     db.add(review)

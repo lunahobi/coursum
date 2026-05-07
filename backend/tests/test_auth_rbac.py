@@ -13,6 +13,13 @@ def test_teacher_can_list_users(client):
     assert len(response.json()) >= 3
 
 
+def test_system_admin_membership_hidden_in_tenant_user_list(client):
+    response = client.get("/api/v1/users", headers=auth_headers(client, "admin-a@example.com", "tenant-a"))
+    assert response.status_code == 200
+    emails = {user["email"] for user in response.json()}
+    assert "sysadmin-a@example.com" not in emails
+
+
 def test_learner_cannot_list_users(client):
     response = client.get("/api/v1/users", headers=auth_headers(client, "learner-a@example.com", "tenant-a"))
     assert response.status_code == 403
@@ -130,3 +137,25 @@ def test_tokens_are_unique_even_for_same_user_and_type():
     first = create_token("1", "refresh", 60)
     second = create_token("1", "refresh", 60)
     assert first != second
+
+
+def test_deactivated_user_cannot_login(client):
+    admin_headers = auth_headers(client, "admin-a@example.com", "tenant-a")
+    users = client.get("/api/v1/users", headers=admin_headers)
+    assert users.status_code == 200
+    learner = next((item for item in users.json() if item["email"] == "learner-a@example.com"), None)
+    assert learner is not None
+
+    deactivate = client.patch(
+        f"/api/v1/users/{learner['id']}",
+        headers=admin_headers,
+        json={"is_active": False},
+    )
+    assert deactivate.status_code == 200
+
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={"email": "learner-a@example.com", "password": "Password123!"},
+    )
+    assert login_response.status_code == 401
+    assert login_response.json()["detail"] == "User is deactivated"

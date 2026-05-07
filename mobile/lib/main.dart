@@ -984,12 +984,14 @@ class LessonPageData {
     required this.pageId,
     required this.chapterTitle,
     required this.pageTitle,
+    required this.isPractice,
     required this.blocks,
   });
 
   final String pageId;
   final String chapterTitle;
   final String pageTitle;
+  final bool isPractice;
   final List<LessonBlockData> blocks;
 
   factory LessonPageData.fromJson(Map<String, dynamic> json) => LessonPageData(
@@ -998,6 +1000,7 @@ class LessonPageData {
             AppLanguageRuntime.strings.lessonFallback,
         pageTitle: json['page_title'] as String? ??
             AppLanguageRuntime.strings.pageFallback,
+        isPractice: json['is_practice'] as bool? ?? false,
         blocks: jsonList(json['blocks']).map(LessonBlockData.fromJson).toList(),
       );
 }
@@ -1153,6 +1156,7 @@ class AssignmentSubmissionInfo {
     required this.textAnswer,
     required this.linkAnswer,
     required this.reviewerComment,
+    required this.reviewerGrade,
     required this.fileUrls,
   });
 
@@ -1163,6 +1167,7 @@ class AssignmentSubmissionInfo {
   final String textAnswer;
   final String? linkAnswer;
   final String? reviewerComment;
+  final int? reviewerGrade;
   final List<String> fileUrls;
 
   factory AssignmentSubmissionInfo.fromJson(Map<String, dynamic> json) {
@@ -1177,6 +1182,7 @@ class AssignmentSubmissionInfo {
       linkAnswer: json['link_answer'] as String?,
       reviewerComment:
           latestReview.isEmpty ? null : latestReview['comment'] as String?,
+      reviewerGrade: latestReview.isEmpty ? null : latestReview['grade'] as int?,
       fileUrls: files,
     );
   }
@@ -3819,6 +3825,16 @@ class _CoursePlayerBodyState extends State<CoursePlayerBody> {
     final practiceCta = rawStatus == 'not_started'
         ? (strings.isRu ? 'Отправить решение' : 'Submit solution')
         : (strings.isRu ? 'Обновить решение' : 'Update submission');
+    final practicePageIndex = widget.payload.pages.indexWhere((page) => page.isPractice);
+    final fallbackPracticePageIndex = widget.payload.pages.indexWhere((page) {
+      final title = page.pageTitle.trim().toLowerCase();
+      return title.contains('практик') || title.contains('practice');
+    });
+    final showPracticeOnCurrentPage = practicePageIndex >= 0
+        ? safePageIndex == practicePageIndex
+        : fallbackPracticePageIndex >= 0
+            ? safePageIndex == fallbackPracticePageIndex
+            : isLastPage;
 
     return Column(
       children: [
@@ -3915,7 +3931,7 @@ class _CoursePlayerBodyState extends State<CoursePlayerBody> {
                   ),
                 ),
               ),
-              if (assignment != null) ...[
+              if (assignment != null && showPracticeOnCurrentPage) ...[
                 const SizedBox(height: 12),
                 Card(
                   child: ExpansionTile(
@@ -3958,6 +3974,17 @@ class _CoursePlayerBodyState extends State<CoursePlayerBody> {
                             strings.isRu
                                 ? 'Комментарий куратора: ${submission!.reviewerComment!}'
                                 : 'Curator comment: ${submission!.reviewerComment!}',
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                      if (submission?.reviewerGrade != null) ...[
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            strings.isRu
+                                ? 'Оценка: ${submission!.reviewerGrade}'
+                                : 'Grade: ${submission!.reviewerGrade}',
                           ),
                         ),
                         const SizedBox(height: 8),

@@ -130,6 +130,21 @@ button {
   max-width: 210px;
 }
 
+.login-language-switch {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.login-language-switch .secondary {
+  min-width: 92px;
+}
+
+.login-language-switch .secondary.active {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16);
+}
+
 .sidebar a {
   color: rgba(247, 243, 230, 0.82);
   text-decoration: none;
@@ -370,6 +385,58 @@ button {
   min-height: 100%;
 }
 
+.homework-review-panel {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(248, 251, 255, 0.8);
+}
+
+.homework-review-panel h4 {
+  margin: 0;
+  color: var(--brand);
+}
+
+.homework-review-submissions .list-button span {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.homework-review-submissions {
+  max-height: 280px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.homework-review-search {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.homework-review-search input {
+  width: 100%;
+}
+
+.homework-review-link-button {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.homework-review-text {
+  margin-top: 8px;
+}
+
+.homework-review-files {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+}
+
 @media (max-width: 980px) {
   .assignment-primary-grid,
   .assignment-secondary-grid,
@@ -398,6 +465,61 @@ button {
   margin: 10vh auto;
   display: grid;
   gap: 12px;
+}
+
+.app-loading-card {
+  justify-items: start;
+}
+
+.app-loading-dots {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.app-loading-dots span {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--brand), var(--accent-blue));
+  animation: loading-bounce 1.1s ease-in-out infinite;
+}
+
+.app-loading-dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.app-loading-dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.app-loading-shimmer {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(199, 212, 228, 0.35), rgba(255, 255, 255, 0.9), rgba(199, 212, 228, 0.35));
+  background-size: 220% 100%;
+  animation: loading-shimmer 1.4s linear infinite;
+}
+
+@keyframes loading-bounce {
+  0%, 80%, 100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes loading-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -20% 0;
+  }
 }
 
 .saved-accounts {
@@ -663,6 +785,59 @@ tbody tr:nth-child(even) td {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.user-form-grid label > input,
+.user-form-grid label > select {
+  width: 100%;
+}
+
+.user-inline-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.user-inline-toggle {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  padding: 0;
+  justify-self: end;
+  display: grid;
+  place-items: center;
+}
+
+.user-inline-toggle svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.user-role-guide {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: rgba(247, 250, 255, 0.88);
+}
+
+.user-role-guide strong,
+.user-role-guide ul {
+  margin: 0;
+}
+
+.user-role-guide ul {
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  color: var(--text-muted);
+}
+
 .user-access-note {
   display: grid;
   gap: 6px;
@@ -686,6 +861,11 @@ tbody tr:nth-child(even) td {
   display: grid;
   gap: 6px;
   margin-bottom: 12px;
+}
+
+.user-directory-search {
+  width: 100%;
+  max-width: 420px;
 }
 
 .user-directory-card {
@@ -1070,6 +1250,16 @@ tbody tr:nth-child(even) td {
   font-weight: 500;
   margin: 0;
   line-height: 1.35;
+}
+
+.lesson-practice-note {
+  display: grid;
+  gap: 8px;
+}
+
+.lesson-practice-link {
+  justify-self: start;
+  white-space: nowrap;
 }
 
 .course-preview-grid {

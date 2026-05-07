@@ -1,5 +1,5 @@
 import { ChangeEvent, createContext, FormEvent, ReactNode, Ref, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { Link, Navigate, Route, Routes, useLocation, useSearchParams } from "react-router-dom";
+import { Link, Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { apiDelete, apiPatch, apiPost, apiRequest, apiUpload, configureSessionLifecycle, login, resolveMediaUrl, SessionState } from "./api";
 import websiteLogo from "./assets/brand/website_logo.svg";
 import websiteLogoWhite from "./assets/brand/website_logo_white.svg";
@@ -73,14 +73,22 @@ const MESSAGES = {
     createUser: "Создать пользователя",
     createUserAction: "Создать пользователя",
     userCreateIntro: "Создайте учетную запись, задайте роль и стартовый пароль для первого входа.",
-    userPasswordHint: "Пароль задается сразу и понадобится пользователю для первого входа в систему.",
-    userRoleHint: "Слушатель проходит курсы, преподаватель работает с обучением, администратор управляет пользователями и контентом.",
+    userRoleGuideTitle: "Описание ролей",
+    userRoleGuideLearner: "Слушатель проходит назначенные курсы и сдает задания.",
+    userRoleGuideTeacher: "Преподаватель ведет обучение и проверяет работы.",
+    userRoleGuideOrgAdmin: "Администратор организации управляет пользователями и контентом.",
+    showPassword: "Показать",
+    hidePassword: "Скрыть",
     roleLearner: "Слушатель",
     roleTeacher: "Преподаватель",
     roleOrgAdmin: "Администратор организации",
     roleSystemAdmin: "Системный администратор",
     userDirectory: "Список пользователей",
     userDirectorySubtitle: "Здесь видно, у кого доступ активен, а у кого вход временно отключен.",
+    userSearchPlaceholder: "Поиск по имени, email или роли",
+    userSearchNoResults: "Пользователи не найдены",
+    userDirectoryReadonly: "Для вашей роли доступен только просмотр пользователей.",
+    userUpdated: "Пользователь обновлен",
     activate: "Активировать",
     deactivate: "Деактивировать",
     userAccessGuideTitle: "Что делает деактивация",
@@ -273,6 +281,19 @@ const MESSAGES = {
     howToDemo1: "Выберите курс и слушателя.",
     howToDemo2: "Отправьте назначение, затем откройте mobile app или learner-аккаунт, чтобы увидеть курс.",
     howToDemo3: "Backend также фиксирует условную доставку уведомления о назначении.",
+    homeworkReviewLearnerSubmission: "Работа ученика",
+    homeworkReviewTextAnswer: "Текст ответа",
+    homeworkReviewLink: "Ссылка",
+    homeworkReviewFiles: "Файлы",
+    homeworkReviewPreviousReview: "Предыдущая проверка",
+    homeworkReviewGrade: "Оценка (0-100)",
+    homeworkReviewGradeMissing: "Оценка ещё не выставлена",
+    homeworkReviewAllStatuses: "Все статусы",
+    homeworkReviewNoContent: "Ученик пока не приложил содержимого работы",
+    homeworkReviewSubmittedAt: "Отправлено",
+    homeworkReviewUpdatedAt: "Обновлено",
+    homeworkReviewNotReviewedYet: "Работа ещё не проверялась",
+    homeworkReviewLearnerFallback: "Ученик #{id}",
     analyticsPageTitle: "Аналитика",
     analyticsPageSubtitle: "Отслеживайте успеваемость по курсам и смотрите детали по конкретному слушателю.",
     overview: "Обзор",
@@ -388,14 +409,22 @@ const MESSAGES = {
     createUser: "Create user",
     createUserAction: "Create user",
     userCreateIntro: "Create an account, choose a role, and set the starter password for the first sign-in.",
-    userPasswordHint: "The password is set at creation time and will be needed for the user's first sign-in.",
-    userRoleHint: "Learners take courses, teachers oversee learning, and organization admins manage people and content.",
+    userRoleGuideTitle: "Role descriptions",
+    userRoleGuideLearner: "Learners complete assigned courses and submit work.",
+    userRoleGuideTeacher: "Teachers manage training and review submissions.",
+    userRoleGuideOrgAdmin: "Organization admins manage users and content.",
+    showPassword: "Show",
+    hidePassword: "Hide",
     roleLearner: "Learner",
     roleTeacher: "Teacher",
     roleOrgAdmin: "Organization admin",
     roleSystemAdmin: "System admin",
     userDirectory: "User directory",
     userDirectorySubtitle: "Use this list to see who still has access and whose sign-in is temporarily blocked.",
+    userSearchPlaceholder: "Search by name, email, or role",
+    userSearchNoResults: "No users found",
+    userDirectoryReadonly: "Your role has read-only access to users.",
+    userUpdated: "User updated",
     activate: "Activate",
     deactivate: "Deactivate",
     userAccessGuideTitle: "What deactivation does",
@@ -596,6 +625,19 @@ const MESSAGES = {
     howToDemo1: "Select a course and learner.",
     howToDemo2: "Submit the assignment, then open the mobile learner app or learner account to see the course.",
     howToDemo3: "The backend also records a mock notification delivery for the assignment event.",
+    homeworkReviewLearnerSubmission: "Learner submission",
+    homeworkReviewTextAnswer: "Text answer",
+    homeworkReviewLink: "Link",
+    homeworkReviewFiles: "Files",
+    homeworkReviewPreviousReview: "Previous review",
+    homeworkReviewGrade: "Grade (0-100)",
+    homeworkReviewGradeMissing: "Grade is not set yet",
+    homeworkReviewAllStatuses: "All statuses",
+    homeworkReviewNoContent: "The learner has not attached any submission content yet",
+    homeworkReviewSubmittedAt: "Submitted",
+    homeworkReviewUpdatedAt: "Updated",
+    homeworkReviewNotReviewedYet: "Submission has not been reviewed yet",
+    homeworkReviewLearnerFallback: "Learner #{id}",
     analyticsPageTitle: "Analytics",
     analyticsPageSubtitle: "Track course performance and inspect an individual learner.",
     overview: "Overview",
@@ -859,7 +901,7 @@ function formatDashboardMetricLabel(key: string, t: UiMessages) {
 }
 
 type TenantInfo = { id: number; name: string; code: string; locale: string };
-type UserInfo = { id: number; email: string; full_name: string; is_active: boolean };
+type UserInfo = { id: number; email: string; full_name: string; is_active: boolean; role_name?: string | null };
 type UserProfileInfo = { id: number; email: string; full_name: string; tenant_role?: string | null };
 type CourseInfo = {
   id: number;
@@ -885,6 +927,7 @@ type LessonInfo = {
     page_id?: string;
     chapter_title: string;
     page_title: string;
+    is_practice?: boolean;
     blocks: Array<{ type: string; text?: string; html?: string; url?: string; alt?: string; title?: string }>;
   }> | null;
   duration_minutes: number;
@@ -941,6 +984,7 @@ type AssignmentInfo = {
   id: number;
   course_id: number;
   lesson_id?: number | null;
+  page_id?: string | null;
   title: string;
   description: string;
   is_active: boolean;
@@ -956,7 +1000,15 @@ type AssignmentSubmissionInfo = {
   link_answer?: string | null;
   submitted_at?: string | null;
   updated_at: string;
-  latest_review?: { status: string; comment: string; reviewer_user_id: number; created_at: string } | null;
+  files: { id: number; file_url: string; file_name: string; created_at?: string }[];
+  latest_review?: {
+    id: number;
+    reviewer_user_id: number;
+    status: string;
+    comment: string;
+    grade: number | null;
+    created_at: string;
+  } | null;
 };
 type MediaKind = "image" | "video" | "document";
 type MediaAssetInfo = { path: string; label: string; kind: MediaKind; size_bytes: number; filename: string; mime_type: string };
@@ -964,6 +1016,7 @@ type LessonPageDraft = {
   id: string;
   chapterTitle: string;
   pageTitle: string;
+  isPractice: boolean;
   html: string;
   imageUrl: string;
   videoUrl: string;
@@ -1006,6 +1059,18 @@ function canManageCourses(roleName: string | null | undefined) {
 
 function canAccessWebPanel(roleName: string | null | undefined) {
   return canManageCourses(roleName);
+}
+
+function canManageUsers(roleName: string | null | undefined) {
+  return roleName === "org_admin" || roleName === "system_admin";
+}
+
+function getRolePermissions(roleName: string | null | undefined) {
+  return {
+    canAccessWebPanel: canAccessWebPanel(roleName),
+    canManageCourses: canManageCourses(roleName),
+    canManageUsers: canManageUsers(roleName),
+  };
 }
 
 function parseCourseIdParam(value: string | null) {
@@ -1104,6 +1169,7 @@ function createLessonPageDraft(index = 1, language: Language = "ru"): LessonPage
     id: `page-${Date.now()}-${Math.round(Math.random() * 100000)}-${index}`,
     chapterTitle: index === 1 ? (ru ? "Контекст" : "Context") : ru ? "Практика" : "Practice",
     pageTitle: index === 1 ? (ru ? "Введение" : "Introduction") : ru ? `Страница ${index}` : `Page ${index}`,
+    isPractice: false,
     html: "",
     imageUrl: "",
     videoUrl: ""
@@ -1115,6 +1181,7 @@ function buildLessonPagesPayload(pages: LessonPageDraft[]) {
     page_id: page.id || `page-${index + 1}`,
     chapter_title: page.chapterTitle.trim() || `Chapter ${index + 1}`,
     page_title: page.pageTitle.trim() || `Page ${index + 1}`,
+    is_practice: page.isPractice,
     blocks: [
       ...(page.html.trim() ? [{ type: "html", html: page.html.trim() }] : []),
       ...(page.imageUrl.trim() ? [{ type: "image", url: page.imageUrl.trim(), alt: page.pageTitle.trim() || `Page ${index + 1}` }] : []),
@@ -1191,6 +1258,7 @@ function buildDraftPagesFromLesson(lesson: LessonInfo): LessonPageDraft[] {
         id: `page-${lesson.id}-1`,
         chapterTitle: lesson.title,
         pageTitle: lesson.title,
+        isPractice: true,
         html: `<p>${escapeHtml(lesson.summary || lesson.content)}</p>`,
         imageUrl: lesson.image_url ?? "",
         videoUrl: lesson.video_url ?? ""
@@ -1214,11 +1282,68 @@ function buildDraftPagesFromLesson(lesson: LessonInfo): LessonPageDraft[] {
       id: page.page_id || `page-${lesson.id}-${index + 1}`,
       chapterTitle: page.chapter_title,
       pageTitle: page.page_title,
+      isPractice: Boolean(page.is_practice),
       html,
       imageUrl: imageBlock?.url || "",
       videoUrl: videoBlock?.url || ""
     };
   });
+}
+
+function resolveLessonPageId(lessonId: number, pageId: string | undefined, index: number) {
+  const normalized = (pageId || "").trim();
+  return normalized || `page-${lessonId}-${index + 1}`;
+}
+
+function resolvePracticePageId(
+  lesson: Pick<LessonInfo, "id" | "content_pages">,
+  preferredPageId: string | null = null
+): string | null {
+  const pages = lesson.content_pages ?? [];
+  if (!pages.length) {
+    return null;
+  }
+  const normalizedPreferred = (preferredPageId || "").trim() || null;
+  const normalizedPages = pages.map((page, index) => {
+    const stableId = resolveLessonPageId(lesson.id, page.page_id, index);
+    const title = (page.page_title || "").trim().toLowerCase();
+    return { page, stableId, title };
+  });
+  if (normalizedPreferred && normalizedPages.some((entry) => entry.stableId === normalizedPreferred)) {
+    return normalizedPreferred;
+  }
+  return (
+    normalizedPages.find((entry) => entry.page.is_practice)?.stableId ??
+    normalizedPages.find((entry) => entry.title.includes("практи") || entry.title.includes("practice"))?.stableId ??
+    normalizedPages[normalizedPages.length - 1]?.stableId ??
+    null
+  );
+}
+
+function findLinkedLessonForAssignment(
+  assignment: Pick<AssignmentInfo, "lesson_id" | "page_id" | "title">,
+  lessons: LessonInfo[]
+): LessonInfo | null {
+  if (!lessons.length) {
+    return null;
+  }
+  if (assignment.lesson_id) {
+    const byLessonId = lessons.find((lesson) => lesson.id === assignment.lesson_id) ?? null;
+    if (byLessonId) {
+      return byLessonId;
+    }
+  }
+  const assignmentPageId = (assignment.page_id || "").trim();
+  if (assignmentPageId) {
+    const byPageId =
+      lessons.find((lesson) =>
+        (lesson.content_pages ?? []).some((page, index) => resolveLessonPageId(lesson.id, page.page_id, index) === assignmentPageId)
+      ) ?? null;
+    if (byPageId) {
+      return byPageId;
+    }
+  }
+  return null;
 }
 
 function formatBytes(size: number) {
@@ -2037,7 +2162,7 @@ export function LoginPage({
     options: { login: string; organizationCode: string }
   ) => void;
 }) {
-  const { language, t } = useUi();
+  const { language, t, setLanguage } = useUi();
   const [email, setEmail] = useState(() =>
     ENABLE_DEV_AUTH_PREFILL ? DEV_PREFILL_EMAIL : "",
   );
@@ -2047,8 +2172,24 @@ export function LoginPage({
   );
   const [error, setError] = useState("");
 
+  function mapLoginErrorMessage(raw: string) {
+    const normalized = raw.trim().toLowerCase();
+    if (!normalized) return t.loginFailed;
+    if (normalized.includes("user is deactivated")) {
+      return language === "ru" ? "Пользователь деактивирован" : "User is deactivated";
+    }
+    if (normalized.includes("invalid credentials")) {
+      return language === "ru" ? "Неверный логин или пароль" : "Invalid email or password";
+    }
+    if (normalized.includes("tenant membership required")) {
+      return language === "ru" ? "Нет доступа к выбранной организации" : "No access to selected tenant";
+    }
+    return raw;
+  }
+
   async function submit() {
     try {
+      setError("");
       const normalizedTenantCode = normalizeTenantCode(tenantCode);
       if (!normalizedTenantCode) {
         setError(language === "ru" ? "Введите код организации" : "Enter tenant code");
@@ -2064,12 +2205,28 @@ export function LoginPage({
         organizationCode: normalizedTenantCode,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : t.loginFailed);
+      setError(err instanceof Error ? mapLoginErrorMessage(err.message) : t.loginFailed);
     }
   }
 
   return (
     <section className="login-card">
+      <div className="login-language-switch">
+        <button
+          type="button"
+          className={`secondary ${language === "ru" ? "active" : ""}`}
+          onClick={() => setLanguage("ru")}
+        >
+          {t.russian}
+        </button>
+        <button
+          type="button"
+          className={`secondary ${language === "en" ? "active" : ""}`}
+          onClick={() => setLanguage("en")}
+        >
+          {t.english}
+        </button>
+      </div>
       <div className="login-brand">
         <img src={websiteLogo} alt="Coursum" />
       </div>
@@ -2140,8 +2297,14 @@ function Shell({ session, onLogout, onSessionChange }: { session: SessionState; 
 
   if (profile.loading && !profile.data) {
     return (
-      <section className="login-card">
+      <section className="login-card app-loading-card">
         <h1>{t.loading}</h1>
+        <div className="app-loading-dots" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+        <div className="app-loading-shimmer" aria-hidden="true" />
       </section>
     );
   }
@@ -2156,7 +2319,9 @@ function Shell({ session, onLogout, onSessionChange }: { session: SessionState; 
     );
   }
 
-  if (!canAccessWebPanel(profile.data?.tenant_role)) {
+  const permissions = getRolePermissions(profile.data?.tenant_role);
+
+  if (!permissions.canAccessWebPanel) {
     return (
       <section className="login-card">
         <h1>{language === "ru" ? "Нет доступа" : "Access denied"}</h1>
@@ -2366,12 +2531,33 @@ function TenantPage({ session, onSessionChange }: { session: SessionState; onSes
 }
 
 function UsersPage({ session }: { session: SessionState }) {
-  const { language, t } = useUi();
+  const { t } = useUi();
   const [refreshKey, setRefreshKey] = useState(0);
+  const profile = useRemote<UserProfileInfo>("/auth/me", session, refreshKey);
   const users = useRemote<UserInfo[]>("/users", session, refreshKey);
   const [form, setForm] = useState({ email: "", fullName: "", password: "", roleName: "learner" });
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [userSearch, setUserSearch] = useState("");
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
+  const userRole = profile.data?.tenant_role ?? null;
+  const permissions = getRolePermissions(userRole);
+  const canEditUsers = permissions.canManageUsers;
+  const normalizedUserSearch = userSearch.trim().toLowerCase();
+  const filteredUsers = useMemo(() => {
+    const allUsers = users.data ?? [];
+    if (!normalizedUserSearch) {
+      return allUsers;
+    }
+    return allUsers.filter((user) => {
+      const roleLabel = formatRoleLabel(user.role_name, t).toLowerCase();
+      return (
+        user.full_name.toLowerCase().includes(normalizedUserSearch) ||
+        user.email.toLowerCase().includes(normalizedUserSearch) ||
+        roleLabel.includes(normalizedUserSearch)
+      );
+    });
+  }, [users.data, normalizedUserSearch, t]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -2385,7 +2571,7 @@ function UsersPage({ session }: { session: SessionState }) {
       });
       setForm({ email: "", fullName: "", password: "", roleName: "learner" });
       setRefreshKey((value) => value + 1);
-      setStatus(t.userCreated);
+      setStatus(t.userUpdated);
     } catch (err) {
       setError(err instanceof Error ? err.message : t.failedCreateUser);
     }
@@ -2396,7 +2582,7 @@ function UsersPage({ session }: { session: SessionState }) {
     try {
       await apiPatch(`/users/${user.id}`, session, { is_active: !user.is_active });
       setRefreshKey((value) => value + 1);
-      setStatus(language === "ru" ? `Пользователь ${user.email} обновлен` : `User ${user.email} updated`);
+      setStatus(t.userCreated);
     } catch (err) {
       setError(err instanceof Error ? err.message : t.failedUpdateUser);
     }
@@ -2408,69 +2594,122 @@ function UsersPage({ session }: { session: SessionState }) {
       {status && <Notice text={status} />}
       {error && <Notice text={error} tone="error" />}
       <section className="grid two-columns users-layout">
-        <FormCard title={t.createUser} onSubmit={submit} className="user-create-card">
-          <p className="form-helper form-helper-intro">{t.userCreateIntro}</p>
-          <div className="user-form-grid">
-            <label>
-              {t.email}
-              <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder={t.email} required />
-            </label>
-            <label>
-              {t.fullName}
-              <input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} placeholder={t.fullName} required />
-            </label>
-            <label>
-              {t.password}
-              <input value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder={t.password} required />
-              <span className="form-helper">{t.userPasswordHint}</span>
-            </label>
-            <label>
-              {t.role}
-              <select value={form.roleName} onChange={(e) => setForm({ ...form, roleName: e.target.value })}>
-                <option value="learner">{t.roleLearner}</option>
-                <option value="teacher">{t.roleTeacher}</option>
-                <option value="org_admin">{t.roleOrgAdmin}</option>
-              </select>
-              <span className="form-helper">{t.userRoleHint}</span>
-            </label>
-          </div>
-          <div className="user-access-note">
-            <strong>{t.userAccessGuideTitle}</strong>
-            <p>{t.userAccessGuideBody}</p>
-          </div>
-          <div className="user-form-actions">
-            <button type="submit">{t.createUserAction}</button>
-          </div>
-        </FormCard>
+        {canEditUsers ? (
+          <FormCard title={t.createUser} onSubmit={submit} className="user-create-card">
+            <p className="form-helper form-helper-intro">{t.userCreateIntro}</p>
+            <div className="user-form-grid">
+              <label>
+                {t.email}
+                <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder={t.email} required />
+              </label>
+              <label>
+                {t.fullName}
+                <input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} placeholder={t.fullName} required />
+              </label>
+              <label>
+                {t.password}
+                <div className="user-inline-control">
+                  <input
+                    value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    type={isPasswordVisible ? "text" : "password"}
+                    autoComplete="new-password"
+                    placeholder={t.password}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="secondary user-inline-toggle"
+                    onClick={() => setIsPasswordVisible((value) => !value)}
+                    aria-label={isPasswordVisible ? t.hidePassword : t.showPassword}
+                    title={isPasswordVisible ? t.hidePassword : t.showPassword}
+                  >
+                    {isPasswordVisible ? (
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3 3l18 18" />
+                        <path d="M10.58 10.58a2 2 0 0 0 2.83 2.83" />
+                        <path d="M9.88 5.09A10.94 10.94 0 0 1 12 4c5 0 9.27 3.11 11 8a11.8 11.8 0 0 1-3.04 4.95" />
+                        <path d="M6.61 6.61A11.83 11.83 0 0 0 1 12c1.73 4.89 6 8 11 8a10.9 10.9 0 0 0 5.39-1.39" />
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </label>
+              <label>
+                {t.role}
+                <select value={form.roleName} onChange={(e) => setForm({ ...form, roleName: e.target.value })}>
+                  <option value="learner">{t.roleLearner}</option>
+                  <option value="teacher">{t.roleTeacher}</option>
+                  <option value="org_admin">{t.roleOrgAdmin}</option>
+                </select>
+              </label>
+            </div>
+            <div className="user-role-guide">
+              <strong>{t.userRoleGuideTitle}</strong>
+              <ul>
+                <li>{t.userRoleGuideLearner}</li>
+                <li>{t.userRoleGuideTeacher}</li>
+                <li>{t.userRoleGuideOrgAdmin}</li>
+              </ul>
+            </div>
+            <div className="user-access-note">
+              <strong>{t.userAccessGuideTitle}</strong>
+              <p>{t.userAccessGuideBody}</p>
+            </div>
+            <div className="user-form-actions">
+              <button type="submit">{t.createUserAction}</button>
+            </div>
+          </FormCard>
+        ) : (
+          <article className="card user-create-card">
+            <h3>{t.createUser}</h3>
+            <p className="form-helper">{t.userDirectoryReadonly}</p>
+          </article>
+        )}
         <article className="card user-directory-card">
           <div className="user-directory-head">
             <h3>{t.userDirectory}</h3>
             <p className="sidebar-text">{t.userDirectorySubtitle}</p>
+            <input
+              value={userSearch}
+              onChange={(event) => setUserSearch(event.target.value)}
+              placeholder={t.userSearchPlaceholder}
+              className="user-directory-search"
+            />
           </div>
           <div className="stack user-directory-list">
-            {(users.data ?? []).map((user) => (
+            {filteredUsers.map((user) => (
               <div className="list-row user-row" key={user.id}>
                 <div className="user-meta">
                   <strong>{user.full_name}</strong>
                   <span>{user.email}</span>
                   <div className="user-subline">
+                    <span>{formatRoleLabel(user.role_name, t)}</span>
                     <span className={`status-pill ${user.is_active ? "active" : "inactive"}`}>
                       {user.is_active ? t.userStatusActive : t.userStatusInactive}
                     </span>
                   </div>
                 </div>
-                <div className="user-actions">
-                  <button
-                    type="button"
-                    className={user.is_active ? undefined : "page-action secondary"}
-                    onClick={() => void toggleUser(user)}
-                  >
-                    {user.is_active ? t.deactivate : t.activate}
-                  </button>
-                </div>
+                {canEditUsers && (
+                  <div className="user-actions">
+                    <button
+                      type="button"
+                      className={user.is_active ? undefined : "page-action secondary"}
+                      onClick={() => void toggleUser(user)}
+                    >
+                      {user.is_active ? t.deactivate : t.activate}
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
             {users.loading && <EmptyState title={t.loadingUsers} />}
+            {!users.loading && filteredUsers.length === 0 && <EmptyState title={normalizedUserSearch ? t.userSearchNoResults : t.noData} />}
           </div>
         </article>
       </section>
@@ -2709,7 +2948,8 @@ export function CoursesPage({ session }: { session: SessionState }) {
 
 
   const selectedCourse = (courses.data ?? []).find((course) => course.id === selectedCourseId) ?? null;
-  const canEditCourses = profile.data ? canManageCourses(profile.data.tenant_role) : true;
+  const permissions = getRolePermissions(profile.data?.tenant_role);
+  const canEditCourses = permissions.canManageCourses;
   const courseEditorLocked = profile.data?.tenant_role === "learner";
   const selectedCourseStatus = normalizeCourseStatus(selectedCourse?.status ?? form.status);
   const previewSectionTitles = new Map((preview?.sections ?? []).map((section) => [section.id, section.title]));
@@ -3008,9 +3248,6 @@ export function LessonsPage({ session }: { session: SessionState }) {
   const [recommendationDraft, setRecommendationDraft] = useState({ title: "", text: "", lessonId: "" });
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
-  const [practiceDraft, setPracticeDraft] = useState({
-    enabled: false,
-  });
   const [form, setForm] = useState({
     title: "",
     summary: "",
@@ -3025,6 +3262,13 @@ export function LessonsPage({ session }: { session: SessionState }) {
     pages: [createLessonPageDraft(1, language)]
   });
   const requestedCourseId = parseCourseIdParam(searchParams.get("courseId"));
+  const requestedLessonId = parseCourseIdParam(searchParams.get("lessonId"));
+  const requestedAssignmentId = parseCourseIdParam(searchParams.get("assignmentId"));
+  const requestedAssignmentTitle = (searchParams.get("assignmentTitle") || "").trim();
+  const requestedPageId = (searchParams.get("pageId") || "").trim() || null;
+  const requestedOpenPractice = (searchParams.get("openPractice") || "").trim() === "1";
+  const appliedRequestedPageIdRef = useRef<string | null>(null);
+  const appliedRequestedAssignmentIdRef = useRef<number | null>(null);
 
   const contentPagesPayload = useMemo(() => buildLessonPagesPayload(form.pages), [form.pages]);
   const lessonSnapshot = useMemo(
@@ -3060,6 +3304,30 @@ export function LessonsPage({ session }: { session: SessionState }) {
     setSearchParams(nextParams, { replace: true });
   }
 
+  function updateLessonAndPageSearchParams(lessonId: number | null, pageId: string | null) {
+    const currentLessonId = searchParams.get("lessonId");
+    const currentPageId = searchParams.get("pageId");
+    const nextLessonId = lessonId === null ? null : String(lessonId);
+    const nextPageId = pageId && pageId.trim() ? pageId.trim() : null;
+    if (currentLessonId === nextLessonId && currentPageId === nextPageId) {
+      return;
+    }
+    const nextParams = new URLSearchParams(searchParams);
+    if (nextLessonId === null) {
+      nextParams.delete("lessonId");
+      nextParams.delete("pageId");
+    } else {
+      nextParams.set("lessonId", nextLessonId);
+      if (nextPageId === null) {
+        nextParams.delete("pageId");
+      } else {
+        nextParams.set("pageId", nextPageId);
+      }
+    }
+    setSearchParams(nextParams, { replace: true });
+  }
+
+
   function selectCourseId(courseId: number) {
     lessonIdToKeepAfterRefresh.current = null;
     if (pendingDeleteTimerRef.current !== null) {
@@ -3091,6 +3359,107 @@ export function LessonsPage({ session }: { session: SessionState }) {
   }, [courses.data, requestedCourseId, selectedCourseId]);
 
   useEffect(() => {
+    if (!requestedLessonId || !(lessons.data ?? []).length) {
+      return;
+    }
+    const matchedLesson = (lessons.data ?? []).find((lesson) => lesson.id === requestedLessonId);
+    if (!matchedLesson) {
+      return;
+    }
+    if (editingLessonId === matchedLesson.id) {
+      return;
+    }
+    // Explicit "openPractice=1" forces practice-page selection even if pageId is stale.
+    const preferredPageId = requestedOpenPractice ? resolvePracticePageId(matchedLesson, null) : requestedPageId;
+    loadLessonIntoForm(matchedLesson, "", preferredPageId, null);
+  }, [editingLessonId, lessons.data, requestedLessonId, requestedOpenPractice, requestedPageId]);
+
+  useEffect(() => {
+    if (editingLessonId === null) {
+      return;
+    }
+    updateLessonAndPageSearchParams(editingLessonId, activePageId);
+  }, [activePageId, editingLessonId]);
+
+  function selectActivePage(pageId: string) {
+    setActivePageId(pageId);
+    updateLessonAndPageSearchParams(editingLessonId, pageId);
+  }
+
+  useEffect(() => {
+    if (!requestedPageId || !(form.pages ?? []).length) {
+      appliedRequestedPageIdRef.current = null;
+      return;
+    }
+    if (appliedRequestedPageIdRef.current === requestedPageId) {
+      return;
+    }
+    const matchedPage = form.pages.find((page) => page.id === requestedPageId);
+    if (!matchedPage) {
+      return;
+    }
+    appliedRequestedPageIdRef.current = requestedPageId;
+    if (activePageId === requestedPageId) {
+      return;
+    }
+    setActivePageId(matchedPage.id);
+  }, [activePageId, form.pages, requestedPageId]);
+
+  useEffect(() => {
+    if (!requestedAssignmentId) {
+      appliedRequestedAssignmentIdRef.current = null;
+      return;
+    }
+    if (appliedRequestedAssignmentIdRef.current === requestedAssignmentId) {
+      return;
+    }
+    if (!(assignments.data ?? []).length || !(lessons.data ?? []).length) {
+      return;
+    }
+    const linkedAssignment = (assignments.data ?? []).find((item) => item.id === requestedAssignmentId);
+    if (!linkedAssignment) {
+      return;
+    }
+    const matchedLesson = findLinkedLessonForAssignment(linkedAssignment, lessons.data ?? []);
+    if (!matchedLesson) {
+      return;
+    }
+    const assignmentPageId = (linkedAssignment.page_id || "").trim() || null;
+    const practicePageId = resolvePracticePageId(matchedLesson, requestedPageId ?? assignmentPageId);
+    loadLessonIntoForm(matchedLesson, "", practicePageId, null);
+    appliedRequestedAssignmentIdRef.current = requestedAssignmentId;
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("assignmentId");
+    setSearchParams(nextParams, { replace: true });
+  }, [assignments.data, lessons.data, requestedAssignmentId, requestedPageId, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (!requestedOpenPractice || requestedLessonId || !(lessons.data ?? []).length) {
+      return;
+    }
+    let matchedLesson: LessonInfo | null = null;
+    if (requestedAssignmentId && (assignments.data ?? []).length) {
+      const linkedAssignment = (assignments.data ?? []).find((item) => item.id === requestedAssignmentId) ?? null;
+      if (linkedAssignment) {
+        matchedLesson = findLinkedLessonForAssignment(linkedAssignment, lessons.data ?? []);
+      }
+    }
+    if (!matchedLesson && requestedAssignmentTitle) {
+      const normalized = requestedAssignmentTitle.toLowerCase();
+      const titleMatches = (lessons.data ?? []).filter((lesson) => (lesson.title || "").trim().toLowerCase() === normalized);
+      matchedLesson =
+        titleMatches[0] ??
+        (lessons.data ?? []).find((lesson) => (lesson.title || "").trim().toLowerCase().includes(normalized)) ??
+        null;
+    }
+    if (!matchedLesson) {
+      return;
+    }
+    const practicePageId = resolvePracticePageId(matchedLesson, null);
+    loadLessonIntoForm(matchedLesson, "", practicePageId, null);
+  }, [assignments.data, lessons.data, requestedAssignmentId, requestedAssignmentTitle, requestedLessonId, requestedOpenPractice]);
+
+  useEffect(() => {
     if (!form.pages.length) {
       setActivePageId(null);
       return;
@@ -3116,7 +3485,11 @@ export function LessonsPage({ session }: { session: SessionState }) {
   }, []);
 
   function loadLessonIntoForm(lesson: LessonInfo, nextStatus = "", preferredActivePageId: string | null = null, preferredActivePageIndex: number | null = null) {
-    const draftPages = buildDraftPagesFromLesson(lesson);
+    let draftPages = buildDraftPagesFromLesson(lesson);
+    const linkedAssignment = (assignments.data ?? []).find((item) => item.lesson_id === lesson.id && item.is_active) ?? null;
+    if (linkedAssignment && !draftPages.some((page) => page.isPractice) && draftPages.length) {
+      draftPages = draftPages.map((page, index) => ({ ...page, isPractice: index === draftPages.length - 1 }));
+    }
     const nextActivePage =
       draftPages.find((page) => page.id === preferredActivePageId) ??
       (preferredActivePageIndex !== null ? draftPages[preferredActivePageIndex] : undefined) ??
@@ -3140,6 +3513,7 @@ export function LessonsPage({ session }: { session: SessionState }) {
     setStatus(nextStatus);
     setForm(nextDraft);
     setActivePageId(nextActivePage?.id ?? null);
+    updateLessonAndPageSearchParams(lesson.id, nextActivePage?.id ?? null);
     setLastSavedSnapshot(JSON.stringify(nextDraft));
     setSaveState("saved");
     setRenamingLessonId(null);
@@ -3169,23 +3543,7 @@ export function LessonsPage({ session }: { session: SessionState }) {
     setLastSavedSnapshot(JSON.stringify(nextDraft));
     setSaveState("saved");
     setRenamingLessonId(null);
-    setPracticeDraft({ enabled: false });
   }
-
-  useEffect(() => {
-    if (!editingLessonId) {
-      setPracticeDraft({ enabled: false });
-      return;
-    }
-    const linkedAssignment = (assignments.data ?? []).find((item) => item.lesson_id === editingLessonId) ?? null;
-    if (!linkedAssignment) {
-      setPracticeDraft({ enabled: false });
-      return;
-    }
-    setPracticeDraft({
-      enabled: linkedAssignment.is_active,
-    });
-  }, [assignments.data, editingLessonId]);
 
   function discardDraftChanges() {
     const prompt = language === "ru" ? "Отменить несохранённые изменения?" : "Discard unsaved changes?";
@@ -3224,16 +3582,35 @@ export function LessonsPage({ session }: { session: SessionState }) {
         return;
       }
     }
+    if (requestedLessonId) {
+      const requestedLessonExists = (lessons.data ?? []).some((lesson) => lesson.id === requestedLessonId);
+      // Deep-link selection has priority over auto-opening the first lesson.
+      if (requestedLessonExists && editingLessonId !== requestedLessonId) {
+        return;
+      }
+    }
     if (!currentLesson) {
       lessonIdToKeepAfterRefresh.current = null;
       loadLessonIntoForm((lessons.data ?? [])[0]);
     }
-  }, [selectedCourseId, lessons.data, lessons.loading]);
+  }, [editingLessonId, lessons.data, lessons.loading, requestedLessonId, selectedCourseId]);
 
   function updatePage(pageId: string, patch: Partial<LessonPageDraft>) {
     setForm((current) => ({
       ...current,
       pages: current.pages.map((page) => (page.id === pageId ? { ...page, ...patch } : page))
+    }));
+  }
+
+  function setPracticePage(pageId: string, enabled: boolean) {
+    setForm((current) => ({
+      ...current,
+      pages: current.pages.map((page) => {
+        if (page.id === pageId) {
+          return { ...page, isPractice: enabled };
+        }
+        return enabled ? { ...page, isPractice: false } : page;
+      }),
     }));
   }
 
@@ -3637,6 +4014,8 @@ export function LessonsPage({ session }: { session: SessionState }) {
   }
 
   const activePage = form.pages.find((page) => page.id === activePageId) ?? form.pages[0];
+  const hasPracticePage = form.pages.some((page) => page.isPractice);
+  const practicePage = form.pages.find((page) => page.isPractice) ?? null;
   const selectedCourse = (courses.data ?? []).find((course) => course.id === selectedCourseId) ?? null;
   const sectionGroups = useMemo(
     () =>
@@ -3697,7 +4076,10 @@ export function LessonsPage({ session }: { session: SessionState }) {
         const linkedAssignment = (assignments.data ?? []).find((item) => item.lesson_id === savedLesson.id) ?? null;
         const autoPracticeTitle = form.title.trim() || savedLesson.title;
         const autoPracticeDescription = (form.summary || "").trim();
-        if (practiceDraft.enabled && autoPracticeTitle) {
+        const practicePage = form.pages.find((page) => page.isPractice) ?? null;
+        const hasPracticePage = Boolean(practicePage);
+        const practicePageId = practicePage?.id ?? null;
+        if (hasPracticePage && autoPracticeTitle) {
           if (linkedAssignment) {
             try {
               await apiPatch(`/assignments/${linkedAssignment.id}`, session, {
@@ -3705,11 +4087,13 @@ export function LessonsPage({ session }: { session: SessionState }) {
                 description: autoPracticeDescription,
                 is_active: true,
                 due_at: linkedAssignment.due_at ?? null,
+                page_id: practicePageId,
               });
             } catch {
               await apiPost("/assignments", session, {
                 course_id: selectedCourseId,
                 lesson_id: savedLesson.id,
+                page_id: practicePageId,
                 title: autoPracticeTitle,
                 description: autoPracticeDescription,
                 is_active: true,
@@ -3719,6 +4103,7 @@ export function LessonsPage({ session }: { session: SessionState }) {
             await apiPost("/assignments", session, {
               course_id: selectedCourseId,
               lesson_id: savedLesson.id,
+              page_id: practicePageId,
               title: autoPracticeTitle,
               description: autoPracticeDescription,
               is_active: true,
@@ -3731,6 +4116,7 @@ export function LessonsPage({ session }: { session: SessionState }) {
               description: linkedAssignment.description,
               is_active: false,
               due_at: linkedAssignment.due_at ?? null,
+              page_id: linkedAssignment.page_id ?? null,
             });
           } catch {
             // Assignment might already be deleted; no action required when disabling practice.
@@ -4081,38 +4467,27 @@ export function LessonsPage({ session }: { session: SessionState }) {
                 {t.lessonSummary}
                 <textarea value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} placeholder={t.lessonSummaryPlaceholder} rows={3} required />
               </label>
-              <label className="studio-form-span">
-                <span>{language === "ru" ? "Практическое задание" : "Practical assignment"}</span>
-                <div className="course-access-checkbox">
-                  <input
-                    id="lesson-practice-enabled"
-                    type="checkbox"
-                    checked={practiceDraft.enabled}
-                    onChange={(e) => setPracticeDraft((current) => ({ ...current, enabled: e.target.checked }))}
-                  />
-                  <label htmlFor="lesson-practice-enabled">
-                    {language === "ru"
-                      ? "Эта страница/урок содержит практику. Ученики смогут отправлять решение в разделе заданий."
-                      : "This lesson contains practice. Learners can submit solutions in assignments."}
-                  </label>
-                </div>
-              </label>
-              {practiceDraft.enabled && (
-                <>
-                  <div className="studio-form-span">
-                    <span className="form-helper">
-                      {language === "ru"
-                        ? "Название и описание практики берутся автоматически из названия урока и краткого описания."
-                        : "Practice title and instructions are generated automatically from the lesson title and summary."}
-                    </span>
-                  </div>
-                  <div className="studio-form-span">
-                    <Link className="page-action secondary" to="/homework-reviews">
-                      {language === "ru" ? "Проверка отправленных работ" : "Review submitted work"}
-                    </Link>
-                  </div>
-                </>
-              )}
+              <div className="studio-form-span lesson-practice-note">
+                <span className="form-helper">
+                  {language === "ru"
+                    ? "Практика настраивается внутри редактирования страницы: отметьте нужную страницу в блоке «Активная страница»."
+                    : "Practice is configured at the page level: mark the required page in the \"Active page\" block."}
+                </span>
+                <span className="form-helper">
+                  {practicePage
+                    ? (language === "ru"
+                      ? `Текущая страница практики: «${practicePage.pageTitle || "Без названия"}».`
+                      : `Current practice page: "${practicePage.pageTitle || "Untitled"}".`)
+                    : (language === "ru"
+                      ? "Страница практики пока не выбрана."
+                      : "No practice page selected yet.")}
+                </span>
+                {hasPracticePage && (
+                  <Link className="page-action secondary lesson-practice-link" to="/homework-reviews">
+                    {language === "ru" ? "Проверка отправленных работ" : "Review submitted work"}
+                  </Link>
+                )}
+              </div>
             </div>
           </section>
 
@@ -4131,7 +4506,7 @@ export function LessonsPage({ session }: { session: SessionState }) {
               <div className="lessons-page-list">
                 {form.pages.map((page, index) => (
                   <article key={page.id} className={`page-list-item ${page.id === activePage?.id ? "active" : ""}`}>
-                    <button type="button" className="page-list-select" onClick={() => setActivePageId(page.id)}>
+                    <button type="button" className="page-list-select" onClick={() => selectActivePage(page.id)}>
                       <strong>
                         {index + 1}. {page.pageTitle || t.untitledPage}
                       </strong>
@@ -4175,6 +4550,24 @@ export function LessonsPage({ session }: { session: SessionState }) {
                       <input value={activePage.pageTitle} onChange={(e) => updatePage(activePage.id, { pageTitle: e.target.value })} placeholder={t.pageTitle} />
                     </label>
                   </div>
+                  <div className="course-access-checkbox">
+                    <input
+                      id="page-practice-enabled"
+                      type="checkbox"
+                      checked={activePage.isPractice}
+                      onChange={(e) => setPracticePage(activePage.id, e.target.checked)}
+                    />
+                    <label htmlFor="page-practice-enabled">
+                      {language === "ru"
+                        ? "Это страница с практикой. Блок отправки решения появится у ученика именно здесь."
+                        : "This is the practice page. The learner submission block will appear on this page."}
+                    </label>
+                  </div>
+                  <span className="form-helper">
+                    {language === "ru"
+                      ? "В одном уроке может быть только одна страница с практикой."
+                      : "Only one practice page can be selected per lesson."}
+                  </span>
                   <div className="media-attachment-grid">
                     <MediaAttachmentCard
                       scope="page"
@@ -4954,39 +5347,112 @@ function AssignmentsPage({ session }: { session: SessionState }) {
   );
 }
 
-function HomeworkReviewsPage({ session }: { session: SessionState }) {
-  const { language } = useUi();
+export function HomeworkReviewsPage({ session }: { session: SessionState }) {
+  const { language, t } = useUi();
+  const navigate = useNavigate();
   const assignments = useRemote<AssignmentInfo[]>("/assignments", session);
+  const users = useRemote<UserInfo[]>("/users", session);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<string>("");
+  const [assignmentSearch, setAssignmentSearch] = useState("");
+  const [selectedSubmissionId, setSelectedSubmissionId] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [submissionSearch, setSubmissionSearch] = useState("");
   const [submissionsRefreshKey, setSubmissionsRefreshKey] = useState(0);
-  const [reviewForm, setReviewForm] = useState({ submissionId: "", status: "in_review", comment: "" });
+  const [reviewForm, setReviewForm] = useState({ status: "approved", comment: "", grade: "" });
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
+  const [openingAssignment, setOpeningAssignment] = useState(false);
+  const submissionsUrl = selectedAssignmentId ? `/assignments/${selectedAssignmentId}/submissions${statusFilter ? `?status=${statusFilter}` : ""}` : null;
   const practicalSubmissions = useRemote<AssignmentSubmissionInfo[]>(
-    selectedAssignmentId ? `/assignments/${selectedAssignmentId}/submissions` : null,
+    submissionsUrl,
     session,
     submissionsRefreshKey
   );
+  const userById = useMemo(() => new Map((users.data ?? []).map((user) => [user.id, user])), [users.data]);
+  const activeAssignments = useMemo(() => (assignments.data ?? []).filter((item) => item.is_active), [assignments.data]);
+  const filteredSubmissions = useMemo(() => {
+    const normalizedQuery = submissionSearch.trim().toLowerCase();
+    const source = practicalSubmissions.data ?? [];
+    if (!normalizedQuery) return source;
+    return source.filter((submission) => {
+      const learner = userById.get(submission.student_user_id);
+      const haystack = [
+        String(submission.id),
+        String(submission.student_user_id),
+        learner?.full_name ?? "",
+        learner?.email ?? "",
+      ]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(normalizedQuery);
+    });
+  }, [practicalSubmissions.data, submissionSearch, userById]);
+  const selectedSubmission = filteredSubmissions.find((item) => String(item.id) === selectedSubmissionId) ?? null;
 
   useEffect(() => {
-    if (assignments.data?.length && !selectedAssignmentId) {
-      setSelectedAssignmentId(String(assignments.data[0].id));
+    if (!activeAssignments.length) {
+      if (selectedAssignmentId) {
+        setSelectedAssignmentId("");
+      }
+      return;
     }
-  }, [assignments.data, selectedAssignmentId]);
+    if (!selectedAssignmentId || !activeAssignments.some((item) => String(item.id) === selectedAssignmentId)) {
+      setSelectedAssignmentId(String(activeAssignments[0].id));
+    }
+  }, [activeAssignments, selectedAssignmentId]);
+
+  useEffect(() => {
+    setSelectedSubmissionId("");
+  }, [selectedAssignmentId, statusFilter]);
+
+  useEffect(() => {
+    const list = filteredSubmissions;
+    if (!list.length) {
+      setSelectedSubmissionId("");
+      return;
+    }
+    if (!selectedSubmissionId || !list.some((item) => String(item.id) === selectedSubmissionId)) {
+      setSelectedSubmissionId(String(list[0].id));
+    }
+  }, [filteredSubmissions, selectedSubmissionId]);
+
+  useEffect(() => {
+    if (selectedSubmission?.latest_review) {
+      setReviewForm({
+        status: selectedSubmission.latest_review.status || "approved",
+        comment: selectedSubmission.latest_review.comment || "",
+        grade: selectedSubmission.latest_review.grade == null ? "" : String(selectedSubmission.latest_review.grade),
+      });
+      return;
+    }
+    setReviewForm({ status: "approved", comment: "", grade: "" });
+  }, [selectedSubmissionId, selectedSubmission]);
+
+  const formatDateTime = (value?: string | null) => {
+    if (!value) return "—";
+    const normalized = /(?:z|[+-]\d{2}:\d{2})$/i.test(value) ? value : `${value}Z`;
+    const parsed = new Date(normalized);
+    if (Number.isNaN(parsed.getTime())) return value;
+    return parsed.toLocaleString(language === "ru" ? "ru-RU" : "en-US");
+  };
+
+  const learnerFallback = (userId: number) => t.homeworkReviewLearnerFallback.replace("{id}", String(userId));
+  const learnerLabel = (userId: number) => userById.get(userId)?.full_name || learnerFallback(userId);
+  const learnerEmail = (userId: number) => userById.get(userId)?.email || "—";
 
   async function reviewSubmission(event: FormEvent) {
     event.preventDefault();
-    if (!reviewForm.submissionId) {
+    if (!selectedSubmissionId) {
       return;
     }
     setError("");
     setStatus("");
     try {
-      await apiPost(`/submissions/${reviewForm.submissionId}/review`, session, {
+      await apiPost(`/submissions/${selectedSubmissionId}/review`, session, {
         status: reviewForm.status,
-        comment: reviewForm.comment
+        comment: reviewForm.comment,
+        grade: reviewForm.grade.trim() === "" ? null : Number(reviewForm.grade),
       });
-      setReviewForm((current) => ({ ...current, comment: "" }));
       setSubmissionsRefreshKey((value) => value + 1);
       setStatus(language === "ru" ? "Проверка сохранена" : "Submission review saved");
     } catch (err) {
@@ -4994,7 +5460,66 @@ function HomeworkReviewsPage({ session }: { session: SessionState }) {
     }
   }
 
-  const selectedAssignment = (assignments.data ?? []).find((item) => String(item.id) === selectedAssignmentId);
+  const selectedAssignment = activeAssignments.find((item) => String(item.id) === selectedAssignmentId);
+  const assignmentLessons = useRemote<LessonInfo[]>(
+    selectedAssignment?.course_id ? `/lessons?course_id=${selectedAssignment.course_id}` : null,
+    session
+  );
+  const selectedAssignmentPracticePageId = useMemo(() => {
+    if (!selectedAssignment) {
+      return null;
+    }
+    const linkedLesson = findLinkedLessonForAssignment(selectedAssignment, assignmentLessons.data ?? []);
+    if (!linkedLesson) {
+      return null;
+    }
+    return resolvePracticePageId(linkedLesson, null);
+  }, [assignmentLessons.data, selectedAssignment?.lesson_id]);
+  async function openSelectedAssignment() {
+    if (!selectedAssignment) {
+      navigate("/lessons");
+      return;
+    }
+    setOpeningAssignment(true);
+    setError("");
+    try {
+      let linkedLesson = findLinkedLessonForAssignment(selectedAssignment, assignmentLessons.data ?? []);
+      let practicePageId = selectedAssignmentPracticePageId;
+      if ((!practicePageId || !linkedLesson) && selectedAssignment.course_id) {
+        const lessons = (await apiRequest(`/lessons?course_id=${selectedAssignment.course_id}`, session)) as LessonInfo[];
+        linkedLesson = findLinkedLessonForAssignment(selectedAssignment, lessons);
+        practicePageId = linkedLesson ? resolvePracticePageId(linkedLesson, null) : null;
+      }
+      const targetLessonId = selectedAssignment.lesson_id ?? linkedLesson?.id ?? null;
+      if (!targetLessonId || !practicePageId) {
+        throw new Error(language === "ru" ? "Не удалось определить страницу практики для задания" : "Failed to resolve assignment practice page");
+      }
+      const params = new URLSearchParams();
+      params.set("courseId", String(selectedAssignment.course_id));
+      params.set("openPractice", "1");
+      params.set("assignmentId", String(selectedAssignment.id));
+      if (selectedAssignment.title.trim()) {
+        params.set("assignmentTitle", selectedAssignment.title.trim());
+      }
+      if (targetLessonId) {
+        params.set("lessonId", String(targetLessonId));
+      }
+      if (practicePageId) {
+        params.set("pageId", practicePageId);
+      }
+      navigate(`/lessons?${params.toString()}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : language === "ru" ? "Не удалось открыть задание" : "Failed to open assignment");
+    } finally {
+      setOpeningAssignment(false);
+    }
+  }
+  const filteredAssignments = useMemo(() => {
+    const normalizedQuery = assignmentSearch.trim().toLowerCase();
+    const source = activeAssignments;
+    if (!normalizedQuery) return source;
+    return source.filter((item) => `${item.title} ${item.description} ${item.id}`.toLowerCase().includes(normalizedQuery));
+  }, [activeAssignments, assignmentSearch]);
   const submissionStatusLabel = (rawStatus: string) => {
     const value = (rawStatus || "").toLowerCase();
     if (value === "submitted") return language === "ru" ? "Отправлено" : "Submitted";
@@ -5029,15 +5554,25 @@ function HomeworkReviewsPage({ session }: { session: SessionState }) {
         <article className="card homework-review-sidebar">
           <span className="section-kicker">{language === "ru" ? "Задания" : "Assignments"}</span>
           <h3>{language === "ru" ? "Выберите практику" : "Select practice"}</h3>
+          <label className="homework-review-search">
+            {language === "ru" ? "Поиск по практикам" : "Search practices"}
+            <input
+              type="search"
+              value={assignmentSearch}
+              onChange={(e) => setAssignmentSearch(e.target.value)}
+              placeholder={language === "ru" ? "Название или ID практики" : "Practice title or ID"}
+            />
+          </label>
           <div className="assignment-list">
-            {(assignments.data ?? []).map((item) => (
+            {filteredAssignments.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 className={`list-button ${selectedAssignmentId === String(item.id) ? "active" : ""}`}
                 onClick={() => {
                   setSelectedAssignmentId(String(item.id));
-                  setReviewForm((current) => ({ ...current, submissionId: "" }));
+                  setSelectedSubmissionId("");
+                  setStatusFilter("");
                 }}
               >
                 <strong>{item.title}</strong>
@@ -5046,31 +5581,153 @@ function HomeworkReviewsPage({ session }: { session: SessionState }) {
             ))}
             {assignments.loading && <EmptyState title={language === "ru" ? "Загружаем задания..." : "Loading assignments..."} />}
             {assignments.error && <Notice text={assignments.error} tone="error" />}
-            {!assignments.loading && !(assignments.data ?? []).length && (
+            {!assignments.loading && activeAssignments.length === 0 && (
               <EmptyState title={language === "ru" ? "Практических заданий пока нет" : "No practical assignments yet"} />
+            )}
+            {!assignments.loading && activeAssignments.length > 0 && filteredAssignments.length === 0 && (
+              <EmptyState title={language === "ru" ? "Поиск по практикам не дал результатов" : "No practices match your search"} />
             )}
           </div>
         </article>
 
         <FormCard title={language === "ru" ? "Проверить работу" : "Review submission"} onSubmit={reviewSubmission} className="homework-review-card">
-          <p className="form-helper form-helper-intro">
-            {selectedAssignment
-              ? selectedAssignment.description || selectedAssignment.title
-              : language === "ru"
-                ? "Выберите задание слева, чтобы увидеть отправленные работы."
-                : "Select an assignment on the left to see submitted work."}
-          </p>
+          {selectedAssignment && (
+            <article className="homework-review-panel">
+              <h4>{language === "ru" ? "Текущая практика" : "Current practice"}</h4>
+              <p>
+                <strong>{selectedAssignment.title}</strong> <span className="form-helper">#{selectedAssignment.id}</span>
+              </p>
+              {selectedAssignment.description.trim() && <p className="form-helper">{selectedAssignment.description}</p>}
+              <div className="assignment-actions">
+                <button
+                  type="button"
+                  className="secondary homework-review-link-button"
+                  onClick={() => void openSelectedAssignment()}
+                  disabled={openingAssignment}
+                >
+                  {language === "ru" ? "Открыть задание" : "Open assignment"}
+                </button>
+              </div>
+            </article>
+          )}
+          {!selectedAssignment && (
+            <p className="form-helper form-helper-intro">
+              {language === "ru" ? "Выберите задание слева, чтобы увидеть отправленные работы." : "Select an assignment on the left to see submitted work."}
+            </p>
+          )}
+
           <label>
-            {language === "ru" ? "Работа ученика" : "Learner submission"}
-            <select value={reviewForm.submissionId} onChange={(e) => setReviewForm({ ...reviewForm, submissionId: e.target.value })}>
-              <option value="">{language === "ru" ? "Выберите работу" : "Select submission"}</option>
-              {(practicalSubmissions.data ?? []).map((submission) => (
-                <option key={submission.id} value={submission.id}>
-                  #{submission.id} · user {submission.student_user_id} · {submissionStatusLabel(submission.status)}
-                </option>
-              ))}
+            {t.homeworkReviewAllStatuses}
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <option value="">{t.homeworkReviewAllStatuses}</option>
+              <option value="submitted">{submissionStatusLabel("submitted")}</option>
+              <option value="in_review">{submissionStatusLabel("in_review")}</option>
+              <option value="approved">{submissionStatusLabel("approved")}</option>
+              <option value="needs_revision">{submissionStatusLabel("needs_revision")}</option>
+              <option value="rejected">{submissionStatusLabel("rejected")}</option>
             </select>
           </label>
+
+          <article className="homework-review-panel">
+            <h4>{t.homeworkReviewLearnerSubmission}</h4>
+            <label className="homework-review-search">
+              {language === "ru" ? "Поиск по работам и ученикам" : "Search submissions and learners"}
+              <input
+                type="search"
+                value={submissionSearch}
+                onChange={(e) => setSubmissionSearch(e.target.value)}
+                placeholder={language === "ru" ? "ФИО, email, ID работы или ученика" : "Name, email, submission ID or learner ID"}
+              />
+            </label>
+            <div className="assignment-list homework-review-submissions">
+              {filteredSubmissions.map((submission) => (
+                <button
+                  key={submission.id}
+                  type="button"
+                  className={`list-button ${selectedSubmissionId === String(submission.id) ? "active" : ""}`}
+                  onClick={() => setSelectedSubmissionId(String(submission.id))}
+                >
+                  <strong>{learnerLabel(submission.student_user_id)}</strong>
+                  <span>{learnerEmail(submission.student_user_id)} · {formatDateTime(submission.submitted_at ?? submission.updated_at)}</span>
+                </button>
+              ))}
+            </div>
+            {practicalSubmissions.error && <Notice text={practicalSubmissions.error} tone="error" />}
+            {(practicalSubmissions.data ?? []).length === 0 && (
+              <EmptyState title={language === "ru" ? "Нет отправленных работ по выбранному заданию" : "No submissions for the selected assignment"} />
+            )}
+            {(practicalSubmissions.data ?? []).length > 0 && filteredSubmissions.length === 0 && (
+              <EmptyState title={language === "ru" ? "Поиск не дал результатов" : "No submissions match your search"} />
+            )}
+          </article>
+
+          {selectedSubmission && (
+            <>
+              <article className="homework-review-panel">
+                <h4>{t.homeworkReviewLearnerSubmission}</h4>
+                <KeyValueList
+                  items={[
+                    [language === "ru" ? "ФИО" : "Full name", learnerLabel(selectedSubmission.student_user_id)],
+                    [t.email, learnerEmail(selectedSubmission.student_user_id)],
+                    [language === "ru" ? "Статус" : "Status", submissionStatusLabel(selectedSubmission.status)],
+                    [t.homeworkReviewSubmittedAt, formatDateTime(selectedSubmission.submitted_at)],
+                    [t.homeworkReviewUpdatedAt, formatDateTime(selectedSubmission.updated_at)],
+                  ]}
+                />
+                {selectedSubmission.text_answer.trim() ? (
+                  <div>
+                    <strong>{t.homeworkReviewTextAnswer}</strong>
+                    <pre className="homework-review-text">{selectedSubmission.text_answer}</pre>
+                  </div>
+                ) : null}
+                {selectedSubmission.link_answer ? (
+                  <p>
+                    <strong>{t.homeworkReviewLink}: </strong>
+                    <a href={selectedSubmission.link_answer} target="_blank" rel="noopener noreferrer">
+                      {selectedSubmission.link_answer}
+                    </a>
+                  </p>
+                ) : null}
+                {selectedSubmission.files.length > 0 ? (
+                  <div>
+                    <strong>{t.homeworkReviewFiles}</strong>
+                    <ul className="homework-review-files">
+                      {selectedSubmission.files.map((file) => (
+                        <li key={file.id}>
+                          <a href={resolveMediaUrl(file.file_url)} target="_blank" rel="noopener noreferrer" download>
+                            {file.file_name || file.file_url}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {!selectedSubmission.text_answer.trim() && !selectedSubmission.link_answer && selectedSubmission.files.length === 0 && (
+                  <EmptyState title={t.homeworkReviewNoContent} />
+                )}
+              </article>
+
+              <article className="homework-review-panel">
+                <h4>{t.homeworkReviewPreviousReview}</h4>
+                {selectedSubmission.latest_review ? (
+                  <KeyValueList
+                    items={[
+                      [language === "ru" ? "Статус" : "Status", reviewStatusLabel(selectedSubmission.latest_review.status)],
+                      [
+                        t.homeworkReviewGrade,
+                        selectedSubmission.latest_review.grade == null ? t.homeworkReviewGradeMissing : String(selectedSubmission.latest_review.grade),
+                      ],
+                      [language === "ru" ? "Комментарий" : "Comment", selectedSubmission.latest_review.comment || "—"],
+                      [language === "ru" ? "Проверено" : "Reviewed", formatDateTime(selectedSubmission.latest_review.created_at)],
+                    ]}
+                  />
+                ) : (
+                  <p className="form-helper">{t.homeworkReviewNotReviewedYet}</p>
+                )}
+              </article>
+            </>
+          )}
+
           <label>
             {language === "ru" ? "Статус проверки" : "Review status"}
             <select value={reviewForm.status} onChange={(e) => setReviewForm({ ...reviewForm, status: e.target.value })}>
@@ -5081,18 +5738,26 @@ function HomeworkReviewsPage({ session }: { session: SessionState }) {
             </select>
           </label>
           <label>
+            {t.homeworkReviewGrade}
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={reviewForm.grade}
+              onChange={(e) => setReviewForm({ ...reviewForm, grade: e.target.value })}
+              placeholder={language === "ru" ? "0-100" : "0-100"}
+            />
+          </label>
+          <label>
             {language === "ru" ? "Комментарий куратора" : "Curator comment"}
             <textarea value={reviewForm.comment} onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })} rows={6} />
           </label>
           <div className="assignment-actions">
-            <button type="submit" disabled={!reviewForm.submissionId}>
+            <button type="submit" disabled={!selectedSubmissionId}>
               {language === "ru" ? "Сохранить проверку" : "Save review"}
             </button>
           </div>
-          {practicalSubmissions.error && <Notice text={practicalSubmissions.error} tone="error" />}
-          {(practicalSubmissions.data ?? []).length === 0 && (
-            <EmptyState title={language === "ru" ? "Нет отправленных работ по выбранному заданию" : "No submissions for the selected assignment"} />
-          )}
         </FormCard>
       </section>
     </section>

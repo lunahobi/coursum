@@ -27,6 +27,8 @@ def authenticate_user(db: Session, *, email: str, password: str) -> User:
     user = db.scalar(select(User).where(User.email == email))
     if user is None or not verify_password(password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User is deactivated")
     return user
 
 

@@ -19,6 +19,7 @@ ASSIGNMENT_STATUSES = {
 class AssignmentCreate(BaseModel):
     course_id: int
     lesson_id: int | None = None
+    page_id: str | None = None
     title: str
     description: str = ""
     is_active: bool = True
@@ -30,12 +31,14 @@ class AssignmentUpdate(BaseModel):
     description: str = ""
     is_active: bool = True
     due_at: datetime | None = None
+    page_id: str | None = None
 
 
 class AssignmentRead(ORMModel):
     id: int
     course_id: int
     lesson_id: int | None = None
+    page_id: str | None = None
     title: str
     description: str
     is_active: bool
@@ -53,6 +56,7 @@ class SubmissionUpsert(BaseModel):
 class SubmissionReviewCreate(BaseModel):
     status: str
     comment: str = ""
+    grade: int | None = Field(default=None, ge=0, le=100)
 
 
 class SubmissionFileRead(ORMModel):
@@ -67,6 +71,7 @@ class SubmissionReviewRead(ORMModel):
     reviewer_user_id: int
     status: str
     comment: str
+    grade: int | None = None
     created_at: datetime
 
 

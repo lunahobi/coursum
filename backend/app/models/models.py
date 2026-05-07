@@ -308,6 +308,7 @@ class Assignment(Base):
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), index=True)
     course_id: Mapped[int] = mapped_column(ForeignKey("courses.id"), index=True)
     lesson_id: Mapped[int | None] = mapped_column(ForeignKey("lessons.id"), nullable=True, index=True)
+    page_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(255), index=True)
     description: Mapped[str] = mapped_column(Text, default="")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
@@ -351,6 +352,7 @@ class SubmissionReview(Base):
     reviewer_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     status: Mapped[str] = mapped_column(String(32), index=True)
     comment: Mapped[str] = mapped_column(Text, default="")
+    grade: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
 
 

@@ -34,6 +34,7 @@ def setup_db():
     db.flush()
     users = {
         "admin_a": User(email="admin-a@example.com", full_name="Admin A", password_hash=hash_password("Password123!")),
+        "sysadmin_a": User(email="sysadmin-a@example.com", full_name="SysAdmin A", password_hash=hash_password("Password123!")),
         "teacher_a": User(email="teacher-a@example.com", full_name="Teacher A", password_hash=hash_password("Password123!")),
         "learner_a": User(email="learner-a@example.com", full_name="Learner A", password_hash=hash_password("Password123!")),
         "learner_b": User(email="learner-b@example.com", full_name="Learner B", password_hash=hash_password("Password123!")),
@@ -44,6 +45,7 @@ def setup_db():
     db.add_all(
         [
             Membership(user_id=users["admin_a"].id, tenant_id=tenant_a.id, role_id=role_map[RoleName.org_admin.value].id, is_active=True),
+            Membership(user_id=users["sysadmin_a"].id, tenant_id=tenant_a.id, role_id=role_map[RoleName.system_admin.value].id, is_active=True),
             Membership(user_id=users["teacher_a"].id, tenant_id=tenant_a.id, role_id=role_map[RoleName.teacher.value].id, is_active=True),
             Membership(user_id=users["teacher_b"].id, tenant_id=tenant_b.id, role_id=role_map[RoleName.teacher.value].id, is_active=True),
             Membership(user_id=users["learner_a"].id, tenant_id=tenant_a.id, role_id=role_map[RoleName.learner.value].id, is_active=True),

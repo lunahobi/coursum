@@ -3,6 +3,9 @@ from sqlalchemy.engine import Engine
 
 
 RUNTIME_COLUMN_DEFINITIONS_SQLITE = {
+    "assignments": {
+        "page_id": "VARCHAR(120)",
+    },
     "courses": {
         "image_url": "VARCHAR(500)",
         "status": "VARCHAR(24) NOT NULL DEFAULT 'draft'",
@@ -25,6 +28,9 @@ RUNTIME_COLUMN_DEFINITIONS_SQLITE = {
 
 
 RUNTIME_COLUMN_DEFINITIONS_POSTGRES = {
+    "assignments": {
+        "page_id": "VARCHAR(120)",
+    },
     "courses": {
         "image_url": "VARCHAR(500)",
         "status": "VARCHAR(24) NOT NULL DEFAULT 'draft'",

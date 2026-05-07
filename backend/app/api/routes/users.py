@@ -19,8 +19,27 @@ def list_users(
     tenant: Tenant = Depends(tenant_context),
     db: Session = Depends(get_db),
 ) -> list[UserRead]:
-    users = db.scalars(select(User).join(Membership).where(Membership.tenant_id == tenant.id)).all()
-    return [UserRead.model_validate(item) for item in users]
+    rows = db.execute(
+        select(User, Role.name)
+        .join(Membership, Membership.user_id == User.id)
+        .join(Role, Membership.role_id == Role.id)
+        .where(
+            Membership.tenant_id == tenant.id,
+            Role.name != RoleName.system_admin.value,
+        )
+    ).all()
+    return [
+        UserRead.model_validate(
+            {
+                "id": user.id,
+                "email": user.email,
+                "full_name": user.full_name,
+                "is_active": user.is_active,
+                "role_name": role_name,
+            }
+        )
+        for user, role_name in rows
+    ]
 
 
 @router.post("", response_model=UserRead)
