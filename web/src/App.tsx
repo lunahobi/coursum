@@ -3584,16 +3584,22 @@ export function LessonsPage({ session }: { session: SessionState }) {
     }
     if (requestedLessonId) {
       const requestedLessonExists = (lessons.data ?? []).some((lesson) => lesson.id === requestedLessonId);
+      if (!requestedLessonExists) {
+        return;
+      }
       // Deep-link selection has priority over auto-opening the first lesson.
       if (requestedLessonExists && editingLessonId !== requestedLessonId) {
         return;
       }
     }
     if (!currentLesson) {
+      if (requestedOpenPractice || requestedAssignmentId) {
+        return;
+      }
       lessonIdToKeepAfterRefresh.current = null;
       loadLessonIntoForm((lessons.data ?? [])[0]);
     }
-  }, [editingLessonId, lessons.data, lessons.loading, requestedLessonId, selectedCourseId]);
+  }, [editingLessonId, lessons.data, lessons.loading, requestedAssignmentId, requestedLessonId, requestedOpenPractice, selectedCourseId]);
 
   function updatePage(pageId: string, patch: Partial<LessonPageDraft>) {
     setForm((current) => ({
@@ -5473,8 +5479,9 @@ export function HomeworkReviewsPage({ session }: { session: SessionState }) {
     if (!linkedLesson) {
       return null;
     }
-    return resolvePracticePageId(linkedLesson, null);
-  }, [assignmentLessons.data, selectedAssignment?.lesson_id]);
+    const preferredPageId = (selectedAssignment.page_id || "").trim() || null;
+    return resolvePracticePageId(linkedLesson, preferredPageId);
+  }, [assignmentLessons.data, selectedAssignment?.lesson_id, selectedAssignment?.page_id]);
   async function openSelectedAssignment() {
     if (!selectedAssignment) {
       navigate("/lessons");
@@ -5488,7 +5495,8 @@ export function HomeworkReviewsPage({ session }: { session: SessionState }) {
       if ((!practicePageId || !linkedLesson) && selectedAssignment.course_id) {
         const lessons = (await apiRequest(`/lessons?course_id=${selectedAssignment.course_id}`, session)) as LessonInfo[];
         linkedLesson = findLinkedLessonForAssignment(selectedAssignment, lessons);
-        practicePageId = linkedLesson ? resolvePracticePageId(linkedLesson, null) : null;
+        const preferredPageId = (selectedAssignment.page_id || "").trim() || null;
+        practicePageId = linkedLesson ? resolvePracticePageId(linkedLesson, preferredPageId) : null;
       }
       const targetLessonId = selectedAssignment.lesson_id ?? linkedLesson?.id ?? null;
       if (!targetLessonId || !practicePageId) {

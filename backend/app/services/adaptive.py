@@ -1,6 +1,7 @@
 from collections import Counter, defaultdict
 from datetime import datetime
 
+from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -107,6 +108,9 @@ def evaluate_answer(
     response_seconds: int,
 ) -> dict:
     options = db.scalars(select(AnswerOption).where(AnswerOption.question_id == question.id)).all()
+    option_ids = {option.id for option in options}
+    if answer_option_id is not None and answer_option_id not in option_ids:
+        raise HTTPException(status_code=422, detail="Answer option does not belong to question")
     correct_option = next((opt for opt in options if opt.is_correct), None)
     is_correct = bool(correct_option and correct_option.id == answer_option_id)
     previous_difficulty = attempt.current_difficulty
@@ -184,15 +188,40 @@ def finalize_attempt(db: Session, attempt: Attempt) -> dict:
     weak_topic_scores: Counter[int] = Counter()
     db.add(result)
     db.flush()
+    question_ids = list({answer.question_id for answer in answers})
+    questions = (
+        db.scalars(
+            select(Question).where(
+                Question.id.in_(question_ids),
+                Question.tenant_id == attempt.tenant_id,
+            )
+        ).all()
+        if question_ids
+        else []
+    )
+    question_by_id = {question.id: question for question in questions}
+    question_topics_map: dict[int, list[int]] = defaultdict(list)
+    if question_ids:
+        for question_id, topic_id in db.execute(
+            select(QuestionTopic.question_id, QuestionTopic.topic_id).where(
+                QuestionTopic.question_id.in_(question_ids),
+                QuestionTopic.tenant_id == attempt.tenant_id,
+            )
+        ).all():
+            question_topics_map[question_id].append(topic_id)
     for answer in answers:
-        question = db.get(Question, answer.question_id)
+        question = question_by_id.get(answer.question_id)
         if question is None:
             continue
-        for link in db.scalars(select(QuestionTopic).where(QuestionTopic.question_id == question.id)).all():
-            penalty = (0 if answer.is_correct else 2) + (
-                1 if answer.response_seconds > question.estimated_seconds else 0
-            )
-            weak_topic_scores[link.topic_id] += penalty
+        topic_ids = question_topics_map.get(question.id, [])
+        if not topic_ids:
+            continue
+        base_penalty = (0 if answer.is_correct else 2) + (
+            1 if answer.response_seconds > question.estimated_seconds else 0
+        )
+        per_topic_penalty = base_penalty / len(topic_ids)
+        for topic_id in topic_ids:
+            weak_topic_scores[topic_id] += per_topic_penalty
     weak_topics = []
     for priority, (topic_id, score) in enumerate(weak_topic_scores.most_common(5), start=1):
         if score <= 0:

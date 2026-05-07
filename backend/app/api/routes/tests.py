@@ -178,6 +178,14 @@ def start_test(
     test = db.scalar(select(Test).where(Test.id == test_id, Test.tenant_id == tenant.id))
     if test is None:
         raise HTTPException(status_code=404, detail="Test not found")
+    question_count = db.scalar(
+        select(func.count(Question.id)).where(
+            Question.test_id == test.id,
+            Question.tenant_id == tenant.id,
+        )
+    ) or 0
+    if question_count == 0:
+        raise HTTPException(status_code=400, detail="Test has no questions")
     attempt = Attempt(tenant_id=tenant.id, test_id=test.id, user_id=membership.user_id, current_difficulty=test.baseline_difficulty, asked_question_ids=[], difficulty_path=[test.baseline_difficulty])
     db.add(attempt)
     db.commit()
@@ -464,6 +472,8 @@ def submit_answer(
     attempt = db.scalar(select(Attempt).where(Attempt.id == attempt_id, Attempt.tenant_id == tenant.id, Attempt.user_id == membership.user_id))
     if attempt is None:
         raise HTTPException(status_code=404, detail="Attempt not found")
+    if attempt.status == "finished":
+        raise HTTPException(status_code=409, detail="Attempt already finished")
     current_question = select_next_question(db, attempt)
     if current_question is None:
         raise HTTPException(status_code=400, detail="No question available")
@@ -490,6 +500,8 @@ def finish_attempt(
     attempt = db.scalar(select(Attempt).where(Attempt.id == attempt_id, Attempt.tenant_id == tenant.id, Attempt.user_id == membership.user_id))
     if attempt is None:
         raise HTTPException(status_code=404, detail="Attempt not found")
+    if attempt.status == "finished":
+        raise HTTPException(status_code=409, detail="Attempt already finished")
     summary = finalize_attempt(db, attempt)
     write_audit_log(db, action="tests.finish", actor_user_id=membership.user_id, tenant_id=tenant.id, entity_type="attempt", entity_id=attempt.id)
     db.commit()

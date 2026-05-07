@@ -4401,7 +4401,7 @@ class _TestFlowScreenState extends State<TestFlowScreen> {
                 if (recommendations.isEmpty && weakTopics.isEmpty)
                   Text(strings.noWeakTopics)
                 else ...[
-                  if (weakTopics.isNotEmpty)
+                  if (recommendations.isEmpty && weakTopics.isNotEmpty)
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
@@ -4451,11 +4451,18 @@ class _TestFlowScreenState extends State<TestFlowScreen> {
     final progressValue = totalQuestions > 0
         ? (questionNumber / totalQuestions).clamp(0.0, 1.0)
         : 0.0;
+    final previousDifficulty =
+        currentFeedback?['previous_difficulty'] as int? ?? 1;
+    final currentDifficulty = currentFeedback?['current_difficulty'] as int? ?? 1;
     final feedbackMessage = currentFeedback == null
         ? ''
-        : currentFeedback['is_correct'] == true
-            ? strings.correctAnswerDifficultyIncreased
-            : strings.incorrectAnswerDifficultyDecreased;
+        : previousDifficulty == currentDifficulty
+            ? (strings.isRu
+                ? 'Сложность не изменилась, достигнут предел'
+                : 'Difficulty did not change, limit reached')
+            : currentFeedback['is_correct'] == true
+                ? strings.correctAnswerDifficultyIncreased
+                : strings.incorrectAnswerDifficultyDecreased;
 
     return Scaffold(
       appBar: AppBar(title: Text(strings.adaptiveTest)),
@@ -4621,10 +4628,8 @@ class _TestFlowScreenState extends State<TestFlowScreen> {
                             Text(feedbackMessage),
                             const SizedBox(height: 4),
                             Text(strings.difficultyShift(
-                              currentFeedback['previous_difficulty'] as int? ??
-                                  1,
-                              currentFeedback['current_difficulty'] as int? ??
-                                  1,
+                              previousDifficulty,
+                              currentDifficulty,
                             )),
                             if ((currentFeedback['correct_option_text']
                                         as String?)

@@ -177,7 +177,7 @@ describe("HomeworkReviewsPage", () => {
       const search = new URLSearchParams(location.slice(location.indexOf("?") + 1));
       expect(search.get("courseId")).toBe("1");
       expect(search.get("lessonId")).toBe("1");
-      expect(search.get("pageId")).toBe("practice-page-1");
+      expect(search.get("pageId")).toBe("practice-page-42");
       expect(search.get("assignmentId")).toBe("1");
       expect(search.get("assignmentTitle")).toBe("Деловые коммуникации");
       expect(search.get("openPractice")).toBe("1");
