@@ -3,12 +3,13 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AppTestProviders, LessonsPage, MediaAttachmentCard, MediaPickerDialog } from "./App";
+import { AppTestProviders, MediaAttachmentCard, MediaPickerDialog } from "./App";
+import LessonsPage from "./pages/LessonsPage";
 
 const { apiPatchMock, apiRequestMock, apiUploadMock } = vi.hoisted(() => ({
   apiPatchMock: vi.fn(),
   apiRequestMock: vi.fn(),
-  apiUploadMock: vi.fn()
+  apiUploadMock: vi.fn(),
 }));
 
 vi.mock("./api", async () => {
@@ -18,7 +19,7 @@ vi.mock("./api", async () => {
     apiRequest: apiRequestMock,
     apiUpload: apiUploadMock,
     apiPost: vi.fn(),
-    apiPatch: apiPatchMock
+    apiPatch: apiPatchMock,
   };
 });
 
@@ -29,7 +30,7 @@ const course = {
   title: "Customer service essentials",
   description: "Keep the course builder focused and easy to manage.",
   is_published: true,
-  image_url: "/media/customer-service-cover.png"
+  image_url: "/media/customer-service-cover.png",
 };
 
 const secondCourse = {
@@ -37,7 +38,7 @@ const secondCourse = {
   title: "Leadership basics",
   description: "Build the confidence to run team rituals well.",
   is_published: true,
-  image_url: "/media/leadership-cover.png"
+  image_url: "/media/leadership-cover.png",
 };
 
 const mediaAssets = [
@@ -47,7 +48,7 @@ const mediaAssets = [
     kind: "image" as const,
     size_bytes: 1024,
     filename: "customer-service-image.png",
-    mime_type: "image/png"
+    mime_type: "image/png",
   },
   {
     path: "/media/customer-service-video.mp4",
@@ -55,12 +56,22 @@ const mediaAssets = [
     kind: "video" as const,
     size_bytes: 2048,
     filename: "customer-service-video.mp4",
-    mime_type: "video/mp4"
-  }
+    mime_type: "video/mp4",
+  },
 ];
 
-const emptySections: Array<{ id: number; course_id: number; title: string; sort_order: number; is_visible: boolean }> = [];
-const emptyRecommendations: Array<{ id: number; title: string; text: string; course_id: number; lesson_id: number | null; is_active: boolean; sort_order: number; tenant_id: number }> = [];
+const emptySections: Array<{ id: number; course_id: number; title: string; sort_order: number; is_visible: boolean }> =
+  [];
+const emptyRecommendations: Array<{
+  id: number;
+  title: string;
+  text: string;
+  course_id: number;
+  lesson_id: number | null;
+  is_active: boolean;
+  sort_order: number;
+  tenant_id: number;
+}> = [];
 
 function makeLesson(id: number) {
   return {
@@ -74,13 +85,13 @@ function makeLesson(id: number) {
         page_id: `lesson-${id}-page-1`,
         chapter_title: "Context",
         page_title: `Lesson ${id} page`,
-        blocks: [{ type: "html", html: `<p>Lesson ${id} body.</p>` }]
-      }
+        blocks: [{ type: "html", html: `<p>Lesson ${id} body.</p>` }],
+      },
     ],
     duration_minutes: 8 + id,
     image_url: null,
     video_url: null,
-    sort_order: id
+    sort_order: id,
   };
 }
 
@@ -99,10 +110,10 @@ const secondCourseLessons = [
         page_id: "leadership-1-page-1",
         chapter_title: "Leadership",
         page_title: "Leadership kickoff",
-        blocks: [{ type: "html", html: "<p>Leadership lesson body.</p>" }]
-      }
-    ]
-  }
+        blocks: [{ type: "html", html: "<p>Leadership lesson body.</p>" }],
+      },
+    ],
+  },
 ];
 
 function renderLessonsPage(initialEntries = ["/lessons"]) {
@@ -111,7 +122,7 @@ function renderLessonsPage(initialEntries = ["/lessons"]) {
       <AppTestProviders language="en">
         <LessonsPage session={session} />
       </AppTestProviders>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 
@@ -126,7 +137,13 @@ function MediaHarness({ kind }: { kind: "image" | "video" }) {
   return (
     <AppTestProviders language="en">
       <div>
-        <MediaAttachmentCard scope="page" kind={kind} url={url} onAttach={() => setOpen(true)} onRemove={() => setUrl("")} />
+        <MediaAttachmentCard
+          scope="page"
+          kind={kind}
+          url={url}
+          onAttach={() => setOpen(true)}
+          onRemove={() => setUrl("")}
+        />
         <MediaPickerDialog
           open={open}
           kind={kind}
@@ -183,15 +200,15 @@ describe("LessonsPage", () => {
           page_id: "stable-page-1",
           chapter_title: "Context",
           page_title: "First page",
-          blocks: [{ type: "html", html: "<p>First body.</p>" }]
+          blocks: [{ type: "html", html: "<p>First body.</p>" }],
         },
         {
           page_id: "stable-page-2",
           chapter_title: "Practice",
           page_title: "Second page",
-          blocks: [{ type: "html", html: "<p>Second body.</p>" }]
-        }
-      ]
+          blocks: [{ type: "html", html: "<p>Second body.</p>" }],
+        },
+      ],
     };
     apiRequestMock.mockImplementation(async (path: string) => {
       if (path === "/courses") {
@@ -211,17 +228,24 @@ describe("LessonsPage", () => {
       }
       throw new Error(`Unexpected apiRequest path: ${path}`);
     });
-    apiPatchMock.mockImplementation(async (_path: string, _session: typeof session, payload: { content_pages: typeof lessonWithTwoPages.content_pages }) => ({
-      ...lessonWithTwoPages,
-      content_pages: payload.content_pages.map((page, index) => ({
-        ...page,
-        page_id: `server-page-${index + 1}`
-      }))
-    }));
+    apiPatchMock.mockImplementation(
+      async (
+        _path: string,
+        _session: typeof session,
+        payload: { content_pages: typeof lessonWithTwoPages.content_pages },
+      ) => ({
+        ...lessonWithTwoPages,
+        content_pages: payload.content_pages.map((page, index) => ({
+          ...page,
+          page_id: `server-page-${index + 1}`,
+        })),
+      }),
+    );
 
     renderLessonsPage();
 
-    await user.click(await screen.findByRole("button", { name: /2\. Second page/i }));
+    const secondPageButtons = await screen.findAllByRole("button", { name: /Second page/i });
+    await user.click(secondPageButtons[0]);
     expect(screen.getByRole("heading", { name: "Second page" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Save lesson" }));
@@ -266,12 +290,14 @@ describe("LessonsPage", () => {
       kind: "image" as const,
       size_bytes: 4096,
       filename: "uploaded-inline-image.png",
-      mime_type: "image/png"
+      mime_type: "image/png",
     });
     const user = userEvent.setup();
     renderLessonsPage();
 
-    await waitFor(() => expect(within(getActivePagePanel()).getAllByRole("button", { name: "Insert image" }).length).toBeGreaterThan(0));
+    await waitFor(() =>
+      expect(within(getActivePagePanel()).getAllByRole("button", { name: "Insert image" }).length).toBeGreaterThan(0),
+    );
     await user.click(within(getActivePagePanel()).getAllByRole("button", { name: "Insert image" })[0]);
 
     const dialog = screen.getByRole("dialog", { name: "Image picker" });
@@ -284,8 +310,8 @@ describe("LessonsPage", () => {
     await waitFor(() => expect(apiUploadMock).toHaveBeenCalledTimes(1));
     await waitFor(() =>
       expect((within(getActivePagePanel()).getByLabelText("HTML source") as HTMLTextAreaElement).value).toContain(
-        '<img src="/media/uploaded-inline-image.png" alt="Uploaded inline image" />'
-      )
+        '<img src="/media/uploaded-inline-image.png" alt="Uploaded inline image" />',
+      ),
     );
   });
 
@@ -296,7 +322,7 @@ describe("LessonsPage", () => {
       kind: "image" as const,
       size_bytes: 4096,
       filename: "uploaded-image.png",
-      mime_type: "image/png"
+      mime_type: "image/png",
     });
     const user = userEvent.setup();
     render(<MediaHarness kind="image" />);
@@ -312,7 +338,11 @@ describe("LessonsPage", () => {
     await user.click(screen.getByRole("button", { name: "Upload and select" }));
 
     await waitFor(() => expect(apiUploadMock).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(within(screen.getByTestId("media-attachment-page-image")).getByText("/media/uploaded-image.png")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        within(screen.getByTestId("media-attachment-page-image")).getByText("/media/uploaded-image.png"),
+      ).toBeInTheDocument(),
+    );
     const card = screen.getByTestId("media-attachment-page-image");
     const image = card.querySelector("img");
     expect(image).not.toBeNull();
@@ -341,15 +371,17 @@ describe("LessonsPage", () => {
     htmlSource.setSelectionRange(3, 3);
     fireEvent.select(htmlSource);
 
-    await waitFor(() => expect(within(activePanel).getAllByRole("button", { name: "Insert video" }).length).toBeGreaterThan(0));
+    await waitFor(() =>
+      expect(within(activePanel).getAllByRole("button", { name: "Insert video" }).length).toBeGreaterThan(0),
+    );
     await user.click(within(activePanel).getAllByRole("button", { name: "Insert video" })[0]);
     await user.click(screen.getByRole("button", { name: "Library" }));
     await user.click(screen.getByRole("button", { name: "Select" }));
 
     await waitFor(() =>
       expect((within(activePanel).getByLabelText("HTML source") as HTMLTextAreaElement).value).toContain(
-        '<p><video controls preload="metadata" playsinline src="/media/customer-service-video.mp4"></video>Lesson 1 body.</p>'
-      )
+        '<p><video controls preload="metadata" playsinline src="/media/customer-service-video.mp4"></video>Lesson 1 body.</p>',
+      ),
     );
   });
 
@@ -360,7 +392,7 @@ describe("LessonsPage", () => {
       kind: "video" as const,
       size_bytes: 8192,
       filename: "uploaded-video.mp4",
-      mime_type: "video/mp4"
+      mime_type: "video/mp4",
     });
     const user = userEvent.setup();
     render(<MediaHarness kind="video" />);
@@ -378,7 +410,9 @@ describe("LessonsPage", () => {
     await waitFor(() => expect(apiUploadMock).toHaveBeenCalledTimes(1));
 
     await waitFor(() =>
-      expect(within(screen.getByTestId("media-attachment-page-video")).getByText("/media/uploaded-video.mp4")).toBeInTheDocument()
+      expect(
+        within(screen.getByTestId("media-attachment-page-video")).getByText("/media/uploaded-video.mp4"),
+      ).toBeInTheDocument(),
     );
     const card = screen.getByTestId("media-attachment-page-video");
     expect(card.querySelector("video")).not.toBeNull();
@@ -410,9 +444,9 @@ describe("LessonsPage", () => {
               kind: "video" as const,
               size_bytes: 8192,
               filename: "uploaded-video.mp4",
-              mime_type: "video/mp4"
+              mime_type: "video/mp4",
             });
-        })
+        }),
     );
     const user = userEvent.setup();
     render(<MediaHarness kind="video" />);
@@ -426,7 +460,9 @@ describe("LessonsPage", () => {
     await user.upload(fileInput!, file);
     await user.click(screen.getByRole("button", { name: "Upload and select" }));
 
-    await waitFor(() => expect(screen.getByRole("progressbar", { name: "Upload progress" })).toHaveAttribute("aria-valuenow", "37"));
+    await waitFor(() =>
+      expect(screen.getByRole("progressbar", { name: "Upload progress" })).toHaveAttribute("aria-valuenow", "37"),
+    );
 
     finishUpload?.();
 
@@ -446,9 +482,9 @@ describe("LessonsPage", () => {
               kind: "video" as const,
               size_bytes: 8192,
               filename: "uploaded-video.mp4",
-              mime_type: "video/mp4"
+              mime_type: "video/mp4",
             });
-        })
+        }),
     );
     const user = userEvent.setup();
     render(<MediaHarness kind="video" />);
@@ -462,10 +498,14 @@ describe("LessonsPage", () => {
     await user.upload(fileInput!, file);
     await user.click(screen.getByRole("button", { name: "Upload and select" }));
 
-    await waitFor(() => expect(screen.getByRole("progressbar", { name: "Upload progress" })).toHaveAttribute("aria-valuenow", "99"));
+    await waitFor(() =>
+      expect(screen.getByRole("progressbar", { name: "Upload progress" })).toHaveAttribute("aria-valuenow", "99"),
+    );
     expect(screen.getByText("Server is processing the file...")).toBeInTheDocument();
     expect(
-      screen.getByText("The file is already uploaded. Waiting for the server to finish saving it and preparing the video.")
+      screen.getByText(
+        "The file is already uploaded. Waiting for the server to finish saving it and preparing the video.",
+      ),
     ).toBeInTheDocument();
 
     finishUpload?.();

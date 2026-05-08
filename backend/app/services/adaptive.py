@@ -1,12 +1,24 @@
 from collections import Counter, defaultdict
-from datetime import datetime
 
 from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.clock import utcnow
 from app.core.content_localization import review_topic_recommendation
-from app.models.models import AnswerOption, Attempt, AttemptAnswer, Lesson, Question, QuestionTopic, Recommendation, Result, Tenant, Test, Topic
+from app.models.models import (
+    AnswerOption,
+    Attempt,
+    AttemptAnswer,
+    Lesson,
+    Question,
+    QuestionTopic,
+    Recommendation,
+    Result,
+    Tenant,
+    Test,
+    Topic,
+)
 from app.services.recommendation_payloads import serialize_recommendations
 
 
@@ -189,7 +201,7 @@ def finalize_attempt(db: Session, attempt: Attempt) -> dict:
     existing_result = db.scalar(select(Result).where(Result.attempt_id == attempt.id))
     if existing_result is not None:
         attempt.status = "finished"
-        attempt.finished_at = attempt.finished_at or datetime.utcnow()
+        attempt.finished_at = attempt.finished_at or utcnow()
         return _attempt_summary(db, attempt, existing_result)
 
     answers = db.scalars(select(AttemptAnswer).where(AttemptAnswer.attempt_id == attempt.id)).all()
@@ -288,6 +300,6 @@ def finalize_attempt(db: Session, attempt: Attempt) -> dict:
     result.weak_topics = weak_topics
     result.recommendation_count = len(weak_topics)
     attempt.status = "finished"
-    attempt.finished_at = datetime.utcnow()
+    attempt.finished_at = utcnow()
     db.flush()
     return _attempt_summary(db, attempt, result)

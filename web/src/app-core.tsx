@@ -1,0 +1,9361 @@
+import {
+  ChangeEvent,
+  createContext,
+  FormEvent,
+  ReactNode,
+  Ref,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { Link, Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import {
+  apiDelete,
+  apiPatch,
+  apiPost,
+  apiRequest,
+  apiUpload,
+  configureSessionLifecycle,
+  login,
+  resolveMediaUrl,
+  SessionState,
+} from "./api";
+import websiteLogo from "./assets/brand/website_logo.svg";
+import websiteLogoWhite from "./assets/brand/website_logo_white.svg";
+
+export type Language = "ru" | "en";
+
+const LANGUAGE_STORAGE_KEY = "coursum-web-language";
+const SESSION_STORAGE_KEY = "coursum-web-session";
+const SAVED_ACCOUNTS_STORAGE_KEY = "coursum-web-saved-accounts";
+const ENABLE_DEV_AUTH_PREFILL = import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEV_AUTH_PREFILL === "true";
+const DEV_PREFILL_EMAIL = import.meta.env.VITE_DEV_LOGIN_EMAIL ?? "";
+const DEV_PREFILL_PASSWORD = import.meta.env.VITE_DEV_LOGIN_PASSWORD ?? "";
+const DEV_PREFILL_TENANT = import.meta.env.VITE_DEV_TENANT_CODE ?? "";
+
+export type SavedAccount = {
+  id: string;
+  organizationCode: string;
+  login: string;
+  displayName?: string;
+  lastUsedAt: string;
+};
+
+export const MESSAGES = {
+  ru: {
+    noDocumentSelected: "Документ пока не выбран.",
+    attachDocument: "Загрузить документ",
+    insertDocument: "Вставить ссылку на документ",
+    mediaDialogDocumentTitle: "Выбор документа",
+    mediaDialogUploadHintDocument: "Загрузите PDF, DOCX, PPTX, XLSX или TXT. Ссылка будет вставлена в текст урока.",
+    mediaDialogDocumentLinkText: "Текст ссылки",
+    mediaDialogSearch: "Поиск в медиатеке",
+    mediaDialogSearchPlaceholder: "Название, файл или путь",
+    email: "Email",
+    password: "Пароль",
+    tenantCode: "Код организации",
+    save: "Сохранить",
+    cancel: "Отмена",
+    loading: "Загрузка...",
+    loadingData: "Загрузка данных...",
+    noData: "Пока нет данных",
+    settings: "Настройки",
+    language: "Язык интерфейса",
+    russian: "Русский",
+    english: "English",
+    tenant: "Организация",
+    dashboard: "Дашборд",
+    tenantSwitch: "Смена организации",
+    users: "Пользователи",
+    courses: "Курсы",
+    lessons: "Уроки",
+    tests: "Тесты",
+    assignments: "Назначения",
+    analytics: "Аналитика",
+    logout: "Выйти",
+    loginTitle: "Панель Coursum",
+    loginSubtitle: "Панель администратора и преподавателя для управления курсами, уроками и прогрессом.",
+    chooseAccount: "Выберите аккаунт",
+    noSavedAccounts: "Сохраненных аккаунтов пока нет. Войдите и включите опцию запоминания.",
+    useLastAccount: "Использовать последний аккаунт",
+    rememberAccount: "Запомнить аккаунт",
+    removeAccount: "Удалить",
+    removeAllAccounts: "Удалить все аккаунты",
+    removeAccountConfirm: "Удалить этот сохраненный аккаунт?",
+    removeAllAccountsConfirm: "Удалить все сохраненные аккаунты?",
+    signIn: "Войти",
+    loginFailed: "Не удалось выполнить вход",
+    fullName: "Полное имя",
+    role: "Роль",
+    usersPageTitle: "Пользователи",
+    usersPageSubtitle: "Создавайте пользователей организации и управляйте их доступом.",
+    createUser: "Создать пользователя",
+    createUserAction: "Создать пользователя",
+    userCreateIntro: "Создайте учетную запись, задайте роль и стартовый пароль для первого входа.",
+    userRoleGuideTitle: "Описание ролей",
+    userRoleGuideLearner: "Слушатель проходит назначенные курсы и сдает задания.",
+    userRoleGuideTeacher: "Преподаватель ведет обучение и проверяет работы.",
+    userRoleGuideOrgAdmin: "Администратор организации управляет пользователями и контентом.",
+    showPassword: "Показать",
+    hidePassword: "Скрыть",
+    roleLearner: "Слушатель",
+    roleTeacher: "Преподаватель",
+    roleOrgAdmin: "Администратор организации",
+    roleSystemAdmin: "Системный администратор",
+    userDirectory: "Список пользователей",
+    userDirectorySubtitle: "Здесь видно, у кого доступ активен, а у кого вход временно отключен.",
+    userSearchPlaceholder: "Поиск по имени, email или роли",
+    userSearchNoResults: "Пользователи не найдены",
+    userDirectoryReadonly: "Для вашей роли доступен только просмотр пользователей.",
+    userUpdated: "Пользователь обновлен",
+    activate: "Активировать",
+    deactivate: "Деактивировать",
+    userAccessGuideTitle: "Что делает деактивация",
+    userAccessGuideBody:
+      "Деактивация временно отключает вход на платформу. История обучения, назначения и попытки тестов сохраняются. После повторной активации доступ вернется.",
+    userStatusActive: "Активен",
+    userStatusInactive: "Доступ отключен",
+    coursesPageTitle: "Курсы",
+    coursesPageSubtitle:
+      "Настройки курса в духе Moodle: выберите курс из списка, обновите его метаданные и сразу посмотрите текущую структуру уроков.",
+    courseCatalog: "Каталог курсов",
+    curriculumContainers: "Контейнеры учебных программ",
+    selectCourseToEdit: "Выберите курс, чтобы изменить настройки и посмотреть текущую структуру уроков.",
+    newCourse: "Новый курс",
+    noDescriptionYet: "Описание пока не добавлено.",
+    loadingCourses: "Загрузка курсов...",
+    courseSettings: "Настройки курса",
+    createCourseLabel: "Создание курса",
+    editSelectedCourse: "Редактирование выбранного курса",
+    createCourseShell: "Создайте новый контейнер курса",
+    openLessonBuilder: "Открыть редактор уроков",
+    courseTitle: "Название курса",
+    description: "Описание",
+    courseCover: "Обложка курса",
+    courseCoverHint: "Эта карточка используется в мобильном приложении и в каталоге назначений.",
+    courseDescriptionPlaceholder: "Какого результата должен достичь слушатель после прохождения курса?",
+    saveCourse: "Сохранить курс",
+    createCourseAction: "Создать курс",
+    createAnotherCourse: "Создать еще один курс",
+    deleteCourse: "Удалить курс",
+    curriculumPreview: "Предпросмотр программы",
+    selectCourse: "Выберите курс",
+    noLessonsYet: "В этом курсе пока нет уроков.",
+    pickCoursePrompt: "Выберите курс слева или создайте новый, чтобы начать собирать программу.",
+    lessonsCount: "уроков",
+    lessonSummaryEmpty: "Краткое описание урока пока не заполнено.",
+    lessonSettings: "Настройки урока",
+    newLessonLabel: "Новый урок",
+    createLessonInCourse: "Создайте урок внутри выбранного курса",
+    lessonTitle: "Название урока",
+    sortOrder: "Порядок сортировки",
+    durationMinutes: "Длительность в минутах",
+    lessonSummary: "Краткое описание урока",
+    lessonSummaryPlaceholder: "Что слушатель должен вынести из этого урока?",
+    saveLesson: "Сохранить урок",
+    createLessonAction: "Создать урок",
+    resetDraft: "Сбросить черновик",
+    curriculum: "Программа",
+    courseAndLessons: "Курс и уроки",
+    pickCourseFirst: "Сначала выберите курс, затем редактируйте уроки по одному, как в Coursum-конструкторе.",
+    courseLabel: "Курс",
+    noCourseDescription: "Описание курса пока не заполнено.",
+    editCourse: "Редактировать курс",
+    newLessonAction: "Новый урок",
+    loadingLessons: "Загрузка уроков...",
+    pages: "Страницы",
+    lessonOutline: "Структура урока",
+    addPage: "Добавить страницу",
+    outlineHint: "Держите структуру урока слева, а справа редактируйте только активную страницу.",
+    activePage: "Активная страница",
+    chapterTitle: "Название главы",
+    pageTitle: "Название страницы",
+    pageContent: "Содержимое страницы",
+    htmlSource: "HTML-код",
+    htmlPlaceholder:
+      "Введите HTML страницы урока. Поддерживаются теги: h2, h3, p, ul, li, blockquote, pre, code, img, video, table...",
+    preview: "Предпросмотр",
+    noPreviewYet: "Предпросмотр пока пуст.",
+    htmlHelp:
+      "Используйте HTML для заголовков, списков, callout-блоков, примеров кода, таблиц, встроенных изображений и прямых тегов MP4/WebM видео. Ссылки на media ниже тоже работают как spotlight-блоки.",
+    localMediaLibrary: "Локальная медиатека",
+    useAsImage: "Использовать как изображение",
+    useAsVideo: "Использовать как видео",
+    insertTag: "Вставить тег",
+    untitledPage: "Страница без названия",
+    noChapterLabel: "Глава пока не названа",
+    up: "Вверх",
+    down: "Вниз",
+    remove: "Удалить",
+    spotlightImageUrl: "URL spotlight-изображения",
+    spotlightVideoUrl: "URL spotlight-видео",
+    optionalImageUrl: "Необязательный URL изображения",
+    optionalVideoUrl: "Необязательный URL MP4/WebM видео",
+    imageBlockPreview: "Превью изображения",
+    videoBlockPreview: "Превью видео",
+    learnerPreview: "Превью для слушателя",
+    chapter: "Глава",
+    page: "Страница",
+    noPageContentYet: "Контент страницы пока пуст.",
+    noImageSelected: "Изображение пока не выбрано.",
+    noVideoSelected: "Видео пока не выбрано.",
+    pageMediaTitle: "Медиа страницы",
+    attachImage: "Добавить изображение",
+    attachVideo: "Добавить видео",
+    removeImage: "Убрать изображение",
+    removeVideo: "Убрать видео",
+    selectedAsset: "Текущий файл",
+    noAssetSelected: "Файл пока не выбран.",
+    advancedSettings: "Расширенные настройки",
+    pageAdvancedHint: "Здесь скрыты HTML-код и прямые URL медиа для опытных редакторов.",
+    lessonAdvancedHint: "Здесь живут fallback-медиа урока и legacy-контент.",
+    mediaDialogImageTitle: "Выбор изображения",
+    mediaDialogVideoTitle: "Выбор видео",
+    mediaDialogUploadTab: "Загрузка",
+    mediaDialogLibraryTab: "Медиатека",
+    mediaDialogChooseFile: "Локальный файл",
+    mediaDialogUploadHintImage: "Загрузите PNG, JPG, GIF или WebP с локального компьютера.",
+    mediaDialogUploadHintVideo: "Загрузите MP4, WebM, MOV или M4V. Видео будет подготовлено для мобильного плеера.",
+    mediaDialogUploadAction: "Загрузить и выбрать",
+    mediaDialogSelect: "Выбрать",
+    mediaDialogNoAssets: "В медиатеке пока нет файлов этого типа.",
+    mediaDialogUploading: "Загружаем файл...",
+    mediaDialogProcessing: "Сервер обрабатывает файл...",
+    mediaDialogProcessingHint: "Файл уже отправлен. Ждём, пока сервер завершит сохранение и подготовку видео.",
+    mediaDialogUploadProgress: "Прогресс загрузки",
+    mediaPreviewError: "Не удалось показать превью этого файла.",
+    modalClose: "Закрыть",
+    selectFileFirst: "Сначала выберите файл.",
+    sharedLessonSettings: "Общие настройки урока",
+    lessonWideMediaFallback: "Общее медиа и fallback",
+    lessonHeroImage: "Главное изображение урока",
+    lessonHeroVideo: "Главное видео урока",
+    imageUrl: "URL изображения",
+    videoUrl: "URL видео",
+    legacyFallbackContent: "Fallback-контент для старого рендера",
+    legacyFallbackPlaceholder:
+      "Необязательный fallback-контент для старого рендера. Оставьте пустым, чтобы он собрался автоматически из структурированных страниц выше.",
+    testsPageTitle: "Тесты",
+    testsPageSubtitle: "Создавайте оценки, связанные с курсами и параметрами адаптивности.",
+    createTest: "Создать тест",
+    testTitle: "Название теста",
+    baselineDifficulty: "Базовая сложность",
+    questionLimit: "Лимит вопросов",
+    createTestAction: "Создать тест",
+    testsLabel: "Тесты",
+    testsSetupHint:
+      "Сначала выберите курс, затем задайте стартовую сложность и длину попытки. Эти параметры влияют на то, с какого уровня начнётся адаптивный тест и сколько вопросов максимум увидит слушатель.",
+    testsPresetLabel: "Готовые сценарии",
+    testsPresetHint: "Пресеты быстро заполняют рекомендуемые значения, а ниже их можно донастроить вручную.",
+    testsPresetQuick: "Быстрая проверка",
+    testsPresetStandard: "Стандартный тест",
+    testsPresetExam: "Итоговый тест",
+    baselineDifficultyHint:
+      "Определяет стартовую сложность первой группы вопросов. Дальше адаптивный движок всё равно подстроится по ответам слушателя.",
+    baselineDifficultyLevel1: "1 - мягкий старт для вводной проверки",
+    baselineDifficultyLevel2: "2 - лёгкий уровень для первых шагов",
+    baselineDifficultyLevel3: "3 - сбалансированный старт для большинства курсов",
+    baselineDifficultyLevel4: "4 - уверенный уровень для опытной аудитории",
+    baselineDifficultyLevel5: "5 - высокий порог для итоговой оценки",
+    questionLimitHint:
+      "Лимит определяет, сколько вопросов максимум попадёт в одну попытку. Для короткой диагностики держите 5-7, для итоговой проверки - 10-15.",
+    shuffleOptions: "Перемешивать варианты в этом вопросе",
+    shuffleOptionsHint: "Оставьте выключенным, если порядок вариантов важен, например для ответа «все варианты верны».",
+    selectedCourseOverview: "Сводка по настройке",
+    selectedCourseDescription: "Выбранный курс",
+    selectedCourseTestsCount: "Уже создано тестов",
+    selectedCourseQuestionPlan: "Максимум вопросов в попытке",
+    selectedCourseDifficultyPlan: "Стартовая сложность",
+    selectedCourseTitleSuggestion: "Подсказка по названию",
+    selectedCourseEmptyDescription:
+      "Описание курса пока не заполнено. Добавьте короткую цель курса, чтобы авторам и преподавателям было проще ориентироваться.",
+    testsRecommendedTitle: 'Например: "{course} - итоговая проверка"',
+    questionBankLabel: "Вопросов в банке",
+    testsBankEmpty: "Пока нет вопросов",
+    testsLengthShort: "короткий формат",
+    testsLengthBalanced: "сбалансированный формат",
+    testsLengthExtended: "развёрнутый формат",
+    testsAdaptiveBehavior: "Как это сработает",
+    testsAdaptiveBehaviorHint:
+      "Слушатель начнёт с уровня {difficulty}. Система покажет до {limit} вопросов и будет повышать или понижать сложность по ходу попытки.",
+    questionEditorTitle: "Вопросы внутри теста",
+    questionEditorHint:
+      "После создания теста добавьте сами вопросы и варианты ответов. Один правильный вариант обязателен.",
+    selectTestForQuestions: "Тест для наполнения",
+    selectTestFirst: "Сначала создайте или выберите тест для выбранного курса.",
+    questionText: "Текст вопроса",
+    questionExplanation: "Пояснение после ответа",
+    questionDifficulty: "Сложность вопроса",
+    questionEstimatedSeconds: "Ожидаемое время ответа, сек",
+    questionTopics: "Темы курса",
+    questionTopicsHint: "Темы формируются из уроков выбранного курса.",
+    questionOptions: "Варианты ответа",
+    questionCorrectOption: "Правильный вариант",
+    addAnswerOption: "Добавить вариант",
+    removeAnswerOption: "Убрать вариант",
+    createQuestionAction: "Добавить вопрос",
+    saveQuestionAction: "Сохранить вопрос",
+    editQuestionAction: "Редактировать",
+    cancelQuestionEditing: "Сбросить правки",
+    questionsInTest: "Вопросы теста",
+    activeTestLabel: "Активный тест",
+    setActiveTestAction: "Сделать активным",
+    activeTestState: "Активный",
+    optionCount: "Вариантов",
+    noTopicsAvailable: "Темы пока не заведены. Вопрос можно сохранить и без привязки темы.",
+    noQuestionsInTest: "В этом тесте пока нет вопросов.",
+    questionCreated: "Вопрос добавлен",
+    questionUpdated: "Вопрос обновлён",
+    failedSaveQuestion: "Не удалось сохранить вопрос",
+    editingQuestionLabel: "Редактирование вопроса #{id}",
+    answerOptionLabel: "Вариант {number}",
+    questionSearch: "Поиск по вопросам",
+    questionSearchPlaceholder: "Текст вопроса, пояснение, тема или ID",
+    questionPageLabel: "Страница {page} из {total}",
+    previousPage: "Назад",
+    nextPage: "Далее",
+    noQuestionsMatchSearch: "По вашему запросу вопросы не найдены.",
+    assignmentsPageTitle: "Назначения",
+    assignmentsPageSubtitle: "Управляйте доступом к курсам для слушателей и групп.",
+    assignmentsCoursesTitle: "Курсы",
+    assignmentsCourseSearchPlaceholder: "Поиск по названию или описанию",
+    assignmentsCourseSearchEmpty: "Курсы не найдены",
+    assignmentsCourseStatus_all: "Все",
+    assignmentsCourseStatus_published: "Опубликованные",
+    assignmentsCourseStatus_draft: "Черновики",
+    assignmentsCourseStatus_archived: "Архив",
+    assignmentsTotal: "Всего",
+    assignmentsAssigneesCount: "Назначений",
+    assignmentsPickCourseHint: "Выберите курс слева, чтобы увидеть назначения",
+    assignmentsTabAssigned: "Назначены",
+    assignmentsTabAssign: "Назначить",
+    assignmentsLearnerSearchPlaceholder: "Поиск по имени или email",
+    assignmentsAlreadyAssigned: "Уже назначен",
+    assignmentsAssignAction: "Назначить",
+    assignmentsRevokeAction: "Отозвать",
+    assignmentsRevokeConfirm: "Отозвать доступ у этого слушателя?",
+    assignmentsBulkAssignAction: "Назначить выбранных ({count})",
+    assignmentsModeIndividual: "По одному",
+    assignmentsModeGroup: "По группе",
+    assignmentsGroupPlaceholder: "Выберите группу",
+    assignmentsCreateGroupPlaceholder: "Название новой группы",
+    assignmentsCreateGroupAction: "Создать группу",
+    assignmentsCreateGroupSuccess: "Группа создана",
+    assignmentsAssignWholeGroup: "Назначить всю группу: {name}",
+    assignmentsRoleAll: "Все",
+    assignmentsRoleLearner: "Слушатели",
+    assignmentsRoleTeacher: "Преподаватели",
+    assignmentsAssignedAt: "Назначено",
+    assignmentsByGroup: "По группе: {name}",
+    assignmentsNoAssigned: "У этого курса пока нет назначенных слушателей",
+    assignmentsNoLearners: "Пользователи не найдены",
+    assignmentsNoGroups: "Группы не найдены",
+    assignmentsAssignSuccess: "Назначение выполнено",
+    assignmentsRevokeSuccess: "Доступ отозван",
+    assignmentsGroupSearchPlaceholder: "Поиск группы",
+    assignmentsBulkAssigning: "Назначаем...",
+    assignmentsGroupMemberCount: "Участников: {count}",
+    assignmentsGroupMembersTitle: "Участники группы",
+    assignmentsGroupMemberSearchPlaceholder: "Поиск участника группы",
+    assignmentsNoGroupMembers: "В группе пока нет участников",
+    assignmentsAddToGroupAction: "Добавить в группу",
+    assignmentsRemoveFromGroupAction: "Убрать",
+    assignCourse: "Назначить курс",
+    assign: "Назначить",
+    howToDemo: "Как демонстрировать",
+    howToDemo1: "Выберите курс и слушателя.",
+    howToDemo2: "Отправьте назначение, затем откройте mobile app или learner-аккаунт, чтобы увидеть курс.",
+    howToDemo3: "Backend также фиксирует условную доставку уведомления о назначении.",
+    homeworkReviewLearnerSubmission: "Работа ученика",
+    homeworkReviewTextAnswer: "Текст ответа",
+    homeworkReviewLink: "Ссылка",
+    homeworkReviewFiles: "Файлы",
+    homeworkReviewPreviousReview: "Предыдущая проверка",
+    homeworkReviewGrade: "Оценка (0-100)",
+    homeworkReviewGradeMissing: "Оценка ещё не выставлена",
+    homeworkReviewAllStatuses: "Все статусы",
+    homeworkReviewNoContent: "Ученик пока не приложил содержимого работы",
+    homeworkReviewSubmittedAt: "Отправлено",
+    homeworkReviewUpdatedAt: "Обновлено",
+    homeworkReviewNotReviewedYet: "Работа ещё не проверялась",
+    homeworkReviewLearnerFallback: "Ученик #{id}",
+    analyticsPageTitle: "Аналитика",
+    analyticsPageSubtitle: "Отслеживайте успеваемость по курсам и смотрите детали по конкретному слушателю.",
+    overview: "Обзор",
+    learnerDetail: "Детали слушателя",
+    learnerId: "ID слушателя",
+    load: "Загрузить",
+    loadingAnalytics: "Загрузка аналитики...",
+    settingsPageTitle: "Настройки и профиль",
+    settingsPageSubtitle: "Данные текущего оператора и контекст организации.",
+    profile: "Профиль",
+    loadingProfile: "Загрузка профиля...",
+    currentRole: "Текущая роль",
+    name: "Имя",
+    code: "Код",
+    locale: "Локаль",
+    currentTenant: "Текущая организация",
+    availableTenants: "Доступные организации",
+    loadingCurrentTenant: "Загрузка текущей организации...",
+    switch: "Переключить",
+    tenantSwitchTitle: "Смена организации",
+    tenantSwitchSubtitle: "Переключайтесь между организациями, доступными текущей учетной записи.",
+    dashboardTitle: "Дашборд",
+    dashboardSubtitle: "Операционный обзор по текущей организации.",
+    dashboardSubtitleSelectedSingle: "Операционный обзор по выбранному курсу.",
+    dashboardSubtitleSelectedMany: "Операционный обзор по выбранным курсам.",
+    loadingMetrics: "Загрузка метрик...",
+    courseProgress: "Прогресс по курсам",
+    columnCourse: "Курс",
+    averageProgress: "Средний прогресс",
+    learners: "Слушатели",
+    problemTopics: "Проблемные темы",
+    topicId: "ID темы",
+    recommendations: "Рекомендации",
+    metricUsers: "Активные пользователи",
+    metricCourses: "Курсы в организации",
+    metricTests: "Тесты",
+    metricActiveAttempts: "Активные попытки",
+    metricEnrollments: "Назначения курсов",
+    metricAverageProgress: "Средний прогресс",
+    metricRecommendationsBacklog: "Активные рекомендации",
+    dashboardCourseHealthTitle: "Состояние курсов",
+    dashboardCourseHealthSubtitle: "По этим карточкам видно, где обучение уже двигается, а где слушатели застревают.",
+    dashboardCourseHealthSubtitleSelectedSingle: "Показатели обучения по выбранному курсу.",
+    dashboardCourseHealthSubtitleSelectedMany: "Показатели обучения по выбранным курсам.",
+    dashboardAttentionTitle: "Что требует внимания",
+    dashboardAttentionSubtitle: "Темы ниже чаще всего попадают в рекомендации после адаптивных тестов.",
+    dashboardAttentionSubtitleSelectedSingle: "Темы ниже чаще всего попадают в рекомендации по выбранному курсу.",
+    dashboardAttentionSubtitleSelectedMany: "Темы ниже чаще всего попадают в рекомендации по выбранным курсам.",
+    dashboardNoCourseProgress: "Пока нет назначений или прогресса по курсам.",
+    dashboardNoProblemTopics: "Пока нет тем, требующих внимания.",
+    dashboardLearnersLabel: "слушателей",
+    dashboardRecommendationsLabel: "рекомендаций",
+    dashboardPeriod7d: "7 дней",
+    dashboardPeriod30d: "30 дней",
+    dashboardPeriodQuarter: "Квартал",
+    dashboardPeriodAll: "Всё время",
+    dashboardFilterCourses: "Курсы",
+    dashboardRefresh: "Обновить",
+    dashboardCompareToPrev: "к прошлому периоду",
+    dashboardDeltaUnavailable: "Период сравнения недоступен",
+    dashboardKpiLearnersCaption: "Активные слушатели",
+    dashboardKpiActiveAttemptsCaption: "Открытые попытки",
+    dashboardKpiAvgProgressCaption: "По всем курсам",
+    dashboardKpiAvgProgressCaptionSelectedSingle: "По выбранному курсу",
+    dashboardKpiAvgProgressCaptionSelectedMany: "По выбранным курсам",
+    dashboardKpiRecommendationsCaption: "Рекомендации к действию",
+    dashboardCourseFilterTrigger: "Все курсы",
+    dashboardCourseFilterTriggerSelected: "Выбрано: {n}",
+    dashboardCourseFilterClear: "Очистить",
+    attemptDrawerClose: "Закрыть",
+    dashboardKpiLearners: "Слушатели",
+    dashboardKpiActiveAttempts: "Активные попытки",
+    dashboardKpiAvgProgress: "Средний прогресс",
+    dashboardKpiRecommendations: "Рекомендации",
+    dashboardSecondaryCourses: "Курсы",
+    dashboardSecondaryTests: "Тесты",
+    dashboardSecondaryEnrollments: "Назначения",
+    dashboardViewCards: "Карточки",
+    dashboardViewTable: "Таблица",
+    dashboardSortByProgressAsc: "По прогрессу ↑",
+    dashboardSortByProgressDesc: "По прогрессу ↓",
+    dashboardSortByLearners: "По числу слушателей",
+    dashboardStatusOnTrack: "В норме",
+    dashboardStatusAtRisk: "Под риском",
+    dashboardStatusBlocked: "Критично",
+    dashboardActivityTitle: "Активность за период",
+    dashboardActivityAttempts: "Попытки",
+    dashboardActivityCompletions: "Завершения",
+    dashboardActivityExplanation:
+      "Синяя линия — попытки, зеленая — завершения. График показывает динамику количества событий по шагам выбранного периода.",
+    dashboardActivityStartedTotal: "Начато",
+    dashboardActivityCompletedTotal: "Завершено",
+    dashboardActivityCompletionRate: "Конверсия",
+    dashboardActivitySparseNote: "За выбранный период мало событий, поэтому график выглядит прерывисто.",
+    dashboardTopicsTotal: "Всего тем под риском",
+    dashboardTopicsShowAll: "Показать все",
+    dashboardTopicsCollapse: "Свернуть",
+    analyticsLearnerSearchPlaceholder: "Поиск по имени или email",
+    analyticsRoleAll: "Все",
+    analyticsRoleLearners: "Слушатели",
+    analyticsRoleTeachers: "Преподаватели",
+    analyticsManualIdToggle: "Ввести ID вручную",
+    analyticsLearnerSummaryAttempts: "Попыток",
+    analyticsLearnerSummaryAvgScore: "Средний балл",
+    analyticsLearnerSummaryWeakTopics: "Слабых тем",
+    analyticsTabAttempts: "Попытки",
+    analyticsTabRecommendations: "Рекомендации",
+    analyticsScoreTrendTitle: "Динамика баллов",
+    analyticsWeakTopicsTitle: "Слабые темы",
+    analyticsEmptyPickLearner: "Выберите слушателя слева, чтобы увидеть прогресс",
+    analyticsAttemptNumber: "№",
+    analyticsAttemptScore: "Балл",
+    analyticsAttemptWeak: "Слабые темы",
+    id: "ID",
+    title: "Название",
+    courseId: "ID курса",
+    userCreated: "Пользователь создан",
+    failedCreateUser: "Не удалось создать пользователя",
+    failedUpdateUser: "Не удалось обновить пользователя",
+    courseUpdated: "Курс сохранен",
+    courseCreated: "Курс создан",
+    courseDeleted: "Курс удален",
+    failedSaveCourse: "Не удалось сохранить курс",
+    failedDeleteCourse: "Не удалось удалить курс",
+    deleteCourseConfirm: "Удалить курс и все связанные с ним уроки? Это действие нельзя отменить.",
+    courseEditorRestrictedTitle: "Редактор курса недоступен",
+    courseEditorRestrictedBody:
+      "Эта учётная запись имеет роль слушателя. Создавать и редактировать курсы могут только преподаватель, администратор организации или системный администратор.",
+    lessonUpdated: "Урок сохранен",
+    lessonCreated: "Урок создан",
+    failedSaveLesson: "Не удалось сохранить урок",
+    draftingLesson: "Создаем черновик нового урока в выбранном курсе.",
+    noLinkedLesson: "Связанный урок не найден",
+    action: "Действие",
+    priority: "Приоритет",
+    noWeakTopics: "Слабые темы не обнаружены",
+    emptyAttempt: "Попытки пока нет",
+    loadingUsers: "Загрузка пользователей...",
+    organizationWorkspace: "Рабочее пространство Coursum",
+    learner: "Слушатель",
+  },
+  en: {
+    email: "Email",
+    password: "Password",
+    tenantCode: "Tenant code",
+    save: "Save",
+    cancel: "Cancel",
+    loading: "Loading...",
+    loadingData: "Loading data...",
+    noData: "No data yet",
+    settings: "Settings",
+    language: "Interface language",
+    russian: "Русский",
+    english: "English",
+    tenant: "Tenant",
+    dashboard: "Dashboard",
+    tenantSwitch: "Tenant switch",
+    users: "Users",
+    courses: "Courses",
+    lessons: "Lessons",
+    tests: "Tests",
+    assignments: "Assignments",
+    analytics: "Analytics",
+    logout: "Logout",
+    loginTitle: "Coursum Panel",
+    loginSubtitle: "Admin and teacher workspace for courses, lessons, and learning progress.",
+    chooseAccount: "Choose account",
+    noSavedAccounts: "No saved accounts yet. Sign in once and enable remember option.",
+    useLastAccount: "Use last account",
+    rememberAccount: "Remember account",
+    removeAccount: "Remove",
+    removeAllAccounts: "Remove all accounts",
+    removeAccountConfirm: "Remove this saved account?",
+    removeAllAccountsConfirm: "Remove all saved accounts?",
+    signIn: "Sign in",
+    loginFailed: "Login failed",
+    fullName: "Full name",
+    role: "Role",
+    usersPageTitle: "Users",
+    usersPageSubtitle: "Create tenant users and manage their access.",
+    createUser: "Create user",
+    createUserAction: "Create user",
+    userCreateIntro: "Create an account, choose a role, and set the starter password for the first sign-in.",
+    userRoleGuideTitle: "Role descriptions",
+    userRoleGuideLearner: "Learners complete assigned courses and submit work.",
+    userRoleGuideTeacher: "Teachers manage training and review submissions.",
+    userRoleGuideOrgAdmin: "Organization admins manage users and content.",
+    showPassword: "Show",
+    hidePassword: "Hide",
+    roleLearner: "Learner",
+    roleTeacher: "Teacher",
+    roleOrgAdmin: "Organization admin",
+    roleSystemAdmin: "System admin",
+    userDirectory: "User directory",
+    userDirectorySubtitle: "Use this list to see who still has access and whose sign-in is temporarily blocked.",
+    userSearchPlaceholder: "Search by name, email, or role",
+    userSearchNoResults: "No users found",
+    userDirectoryReadonly: "Your role has read-only access to users.",
+    userUpdated: "User updated",
+    activate: "Activate",
+    deactivate: "Deactivate",
+    userAccessGuideTitle: "What deactivation does",
+    userAccessGuideBody:
+      "Deactivation temporarily blocks sign-in to the platform. Learning history, assignments, and test attempts stay in place. Access can be restored later by activating the user again.",
+    userStatusActive: "Active",
+    userStatusInactive: "Access disabled",
+    coursesPageTitle: "Courses",
+    coursesPageSubtitle:
+      "Moodle-like course settings: pick a course from the list, update its metadata, and inspect the current lesson structure in one place.",
+    courseCatalog: "Course catalog",
+    curriculumContainers: "Curriculum containers",
+    selectCourseToEdit: "Select a course to edit settings and inspect the current lesson structure.",
+    newCourse: "New course",
+    noDescriptionYet: "No description yet.",
+    loadingCourses: "Loading courses...",
+    courseSettings: "Course settings",
+    createCourseLabel: "Create course",
+    editSelectedCourse: "Edit selected course",
+    createCourseShell: "Create a new course shell",
+    openLessonBuilder: "Open lesson builder",
+    courseTitle: "Course title",
+    description: "Description",
+    courseCover: "Course cover",
+    courseCoverHint: "This image is shown in the mobile learner app and in course assignment flows.",
+    courseDescriptionPlaceholder: "What should this course achieve for the learner?",
+    saveCourse: "Save course",
+    createCourseAction: "Create course",
+    createAnotherCourse: "Create another course",
+    deleteCourse: "Delete course",
+    curriculumPreview: "Curriculum preview",
+    selectCourse: "Select a course",
+    noLessonsYet: "No lessons in this course yet.",
+    pickCoursePrompt: "Pick a course from the left or create a new one to start building curriculum.",
+    lessonsCount: "lessons",
+    lessonSummaryEmpty: "No lesson summary yet.",
+    lessonSettings: "Lesson settings",
+    newLessonLabel: "New lesson",
+    createLessonInCourse: "Create a lesson inside the selected course",
+    lessonTitle: "Lesson title",
+    sortOrder: "Sort order",
+    durationMinutes: "Duration in minutes",
+    lessonSummary: "Lesson summary",
+    lessonSummaryPlaceholder: "What should the learner take away from this lesson?",
+    saveLesson: "Save lesson",
+    createLessonAction: "Create lesson",
+    resetDraft: "Reset draft",
+    curriculum: "Curriculum",
+    courseAndLessons: "Course and lessons",
+    pickCourseFirst: "Pick a course first, then work through lessons one by one in the Coursum curriculum builder.",
+    courseLabel: "Course",
+    noCourseDescription: "No course description yet.",
+    editCourse: "Edit course",
+    newLessonAction: "New lesson",
+    loadingLessons: "Loading lessons...",
+    pages: "Pages",
+    lessonOutline: "Lesson outline",
+    addPage: "Add page",
+    outlineHint: "Keep the lesson structure on the left and edit one active page on the right.",
+    activePage: "Active page",
+    chapterTitle: "Chapter title",
+    pageTitle: "Page title",
+    pageContent: "Page content",
+    htmlSource: "HTML source",
+    htmlPlaceholder:
+      "Write lesson page HTML here. Supported tags: h2, h3, p, ul, li, blockquote, pre, code, img, video, table...",
+    preview: "Preview",
+    noPreviewYet: "No preview yet.",
+    htmlHelp:
+      "Use HTML for headings, lists, callouts, code examples, tables, inline images, and direct MP4/WebM video tags. Dedicated media URLs below still work as spotlight blocks.",
+    localMediaLibrary: "Local media library",
+    useAsImage: "Use as image",
+    useAsVideo: "Use as video",
+    insertTag: "Insert tag",
+    untitledPage: "Untitled page",
+    noChapterLabel: "No chapter label yet",
+    up: "Up",
+    down: "Down",
+    remove: "Remove",
+    spotlightImageUrl: "Spotlight image URL",
+    spotlightVideoUrl: "Spotlight video URL",
+    optionalImageUrl: "Optional image URL",
+    optionalVideoUrl: "Optional MP4/WebM video URL",
+    imageBlockPreview: "Image block preview",
+    videoBlockPreview: "Video block preview",
+    learnerPreview: "Learner preview",
+    chapter: "Chapter",
+    page: "Page",
+    noPageContentYet: "No page content yet.",
+    noImageSelected: "No image selected yet.",
+    noVideoSelected: "No video selected yet.",
+    noDocumentSelected: "No document selected yet.",
+    pageMediaTitle: "Page media",
+    attachImage: "Attach image",
+    attachVideo: "Attach video",
+    attachDocument: "Upload document",
+    insertDocument: "Insert document link",
+    removeImage: "Remove image",
+    removeVideo: "Remove video",
+    selectedAsset: "Current asset",
+    noAssetSelected: "No file selected yet.",
+    advancedSettings: "Advanced settings",
+    pageAdvancedHint: "Raw HTML and direct media URLs live here for advanced editors.",
+    lessonAdvancedHint: "Lesson-wide fallback media and legacy content are kept here.",
+    mediaDialogImageTitle: "Image picker",
+    mediaDialogVideoTitle: "Video picker",
+    mediaDialogDocumentTitle: "Document picker",
+    mediaDialogUploadTab: "Upload",
+    mediaDialogLibraryTab: "Library",
+    mediaDialogChooseFile: "Local file",
+    mediaDialogUploadHintImage: "Upload a PNG, JPG, GIF, or WebP file from your computer.",
+    mediaDialogUploadHintVideo:
+      "Upload an MP4, WebM, MOV, or M4V file. The server will prepare it for the mobile player.",
+    mediaDialogUploadHintDocument:
+      "Upload PDF, DOCX, PPTX, XLSX, or TXT files. The link will be inserted into the lesson text.",
+    mediaDialogDocumentLinkText: "Link text",
+    mediaDialogSearch: "Search library",
+    mediaDialogSearchPlaceholder: "Name, file, or path",
+    mediaDialogUploadAction: "Upload and select",
+    mediaDialogSelect: "Select",
+    mediaDialogNoAssets: "No assets of this type in the library yet.",
+    mediaDialogUploading: "Uploading file...",
+    mediaDialogProcessing: "Server is processing the file...",
+    mediaDialogProcessingHint:
+      "The file is already uploaded. Waiting for the server to finish saving it and preparing the video.",
+    mediaDialogUploadProgress: "Upload progress",
+    mediaPreviewError: "Could not preview this file.",
+    modalClose: "Close",
+    selectFileFirst: "Select a file first.",
+    sharedLessonSettings: "Shared lesson settings",
+    lessonWideMediaFallback: "Lesson-wide media and fallback",
+    lessonHeroImage: "Lesson hero image",
+    lessonHeroVideo: "Lesson hero video",
+    imageUrl: "Image URL",
+    videoUrl: "Video URL",
+    legacyFallbackContent: "Legacy fallback content",
+    legacyFallbackPlaceholder:
+      "Optional legacy fallback content. Leave empty to auto-generate from the structured pages above.",
+    testsPageTitle: "Tests",
+    testsPageSubtitle: "Create assessments linked to courses and adaptive parameters.",
+    createTest: "Create test",
+    testTitle: "Test title",
+    baselineDifficulty: "Baseline difficulty",
+    questionLimit: "Question limit",
+    createTestAction: "Create test",
+    testsLabel: "Tests",
+    testsSetupHint:
+      "Pick a course, then set the starting difficulty and attempt length. These values decide where the adaptive test begins and how many questions a learner can see at most.",
+    testsPresetLabel: "Recommended presets",
+    testsPresetHint: "Presets fill in sensible defaults first, and you can fine-tune everything below.",
+    testsPresetQuick: "Quick check",
+    testsPresetStandard: "Standard test",
+    testsPresetExam: "Final assessment",
+    baselineDifficultyHint:
+      "Sets the starting difficulty for the first questions. The adaptive engine will still adjust up or down based on the learner's answers.",
+    baselineDifficultyLevel1: "1 - gentle start for an introductory check",
+    baselineDifficultyLevel2: "2 - light difficulty for early practice",
+    baselineDifficultyLevel3: "3 - balanced starting point for most courses",
+    baselineDifficultyLevel4: "4 - confident level for experienced learners",
+    baselineDifficultyLevel5: "5 - high bar for final evaluation",
+    questionLimitHint:
+      "This caps how many questions can appear in one attempt. Keep it around 5-7 for diagnostics and 10-15 for a fuller assessment.",
+    shuffleOptions: "Shuffle options in this question",
+    shuffleOptionsHint:
+      'Keep this off when option order matters, for example with an "all answers are correct" option.',
+    selectedCourseOverview: "Setup summary",
+    selectedCourseDescription: "Selected course",
+    selectedCourseTestsCount: "Existing tests",
+    selectedCourseQuestionPlan: "Max questions per attempt",
+    selectedCourseDifficultyPlan: "Starting difficulty",
+    selectedCourseTitleSuggestion: "Title suggestion",
+    selectedCourseEmptyDescription:
+      "This course does not have a description yet. Add a short goal later so authors and teachers can identify it faster.",
+    testsRecommendedTitle: 'Example: "{course} - final assessment"',
+    questionBankLabel: "Questions in bank",
+    testsBankEmpty: "No questions yet",
+    testsLengthShort: "short format",
+    testsLengthBalanced: "balanced format",
+    testsLengthExtended: "extended format",
+    testsAdaptiveBehavior: "How this behaves",
+    testsAdaptiveBehaviorHint:
+      "The learner will start at level {difficulty}. The system will ask up to {limit} questions and move the difficulty up or down as the attempt progresses.",
+    questionEditorTitle: "Questions inside the test",
+    questionEditorHint:
+      "Once the test shell exists, add the actual questions and answer options here. One correct answer is required.",
+    selectTestForQuestions: "Test to populate",
+    selectTestFirst: "Create or choose a test for the selected course first.",
+    questionText: "Question text",
+    questionExplanation: "Post-answer explanation",
+    questionDifficulty: "Question difficulty",
+    questionEstimatedSeconds: "Expected answer time, sec",
+    questionTopics: "Course topics",
+    questionTopicsHint: "Topics are generated from lessons of the selected course.",
+    questionOptions: "Answer options",
+    questionCorrectOption: "Correct option",
+    addAnswerOption: "Add option",
+    removeAnswerOption: "Remove option",
+    createQuestionAction: "Add question",
+    saveQuestionAction: "Save question",
+    editQuestionAction: "Edit",
+    cancelQuestionEditing: "Reset edits",
+    questionsInTest: "Questions in test",
+    activeTestLabel: "Active test",
+    setActiveTestAction: "Set active",
+    activeTestState: "Active",
+    optionCount: "Options",
+    noTopicsAvailable: "No topics available yet. You can still save the question without topic links.",
+    noQuestionsInTest: "No questions in this test yet.",
+    questionCreated: "Question added",
+    questionUpdated: "Question updated",
+    failedSaveQuestion: "Failed to save question",
+    editingQuestionLabel: "Editing question #{id}",
+    answerOptionLabel: "Option {number}",
+    questionSearch: "Search questions",
+    questionSearchPlaceholder: "Question text, explanation, topic, or ID",
+    questionPageLabel: "Page {page} of {total}",
+    previousPage: "Previous",
+    nextPage: "Next",
+    noQuestionsMatchSearch: "No questions match your search.",
+    assignmentsPageTitle: "Assignments",
+    assignmentsPageSubtitle: "Manage course access for learners and groups.",
+    assignmentsCoursesTitle: "Courses",
+    assignmentsCourseSearchPlaceholder: "Search by title or description",
+    assignmentsCourseSearchEmpty: "No courses found",
+    assignmentsCourseStatus_all: "All",
+    assignmentsCourseStatus_published: "Published",
+    assignmentsCourseStatus_draft: "Drafts",
+    assignmentsCourseStatus_archived: "Archive",
+    assignmentsTotal: "Total",
+    assignmentsAssigneesCount: "Assignees",
+    assignmentsPickCourseHint: "Choose a course on the left to view assignments",
+    assignmentsTabAssigned: "Assigned",
+    assignmentsTabAssign: "Assign",
+    assignmentsLearnerSearchPlaceholder: "Search by name or email",
+    assignmentsAlreadyAssigned: "Already assigned",
+    assignmentsAssignAction: "Assign",
+    assignmentsRevokeAction: "Revoke",
+    assignmentsRevokeConfirm: "Revoke access for this learner?",
+    assignmentsBulkAssignAction: "Assign selected ({count})",
+    assignmentsModeIndividual: "Individual",
+    assignmentsModeGroup: "By group",
+    assignmentsGroupPlaceholder: "Choose group",
+    assignmentsCreateGroupPlaceholder: "New group name",
+    assignmentsCreateGroupAction: "Create group",
+    assignmentsCreateGroupSuccess: "Group created",
+    assignmentsAssignWholeGroup: "Assign whole group: {name}",
+    assignmentsRoleAll: "All",
+    assignmentsRoleLearner: "Learners",
+    assignmentsRoleTeacher: "Teachers",
+    assignmentsAssignedAt: "Assigned",
+    assignmentsByGroup: "By group: {name}",
+    assignmentsNoAssigned: "This course does not have assigned learners yet",
+    assignmentsNoLearners: "No users found",
+    assignmentsNoGroups: "No groups found",
+    assignmentsAssignSuccess: "Assignment complete",
+    assignmentsRevokeSuccess: "Access revoked",
+    assignmentsGroupSearchPlaceholder: "Search group",
+    assignmentsBulkAssigning: "Assigning...",
+    assignmentsGroupMemberCount: "Members: {count}",
+    assignmentsGroupMembersTitle: "Group members",
+    assignmentsGroupMemberSearchPlaceholder: "Search group member",
+    assignmentsNoGroupMembers: "This group has no members yet",
+    assignmentsAddToGroupAction: "Add to group",
+    assignmentsRemoveFromGroupAction: "Remove",
+    assignCourse: "Assign course",
+    assign: "Assign",
+    howToDemo: "How to demo",
+    howToDemo1: "Select a course and learner.",
+    howToDemo2: "Submit the assignment, then open the mobile learner app or learner account to see the course.",
+    howToDemo3: "The backend also records a mock notification delivery for the assignment event.",
+    homeworkReviewLearnerSubmission: "Learner submission",
+    homeworkReviewTextAnswer: "Text answer",
+    homeworkReviewLink: "Link",
+    homeworkReviewFiles: "Files",
+    homeworkReviewPreviousReview: "Previous review",
+    homeworkReviewGrade: "Grade (0-100)",
+    homeworkReviewGradeMissing: "Grade is not set yet",
+    homeworkReviewAllStatuses: "All statuses",
+    homeworkReviewNoContent: "The learner has not attached any submission content yet",
+    homeworkReviewSubmittedAt: "Submitted",
+    homeworkReviewUpdatedAt: "Updated",
+    homeworkReviewNotReviewedYet: "Submission has not been reviewed yet",
+    homeworkReviewLearnerFallback: "Learner #{id}",
+    analyticsPageTitle: "Analytics",
+    analyticsPageSubtitle: "Track course performance and inspect an individual learner.",
+    overview: "Overview",
+    learnerDetail: "Learner detail",
+    learnerId: "Learner ID",
+    load: "Load",
+    loadingAnalytics: "Loading analytics...",
+    settingsPageTitle: "Settings & Profile",
+    settingsPageSubtitle: "Current operator details and tenant context.",
+    profile: "Profile",
+    loadingProfile: "Loading profile...",
+    currentRole: "Current role",
+    name: "Name",
+    code: "Code",
+    locale: "Locale",
+    currentTenant: "Current tenant",
+    availableTenants: "Available tenants",
+    loadingCurrentTenant: "Loading current tenant...",
+    switch: "Switch",
+    tenantSwitchTitle: "Tenant switching",
+    tenantSwitchSubtitle: "Move between organizations available to the current account.",
+    dashboardTitle: "Dashboard",
+    dashboardSubtitle: "Operational overview for the current organization.",
+    dashboardSubtitleSelectedSingle: "Operational overview for the selected course.",
+    dashboardSubtitleSelectedMany: "Operational overview for selected courses.",
+    loadingMetrics: "Loading metrics...",
+    courseProgress: "Course progress",
+    columnCourse: "Course",
+    averageProgress: "Average progress",
+    learners: "Learners",
+    problemTopics: "Problem topics",
+    topicId: "Topic ID",
+    recommendations: "Recommendations",
+    metricUsers: "Active users",
+    metricCourses: "Courses",
+    metricTests: "Tests",
+    metricActiveAttempts: "Active attempts",
+    metricEnrollments: "Course assignments",
+    metricAverageProgress: "Average progress",
+    metricRecommendationsBacklog: "Active recommendations",
+    dashboardCourseHealthTitle: "Course health",
+    dashboardCourseHealthSubtitle: "These cards show which courses are progressing well and which ones are stalling.",
+    dashboardCourseHealthSubtitleSelectedSingle: "Learning metrics for the selected course.",
+    dashboardCourseHealthSubtitleSelectedMany: "Learning metrics for selected courses.",
+    dashboardAttentionTitle: "Needs attention",
+    dashboardAttentionSubtitle: "The topics below appear most often in adaptive-test recommendations.",
+    dashboardAttentionSubtitleSelectedSingle:
+      "The topics below appear most often in recommendations for the selected course.",
+    dashboardAttentionSubtitleSelectedMany:
+      "The topics below appear most often in recommendations for selected courses.",
+    dashboardNoCourseProgress: "No course assignments or progress yet.",
+    dashboardNoProblemTopics: "No priority topics yet.",
+    dashboardLearnersLabel: "learners",
+    dashboardRecommendationsLabel: "recommendations",
+    dashboardPeriod7d: "7 days",
+    dashboardPeriod30d: "30 days",
+    dashboardPeriodQuarter: "Quarter",
+    dashboardPeriodAll: "All time",
+    dashboardFilterCourses: "Courses",
+    dashboardRefresh: "Refresh",
+    dashboardCompareToPrev: "vs previous period",
+    dashboardDeltaUnavailable: "No comparison period",
+    dashboardKpiLearnersCaption: "Active learners",
+    dashboardKpiActiveAttemptsCaption: "Open attempts",
+    dashboardKpiAvgProgressCaption: "Across all courses",
+    dashboardKpiAvgProgressCaptionSelectedSingle: "For selected course",
+    dashboardKpiAvgProgressCaptionSelectedMany: "For selected courses",
+    dashboardKpiRecommendationsCaption: "Action items",
+    dashboardCourseFilterTrigger: "All courses",
+    dashboardCourseFilterTriggerSelected: "Selected: {n}",
+    dashboardCourseFilterClear: "Clear",
+    attemptDrawerClose: "Close",
+    dashboardKpiLearners: "Learners",
+    dashboardKpiActiveAttempts: "Active attempts",
+    dashboardKpiAvgProgress: "Avg progress",
+    dashboardKpiRecommendations: "Recommendations",
+    dashboardSecondaryCourses: "Courses",
+    dashboardSecondaryTests: "Tests",
+    dashboardSecondaryEnrollments: "Enrollments",
+    dashboardViewCards: "Cards",
+    dashboardViewTable: "Table",
+    dashboardSortByProgressAsc: "By progress ↑",
+    dashboardSortByProgressDesc: "By progress ↓",
+    dashboardSortByLearners: "By learners",
+    dashboardStatusOnTrack: "On track",
+    dashboardStatusAtRisk: "At risk",
+    dashboardStatusBlocked: "Blocked",
+    dashboardActivityTitle: "Activity over period",
+    dashboardActivityAttempts: "Attempts",
+    dashboardActivityCompletions: "Completions",
+    dashboardActivityExplanation:
+      "Blue line shows attempts, green line shows completions. The chart displays event-count trend over the selected period steps.",
+    dashboardActivityStartedTotal: "Started",
+    dashboardActivityCompletedTotal: "Completed",
+    dashboardActivityCompletionRate: "Conversion",
+    dashboardActivitySparseNote: "There are too few events in the selected period, so the chart can look sparse.",
+    dashboardTopicsTotal: "Topics at risk",
+    dashboardTopicsShowAll: "Show all",
+    dashboardTopicsCollapse: "Collapse",
+    analyticsLearnerSearchPlaceholder: "Search by name or email",
+    analyticsRoleAll: "All",
+    analyticsRoleLearners: "Learners",
+    analyticsRoleTeachers: "Teachers",
+    analyticsManualIdToggle: "Enter ID manually",
+    analyticsLearnerSummaryAttempts: "Attempts",
+    analyticsLearnerSummaryAvgScore: "Average score",
+    analyticsLearnerSummaryWeakTopics: "Weak topics",
+    analyticsTabAttempts: "Attempts",
+    analyticsTabRecommendations: "Recommendations",
+    analyticsScoreTrendTitle: "Score trend",
+    analyticsWeakTopicsTitle: "Weak topics",
+    analyticsEmptyPickLearner: "Pick a learner on the left to view progress",
+    analyticsAttemptNumber: "No.",
+    analyticsAttemptScore: "Score",
+    analyticsAttemptWeak: "Weak topics",
+    id: "ID",
+    title: "Title",
+    courseId: "Course ID",
+    userCreated: "User created",
+    failedCreateUser: "Failed to create user",
+    failedUpdateUser: "Failed to update user",
+    courseUpdated: "Course updated",
+    courseCreated: "Course created",
+    courseDeleted: "Course deleted",
+    failedSaveCourse: "Failed to save course",
+    failedDeleteCourse: "Failed to delete course",
+    deleteCourseConfirm: "Delete this course and all of its lessons? This action cannot be undone.",
+    courseEditorRestrictedTitle: "Course editor unavailable",
+    courseEditorRestrictedBody:
+      "This account is a learner. Only teachers, organization admins, and system admins can create or edit courses.",
+    lessonUpdated: "Lesson updated",
+    lessonCreated: "Lesson created",
+    failedSaveLesson: "Failed to save lesson",
+    draftingLesson: "Drafting a new lesson in the selected course.",
+    noLinkedLesson: "No linked lesson",
+    action: "Action",
+    priority: "Priority",
+    noWeakTopics: "No weak topics",
+    emptyAttempt: "No attempt yet",
+    loadingUsers: "Loading users...",
+    organizationWorkspace: "Coursum workspace",
+    learner: "Learner",
+  },
+} as const;
+
+type UiMessages = Record<keyof (typeof MESSAGES)["en"], string>;
+
+export function getMessages(language: Language): UiMessages {
+  return { ...MESSAGES.en, ...MESSAGES[language] };
+}
+
+const LanguageContext = createContext<{
+  language: Language;
+  setLanguage: (value: Language) => void;
+  t: UiMessages;
+}>({
+  language: "ru",
+  setLanguage: () => undefined,
+  t: getMessages("ru"),
+});
+
+export function getInitialLanguage(): Language {
+  if (typeof window === "undefined") return "ru";
+  const saved = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
+  return saved === "en" ? "en" : "ru";
+}
+
+export function normalizeTenantCode(value: string) {
+  return value.trim().toLowerCase();
+}
+
+export function normalizeLogin(value: string) {
+  return value.trim().toLowerCase();
+}
+
+export function buildSavedAccountId(organizationCode: string, login: string) {
+  return `${normalizeTenantCode(organizationCode)}::${normalizeLogin(login)}`;
+}
+
+export function normalizeSession(nextSession: SessionState): SessionState {
+  return {
+    ...nextSession,
+    tenantCode: normalizeTenantCode(nextSession.tenantCode),
+    refreshToken: nextSession.refreshToken?.trim() || undefined,
+  };
+}
+
+export function readStoredSession(): SessionState | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
+  if (!raw) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(raw) as Partial<SessionState>;
+    if (typeof parsed.accessToken !== "string" || !parsed.accessToken.trim()) {
+      return null;
+    }
+    if (typeof parsed.tenantCode !== "string" || !parsed.tenantCode.trim()) {
+      return null;
+    }
+    return normalizeSession({
+      accessToken: parsed.accessToken,
+      tenantCode: parsed.tenantCode,
+      refreshToken:
+        typeof parsed.refreshToken === "string" && parsed.refreshToken.trim() ? parsed.refreshToken : undefined,
+    });
+  } catch {
+    return null;
+  }
+}
+
+export function writeStoredSession(session: SessionState | null) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  if (!session) {
+    window.localStorage.removeItem(SESSION_STORAGE_KEY);
+    return;
+  }
+  window.localStorage.setItem(
+    SESSION_STORAGE_KEY,
+    JSON.stringify({
+      accessToken: session.accessToken,
+      refreshToken: session.refreshToken ?? "",
+      tenantCode: normalizeTenantCode(session.tenantCode),
+    }),
+  );
+}
+
+export function readSavedAccounts(): SavedAccount[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+  const raw = window.localStorage.getItem(SAVED_ACCOUNTS_STORAGE_KEY);
+  if (!raw) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed
+      .map((item) => {
+        if (!item || typeof item !== "object") {
+          return null;
+        }
+        const row = item as Partial<SavedAccount>;
+        if (typeof row.organizationCode !== "string" || !row.organizationCode.trim()) {
+          return null;
+        }
+        if (typeof row.login !== "string" || !row.login.trim()) {
+          return null;
+        }
+        const organizationCode = normalizeTenantCode(row.organizationCode);
+        const login = normalizeLogin(row.login);
+        const id = typeof row.id === "string" && row.id.trim() ? row.id : buildSavedAccountId(organizationCode, login);
+        const lastUsedAt =
+          typeof row.lastUsedAt === "string" && row.lastUsedAt.trim() ? row.lastUsedAt : new Date(0).toISOString();
+        const displayName =
+          typeof row.displayName === "string" && row.displayName.trim() ? row.displayName.trim() : undefined;
+        return {
+          id,
+          organizationCode,
+          login,
+          displayName,
+          lastUsedAt,
+        } as SavedAccount;
+      })
+      .filter((item): item is SavedAccount => Boolean(item))
+      .sort((a, b) => Date.parse(b.lastUsedAt) - Date.parse(a.lastUsedAt));
+  } catch {
+    return [];
+  }
+}
+
+export function writeSavedAccounts(accounts: SavedAccount[]) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  if (!accounts.length) {
+    window.localStorage.removeItem(SAVED_ACCOUNTS_STORAGE_KEY);
+    return;
+  }
+  window.localStorage.setItem(SAVED_ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
+}
+
+export function upsertSavedAccount(accounts: SavedAccount[], incoming: SavedAccount): SavedAccount[] {
+  const normalizedIncoming: SavedAccount = {
+    ...incoming,
+    id: buildSavedAccountId(incoming.organizationCode, incoming.login),
+    organizationCode: normalizeTenantCode(incoming.organizationCode),
+    login: normalizeLogin(incoming.login),
+    lastUsedAt: incoming.lastUsedAt,
+    displayName: incoming.displayName?.trim() || undefined,
+  };
+  const filtered = accounts.filter((item) => item.id !== normalizedIncoming.id);
+  const next = [normalizedIncoming, ...filtered];
+  next.sort((a, b) => Date.parse(b.lastUsedAt) - Date.parse(a.lastUsedAt));
+  return next;
+}
+
+export function useUi() {
+  return useContext(LanguageContext);
+}
+
+export function AppTestProviders({ children, language = "ru" }: { children: ReactNode; language?: Language }) {
+  return (
+    <LanguageContext.Provider value={{ language, setLanguage: () => undefined, t: getMessages(language) }}>
+      {children}
+    </LanguageContext.Provider>
+  );
+}
+
+function formatDashboardMetricLabel(key: string, t: UiMessages) {
+  const labels: Record<string, string> = {
+    users: t.metricUsers,
+    courses: t.metricCourses,
+    tests: t.metricTests,
+    active_attempts: t.metricActiveAttempts,
+    enrollments: t.metricEnrollments,
+    avg_progress: t.metricAverageProgress,
+    recommendations: t.metricRecommendationsBacklog,
+  };
+  return labels[key] ?? key.replace(/_/g, " ");
+}
+
+export function clampPercent(value: number) {
+  return Math.max(0, Math.min(100, value));
+}
+
+export function buildLinePath(data: number[], width: number, height: number, padding = 6) {
+  if (!data.length) {
+    return "";
+  }
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const span = max - min;
+  const isFlat = span <= Number.EPSILON;
+  return data
+    .map((value, index) => {
+      const x = padding + ((width - padding * 2) * index) / Math.max(1, data.length - 1);
+      const y = isFlat ? height / 2 : height - padding - ((value - min) / span) * (height - padding * 2);
+      return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+    })
+    .join(" ");
+}
+
+const SPARKLINE_PADDING = 6;
+const LINE_CHART_PADDING = 8;
+
+export function maxValueIndex(data: number[]) {
+  if (!data.length) {
+    return -1;
+  }
+  let best = 0;
+  for (let i = 1; i < data.length; i++) {
+    if (data[i] > data[best]) {
+      best = i;
+    }
+  }
+  return best;
+}
+
+export function linePointAtIndex(data: number[], index: number, width: number, height: number, padding: number) {
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const span = max - min;
+  const isFlat = span <= Number.EPSILON;
+  const x = padding + ((width - padding * 2) * index) / Math.max(1, data.length - 1);
+  const y = isFlat ? height / 2 : height - padding - ((data[index] - min) / span) * (height - padding * 2);
+  return { x: Number(x.toFixed(2)), y: Number(y.toFixed(2)) };
+}
+
+export type LineChartSeries = { name: string; data: number[]; color: string };
+
+export function seededNoise(seed: number) {
+  const value = Math.sin(seed * 12.9898) * 43758.5453;
+  return value - Math.floor(value);
+}
+
+export function generateTrend(baseValue: number, points = 12) {
+  const baseline = Number.isFinite(baseValue) ? baseValue : 0;
+  return Array.from({ length: points }, (_, index) => {
+    const wave = Math.sin((index + 1) * 0.82) * baseline * 0.08;
+    const noise = (seededNoise(index + baseline) - 0.5) * baseline * 0.1;
+    return Math.max(0, baseline + wave + noise);
+  });
+}
+
+function getProgressStatus(progress: number, t: UiMessages) {
+  if (progress < 40) {
+    return { text: t.dashboardStatusBlocked, icon: "!", className: "status-chip blocked" };
+  }
+  if (progress < 70) {
+    return { text: t.dashboardStatusAtRisk, icon: "~", className: "status-chip risk" };
+  }
+  return { text: t.dashboardStatusOnTrack, icon: "✓", className: "status-chip ok" };
+}
+
+export function Sparkline({
+  width,
+  height,
+  data,
+  color,
+  ariaLabel,
+  primary,
+}: {
+  width: number;
+  height: number;
+  data: number[];
+  color: string;
+  ariaLabel: string;
+  primary?: boolean;
+}) {
+  const path = useMemo(() => buildLinePath(data, width, height, SPARKLINE_PADDING), [data, height, width]);
+  const areaPath =
+    primary && path
+      ? `${path} L ${width - SPARKLINE_PADDING} ${height - SPARKLINE_PADDING} L ${SPARKLINE_PADDING} ${height - SPARKLINE_PADDING} Z`
+      : "";
+  return (
+    <svg
+      className="sparkline"
+      viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="xMidYMid meet"
+      role="img"
+      aria-label={ariaLabel}
+    >
+      {areaPath ? <path d={areaPath} fill="rgba(255,255,255,0.12)" stroke="none" /> : null}
+      <path d={path} fill="none" stroke={color} strokeWidth="2.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function MiniBarChart({
+  width,
+  height,
+  data,
+  color,
+  ariaLabel,
+}: {
+  width: number;
+  height: number;
+  data: number[];
+  color: string;
+  ariaLabel: string;
+}) {
+  const normalized = useMemo(() => {
+    const max = Math.max(1, ...data);
+    return data.map((value) => (value / max) * (height - 4));
+  }, [data, height]);
+  return (
+    <svg
+      className="mini-bar-chart"
+      viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="none"
+      role="img"
+      aria-label={ariaLabel}
+    >
+      {normalized.map((barHeight, index) => {
+        const barWidth = width / Math.max(1, normalized.length);
+        return (
+          <rect
+            key={`${index}-${barHeight}`}
+            x={index * barWidth + 1}
+            y={height - barHeight}
+            width={Math.max(2, barWidth - 2)}
+            height={barHeight}
+            rx="2"
+            fill={color}
+            opacity={0.82}
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
+export function LineChart({
+  width,
+  height,
+  ariaLabel,
+  series,
+  xLabels,
+}: {
+  width: number;
+  height: number;
+  ariaLabel: string;
+  series: LineChartSeries[];
+  xLabels?: string[];
+}) {
+  const p = LINE_CHART_PADDING;
+  const xAxisLabelBand = xLabels?.length ? 18 : 0;
+  const innerTop = p;
+  const innerBottom = height - p - xAxisLabelBand;
+  const innerH = innerBottom - innerTop;
+  const gridYs = [innerTop + innerH * 0.25, innerTop + innerH * 0.5, innerTop + innerH * 0.75];
+  const longestSeriesLength = Math.max(0, ...series.map((item) => item.data.length));
+  const xTickIndexes = useMemo(() => {
+    if (!xLabels?.length || longestSeriesLength <= 1) {
+      return [];
+    }
+    const last = Math.min(xLabels.length, longestSeriesLength) - 1;
+    if (last <= 0) {
+      return [0];
+    }
+    const mid = Math.floor(last / 2);
+    return Array.from(new Set([0, mid, last])).sort((a, b) => a - b);
+  }, [longestSeriesLength, xLabels]);
+  const seriesPaths = useMemo(
+    () =>
+      series.map((s) => ({
+        name: s.name,
+        color: s.color,
+        data: s.data,
+        path: buildLinePath(s.data, width, innerBottom, p),
+        maxIdx: maxValueIndex(s.data),
+      })),
+    [height, series, width],
+  );
+  return (
+    <svg
+      className="line-chart"
+      viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="xMidYMid meet"
+      role="img"
+      aria-label={ariaLabel}
+    >
+      {gridYs.map((y, index) => (
+        <line key={`grid-${index}`} x1={p} y1={y} x2={width - p} y2={y} stroke="#eef2f7" strokeWidth="1" />
+      ))}
+      <line x1={p} y1={innerBottom} x2={width - p} y2={innerBottom} stroke="#d7e2ef" strokeWidth="1" />
+      <line x1={p} y1={p} x2={p} y2={innerBottom} stroke="#d7e2ef" strokeWidth="1" />
+      {seriesPaths.map((s) =>
+        s.path ? (
+          <path key={s.name} d={s.path} fill="none" stroke={s.color} strokeWidth="2.2" strokeLinecap="round" />
+        ) : null,
+      )}
+      {seriesPaths.map((s) => {
+        if (s.maxIdx < 0 || !s.data.length) {
+          return null;
+        }
+        const pt = linePointAtIndex(s.data, s.maxIdx, width, innerBottom, p);
+        return <circle key={`${s.name}-peak`} cx={pt.x} cy={pt.y} r="3.5" fill={s.color} />;
+      })}
+      {xLabels && xTickIndexes.length
+        ? xTickIndexes.map((index) => {
+            const x = p + ((width - p * 2) * index) / Math.max(1, longestSeriesLength - 1);
+            const anchor =
+              index === xTickIndexes[0] ? "start" : index === xTickIndexes[xTickIndexes.length - 1] ? "end" : "middle";
+            return (
+              <text
+                key={`tick-${index}`}
+                x={Number(x.toFixed(2))}
+                y={height - 4}
+                textAnchor={anchor}
+                fontSize="10"
+                fill="#64748b"
+              >
+                {xLabels[index]}
+              </text>
+            );
+          })
+        : null}
+    </svg>
+  );
+}
+
+export function KpiCard({
+  label,
+  value,
+  trendData,
+  primary,
+  compareLabel,
+  caption,
+}: {
+  label: string;
+  value: string;
+  trendData: number[];
+  primary?: boolean;
+  compareLabel: string;
+  caption: string;
+}) {
+  return (
+    <article className={`dashboard-kpi-card ${primary ? "primary" : ""}`.trim()}>
+      <div className="dashboard-kpi-head">
+        <span>{label}</span>
+        <span className="kpi-meta-chip">{compareLabel}</span>
+      </div>
+      <strong>{value}</strong>
+      {primary ? (
+        <Sparkline
+          width={220}
+          height={54}
+          data={trendData}
+          color="rgba(255,255,255,0.85)"
+          ariaLabel={`${label} trend`}
+          primary
+        />
+      ) : null}
+      <span className="kpi-caption">{caption}</span>
+    </article>
+  );
+}
+
+export function RecommendationCard({
+  item,
+  language,
+  t,
+}: {
+  item: {
+    text: string;
+    priority: number;
+    topic_title?: string | null;
+    lesson_title?: string | null;
+    course_title?: string | null;
+    reason?: string | null;
+    signal_level?: string | null;
+  };
+  language: Language;
+  t: UiMessages;
+}) {
+  const priority = Math.max(1, Math.min(5, Math.round(item.priority)));
+  const priorityClass = priority >= 4 ? "p-critical" : priority >= 3 ? "p-high" : priority >= 2 ? "p-medium" : "p-low";
+  return (
+    <article className="recommendation-card">
+      <header className="recommendation-head">
+        <span className={`priority-badge ${priorityClass}`}>
+          {t.priority}: {priority}
+        </span>
+        {item.signal_level ? <span className="signal-chip">{item.signal_level}</span> : null}
+      </header>
+      <strong>{item.topic_title || item.text}</strong>
+      <span className="recommendation-meta">
+        {[item.lesson_title, item.course_title].filter(Boolean).join(" • ") || t.noLinkedLesson}
+      </span>
+      <span className="recommendation-reason">
+        {item.reason || (language === "ru" ? "Нужна доработка по теме" : "Follow-up needed")}
+      </span>
+      <p className="recommendation-action">{item.text}</p>
+    </article>
+  );
+}
+
+type TenantInfo = { id: number; name: string; code: string; locale: string };
+export type UserInfo = { id: number; email: string; full_name: string; is_active: boolean; role_name?: string | null };
+type UserProfileInfo = { id: number; email: string; full_name: string; tenant_role?: string | null };
+export type CourseInfo = {
+  id: number;
+  title: string;
+  description: string;
+  is_published: boolean;
+  status?: "draft" | "published" | "archived" | string;
+  image_url?: string | null;
+  category?: string | null;
+  access_settings?: Record<string, unknown>;
+  available_from?: string | null;
+  available_to?: string | null;
+};
+type SectionInfo = { id: number; course_id: number; title: string; sort_order: number; is_visible: boolean };
+export type LessonInfo = {
+  id: number;
+  course_id: number;
+  section_id?: number | null;
+  title: string;
+  summary: string;
+  content: string;
+  content_pages?: Array<{
+    page_id?: string;
+    chapter_title: string;
+    page_title: string;
+    is_practice?: boolean;
+    blocks: Array<{ type: string; text?: string; html?: string; url?: string; alt?: string; title?: string }>;
+  }> | null;
+  duration_minutes: number;
+  image_url?: string | null;
+  video_url?: string | null;
+  is_visible?: boolean;
+  is_published?: boolean;
+  sort_order: number;
+};
+type CoursePreviewInfo = {
+  course: CourseInfo;
+  sections: SectionInfo[];
+  lessons: Array<{
+    id: number;
+    section_id?: number | null;
+    title: string;
+    summary: string;
+    duration_minutes: number;
+  }>;
+};
+type EditorRecommendationInfo = {
+  id: number;
+  tenant_id: number;
+  course_id?: number | null;
+  lesson_id?: number | null;
+  title: string;
+  text: string;
+  is_active: boolean;
+  sort_order: number;
+};
+type TestInfo = {
+  id: number;
+  title: string;
+  course_id: number;
+  baseline_difficulty?: number;
+  question_limit: number;
+  question_count?: number;
+  is_active?: boolean;
+};
+type TopicInfo = { id: number; title: string; description?: string };
+type TestQuestionOptionInfo = { id?: number; text: string; is_correct: boolean };
+type TestQuestionInfo = {
+  id: number;
+  test_id: number;
+  text: string;
+  explanation: string;
+  difficulty: number;
+  estimated_seconds: number;
+  shuffle_options?: boolean;
+  option_count: number;
+  options?: TestQuestionOptionInfo[];
+  topic_ids?: number[];
+  topic_titles: string[];
+};
+type PaginatedResponse<T> = {
+  items: T[];
+  page: number;
+  page_size: number;
+  total: number;
+};
+export type AssignmentInfo = {
+  id: number;
+  course_id: number;
+  lesson_id?: number | null;
+  page_id?: string | null;
+  title: string;
+  description: string;
+  is_active: boolean;
+  due_at?: string | null;
+  created_at: string;
+};
+type CourseAssignmentInfo = {
+  id: number;
+  user_id: number | null;
+  group_id: number | null;
+  assigned_by_id: number | null;
+  created_at: string;
+  effective_user_ids: number[];
+};
+type GroupInfo = { id: number; name: string; member_count: number };
+type GroupMemberInfo = { id: number; group_id: number; user_id: number; full_name: string; email: string };
+type AssignmentSubmissionInfo = {
+  id: number;
+  assignment_id: number;
+  student_user_id: number;
+  status: string;
+  text_answer: string;
+  link_answer?: string | null;
+  submitted_at?: string | null;
+  updated_at: string;
+  files: { id: number; file_url: string; file_name: string; created_at?: string }[];
+  latest_review?: {
+    id: number;
+    reviewer_user_id: number;
+    status: string;
+    comment: string;
+    grade: number | null;
+    created_at: string;
+  } | null;
+};
+export type MediaKind = "image" | "video" | "document";
+export type MediaAssetInfo = {
+  path: string;
+  label: string;
+  kind: MediaKind;
+  size_bytes: number;
+  filename: string;
+  mime_type: string;
+};
+type LessonPageDraft = {
+  id: string;
+  chapterTitle: string;
+  pageTitle: string;
+  isPractice: boolean;
+  html: string;
+  imageUrl: string;
+  videoUrl: string;
+};
+type MediaPickerTarget = {
+  scope: "page" | "lesson" | "html";
+  kind: MediaKind;
+  pageId?: string;
+  htmlSelection?: TextSelection;
+};
+export type TextSelection = {
+  start: number;
+  end: number;
+};
+type PendingHtmlSnippet = {
+  pageId: string;
+  snippet: string;
+  nonce: number;
+  selection?: TextSelection;
+};
+
+export function formatRoleLabel(roleName: string | null | undefined, t: UiMessages) {
+  switch (roleName) {
+    case "learner":
+      return t.roleLearner;
+    case "teacher":
+      return t.roleTeacher;
+    case "org_admin":
+      return t.roleOrgAdmin;
+    case "system_admin":
+      return t.roleSystemAdmin;
+    default:
+      return roleName ?? "-";
+  }
+}
+
+export function canManageCourses(roleName: string | null | undefined) {
+  return roleName === "teacher" || roleName === "org_admin" || roleName === "system_admin";
+}
+
+function canAccessWebPanel(roleName: string | null | undefined) {
+  return canManageCourses(roleName);
+}
+
+function canManageUsers(roleName: string | null | undefined) {
+  return roleName === "org_admin" || roleName === "system_admin";
+}
+
+export function getRolePermissions(roleName: string | null | undefined) {
+  return {
+    canAccessWebPanel: canAccessWebPanel(roleName),
+    canManageCourses: canManageCourses(roleName),
+    canManageUsers: canManageUsers(roleName),
+  };
+}
+
+function parseCourseIdParam(value: string | null) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+export function normalizeCourseStatus(value: unknown): "draft" | "published" | "archived" {
+  if (value === "published" || value === "archived") {
+    return value;
+  }
+  return "draft";
+}
+
+function getCourseStatusLabel(status: "draft" | "published" | "archived", language: Language) {
+  if (status === "published") {
+    return language === "ru" ? "Опубликован" : "Published";
+  }
+  if (status === "archived") {
+    return language === "ru" ? "Архив" : "Archived";
+  }
+  return language === "ru" ? "Черновик" : "Draft";
+}
+
+function formatDateTimeLocalValue(value: string | null | undefined) {
+  if (!value) {
+    return "";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+type CourseEditorFormState = {
+  title: string;
+  description: string;
+  imageUrl: string;
+  status: "draft" | "published" | "archived";
+  category: string;
+  selfEnrollment: boolean;
+  contentLanguage: string;
+  availableFrom: string;
+  availableTo: string;
+};
+
+function getDefaultCourseForm(language: Language): CourseEditorFormState {
+  return {
+    title: "",
+    description: "",
+    imageUrl: "",
+    status: "draft",
+    category: "",
+    selfEnrollment: false,
+    contentLanguage: language,
+    availableFrom: "",
+    availableTo: "",
+  };
+}
+
+function buildCourseFormFromCourse(course: CourseInfo, language: Language): CourseEditorFormState {
+  const accessSettings = course.access_settings ?? {};
+  const languageValue =
+    typeof accessSettings.language === "string" && accessSettings.language.trim() ? accessSettings.language : language;
+  return {
+    title: course.title,
+    description: course.description,
+    imageUrl: course.image_url ?? "",
+    status: normalizeCourseStatus(course.status),
+    category: course.category ?? "",
+    selfEnrollment: Boolean(accessSettings.self_enrollment ?? accessSettings.open_enrollment ?? false),
+    contentLanguage: languageValue,
+    availableFrom: formatDateTimeLocalValue(course.available_from),
+    availableTo: formatDateTimeLocalValue(course.available_to),
+  };
+}
+
+function toIsoDateOrNull(value: string) {
+  const normalized = value.trim();
+  if (!normalized) {
+    return null;
+  }
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date.toISOString();
+}
+
+function createLessonPageDraft(index = 1, language: Language = "ru"): LessonPageDraft {
+  const ru = language === "ru";
+  return {
+    id: `page-${Date.now()}-${Math.round(Math.random() * 100000)}-${index}`,
+    chapterTitle: index === 1 ? (ru ? "Контекст" : "Context") : ru ? "Практика" : "Practice",
+    pageTitle: index === 1 ? (ru ? "Введение" : "Introduction") : ru ? `Страница ${index}` : `Page ${index}`,
+    isPractice: false,
+    html: "",
+    imageUrl: "",
+    videoUrl: "",
+  };
+}
+
+function buildLessonPagesPayload(pages: LessonPageDraft[]) {
+  return pages.map((page, index) => ({
+    page_id: page.id || `page-${index + 1}`,
+    chapter_title: page.chapterTitle.trim() || `Chapter ${index + 1}`,
+    page_title: page.pageTitle.trim() || `Page ${index + 1}`,
+    is_practice: page.isPractice,
+    blocks: [
+      ...(page.html.trim() ? [{ type: "html", html: page.html.trim() }] : []),
+      ...(page.imageUrl.trim()
+        ? [{ type: "image", url: page.imageUrl.trim(), alt: page.pageTitle.trim() || `Page ${index + 1}` }]
+        : []),
+      ...(page.videoUrl.trim()
+        ? [{ type: "video", url: page.videoUrl.trim(), title: page.pageTitle.trim() || `Page ${index + 1}` }]
+        : []),
+    ],
+  }));
+}
+
+function htmlToPlainText(html: string) {
+  if (!html.trim()) return "";
+  if (typeof window === "undefined" || typeof DOMParser === "undefined") {
+    return html
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(`<div>${html}</div>`, "text/html");
+  return doc.body.textContent?.replace(/\s+/g, " ").trim() ?? "";
+}
+
+function buildLegacyLessonContent(summary: string, pages: LessonPageDraft[]) {
+  const normalizedPages = pages.filter((page) => page.html.trim() || page.chapterTitle.trim() || page.pageTitle.trim());
+  const sections = normalizedPages.map(
+    (page) =>
+      `## ${page.pageTitle.trim() || "Lesson page"}\n${htmlToPlainText(page.html) || summary.trim() || "Structured page content"}`,
+  );
+  return sections.join("\n\n");
+}
+
+function buildLessonUpdatePayloadFromLesson(
+  lesson: LessonInfo,
+  patch: Partial<{
+    course_id: number;
+    section_id: number | null;
+    title: string;
+    summary: string;
+    content: string;
+    content_pages: LessonInfo["content_pages"];
+    duration_minutes: number;
+    image_url: string | null;
+    video_url: string | null;
+    sort_order: number;
+    is_visible: boolean;
+    is_published: boolean;
+  }>,
+) {
+  return {
+    course_id: patch.course_id ?? lesson.course_id,
+    section_id: patch.section_id ?? lesson.section_id ?? null,
+    title: patch.title ?? lesson.title,
+    summary: patch.summary ?? lesson.summary,
+    content: patch.content ?? lesson.content,
+    content_pages: patch.content_pages ?? lesson.content_pages ?? [],
+    duration_minutes: patch.duration_minutes ?? lesson.duration_minutes,
+    image_url: patch.image_url ?? lesson.image_url ?? null,
+    video_url: patch.video_url ?? lesson.video_url ?? null,
+    sort_order: patch.sort_order ?? lesson.sort_order,
+    is_visible: patch.is_visible ?? lesson.is_visible ?? true,
+    is_published: patch.is_published ?? lesson.is_published ?? true,
+  };
+}
+
+function escapeHtml(value: string) {
+  return value.split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;");
+}
+
+function buildDraftPagesFromLesson(lesson: LessonInfo): LessonPageDraft[] {
+  const pages = lesson.content_pages ?? [];
+  if (!pages.length) {
+    return [
+      {
+        id: `page-${lesson.id}-1`,
+        chapterTitle: lesson.title,
+        pageTitle: lesson.title,
+        isPractice: true,
+        html: `<p>${escapeHtml(lesson.summary || lesson.content)}</p>`,
+        imageUrl: lesson.image_url ?? "",
+        videoUrl: lesson.video_url ?? "",
+      },
+    ];
+  }
+  return pages.map((page, index) => {
+    const html = page.blocks
+      .map((block) => {
+        if (block.type === "html") return block.html?.trim() || "";
+        if (block.type === "text" && block.text?.trim()) {
+          return `<p>${escapeHtml(block.text.trim()).split("\n").join("<br />")}</p>`;
+        }
+        return "";
+      })
+      .filter(Boolean)
+      .join("\n\n");
+    const imageBlock = page.blocks.find((block) => block.type === "image");
+    const videoBlock = page.blocks.find((block) => block.type === "video");
+    return {
+      id: page.page_id || `page-${lesson.id}-${index + 1}`,
+      chapterTitle: page.chapter_title,
+      pageTitle: page.page_title,
+      isPractice: Boolean(page.is_practice),
+      html,
+      imageUrl: imageBlock?.url || "",
+      videoUrl: videoBlock?.url || "",
+    };
+  });
+}
+
+function resolveLessonPageId(lessonId: number, pageId: string | undefined, index: number) {
+  const normalized = (pageId || "").trim();
+  return normalized || `page-${lessonId}-${index + 1}`;
+}
+
+function resolvePracticePageId(
+  lesson: Pick<LessonInfo, "id" | "content_pages">,
+  preferredPageId: string | null = null,
+): string | null {
+  const pages = lesson.content_pages ?? [];
+  if (!pages.length) {
+    return null;
+  }
+  const normalizedPreferred = (preferredPageId || "").trim() || null;
+  const normalizedPages = pages.map((page, index) => {
+    const stableId = resolveLessonPageId(lesson.id, page.page_id, index);
+    const title = (page.page_title || "").trim().toLowerCase();
+    return { page, stableId, title };
+  });
+  if (normalizedPreferred && normalizedPages.some((entry) => entry.stableId === normalizedPreferred)) {
+    return normalizedPreferred;
+  }
+  return (
+    normalizedPages.find((entry) => entry.page.is_practice)?.stableId ??
+    normalizedPages.find((entry) => entry.title.includes("практи") || entry.title.includes("practice"))?.stableId ??
+    normalizedPages[normalizedPages.length - 1]?.stableId ??
+    null
+  );
+}
+
+function findLinkedLessonForAssignment(
+  assignment: Pick<AssignmentInfo, "lesson_id" | "page_id" | "title">,
+  lessons: LessonInfo[],
+): LessonInfo | null {
+  if (!lessons.length) {
+    return null;
+  }
+  if (assignment.lesson_id) {
+    const byLessonId = lessons.find((lesson) => lesson.id === assignment.lesson_id) ?? null;
+    if (byLessonId) {
+      return byLessonId;
+    }
+  }
+  const assignmentPageId = (assignment.page_id || "").trim();
+  if (assignmentPageId) {
+    const byPageId =
+      lessons.find((lesson) =>
+        (lesson.content_pages ?? []).some(
+          (page, index) => resolveLessonPageId(lesson.id, page.page_id, index) === assignmentPageId,
+        ),
+      ) ?? null;
+    if (byPageId) {
+      return byPageId;
+    }
+  }
+  return null;
+}
+
+function formatBytes(size: number) {
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getMediaKindLabel(kind: MediaKind, t: UiMessages) {
+  if (kind === "image") return t.attachImage;
+  if (kind === "video") return t.attachVideo;
+  return t.attachDocument;
+}
+
+function getMediaDialogTitle(kind: MediaKind, t: UiMessages) {
+  if (kind === "image") return t.mediaDialogImageTitle;
+  if (kind === "video") return t.mediaDialogVideoTitle;
+  return t.mediaDialogDocumentTitle;
+}
+
+function getMediaUploadHint(kind: MediaKind, t: UiMessages) {
+  if (kind === "image") return t.mediaDialogUploadHintImage;
+  if (kind === "video") return t.mediaDialogUploadHintVideo;
+  return t.mediaDialogUploadHintDocument;
+}
+
+function buildDocumentLinkSnippet(asset: MediaAssetInfo) {
+  const rawLabel = (asset.label || asset.filename || "Document")
+    .replace(/\.[^.]+$/, "")
+    .replace(/[-_]+/g, " ")
+    .trim();
+  const label = escapeHtml(rawLabel || "Document");
+  return `<a href="${asset.path}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+}
+
+function buildMediaHtmlSnippet(asset: MediaAssetInfo) {
+  if (asset.kind === "image") {
+    const rawAlt = (asset.label || asset.filename || "Image")
+      .replace(/\.[^.]+$/, "")
+      .replace(/[-_]+/g, " ")
+      .trim();
+    return `<img src="${asset.path}" alt="${escapeHtml(rawAlt || "Image")}" />`;
+  }
+  if (asset.kind === "video") {
+    return `<video controls preload="metadata" playsinline src="${asset.path}"></video>`;
+  }
+  return buildDocumentLinkSnippet(asset);
+}
+
+function getHtmlMediaInsertLabel(kind: MediaKind, language: Language) {
+  if (kind === "image") {
+    return language === "ru" ? "Вставить изображение" : "Insert image";
+  }
+  if (kind === "video") {
+    return language === "ru" ? "Вставить видео" : "Insert video";
+  }
+  return language === "ru" ? "Вставить документ" : "Insert document";
+}
+
+const HTML_PREVIEW_TAGS = new Set([
+  "p",
+  "br",
+  "div",
+  "span",
+  "strong",
+  "em",
+  "b",
+  "i",
+  "u",
+  "mark",
+  "small",
+  "code",
+  "pre",
+  "blockquote",
+  "hr",
+  "ul",
+  "ol",
+  "li",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "table",
+  "thead",
+  "tbody",
+  "tr",
+  "th",
+  "td",
+  "a",
+  "img",
+  "video",
+  "source",
+]);
+const HTML_PREVIEW_ATTRS: Record<string, string[]> = {
+  a: ["href", "title", "target", "rel"],
+  img: ["src", "alt", "title"],
+  video: ["src", "poster", "controls", "preload", "playsinline"],
+  source: ["src", "type"],
+};
+function getHtmlSnippets(language: Language) {
+  const ru = language === "ru";
+  return [
+    {
+      label: "H2",
+      snippet: ru
+        ? "<h2>Заголовок раздела</h2>\n<p>Опишите основную мысль этого блока.</p>"
+        : "<h2>Section title</h2>\n<p>Write the core explanation here.</p>",
+    },
+    {
+      label: "H3",
+      snippet: ru
+        ? "<h3>Подраздел</h3>\n<p>Добавьте следующий важный факт или пояснение.</p>"
+        : "<h3>Subsection</h3>\n<p>Add the next detail here.</p>",
+    },
+    {
+      label: ru ? "Список" : "List",
+      snippet: ru
+        ? "<ul>\n  <li>Первый пункт</li>\n  <li>Второй пункт</li>\n</ul>"
+        : "<ul>\n  <li>First point</li>\n  <li>Second point</li>\n</ul>",
+    },
+    {
+      label: ru ? "Цитата" : "Quote",
+      snippet: ru
+        ? "<blockquote>Используйте блок для политики, напоминания или важной цитаты.</blockquote>"
+        : "<blockquote>Use this for policy notes, client quotes, or reminders.</blockquote>",
+    },
+    {
+      label: ru ? "Код" : "Code",
+      snippet: ru
+        ? "<pre><code>Тема: Обновление запроса\nКонтекст: ...\nДействие: ...</code></pre>"
+        : "<pre><code>Subject: Request update\nContext: ...\nAction needed: ...</code></pre>",
+    },
+    {
+      label: ru ? "Таблица" : "Table",
+      snippet: ru
+        ? "<table><thead><tr><th>Шаг</th><th>Ответственный</th></tr></thead><tbody><tr><td>Подтвердить запрос</td><td>Поддержка</td></tr><tr><td>Обновить слушателя</td><td>Менеджер</td></tr></tbody></table>"
+        : "<table><thead><tr><th>Step</th><th>Owner</th></tr></thead><tbody><tr><td>Confirm request</td><td>Support</td></tr><tr><td>Update learner</td><td>Manager</td></tr></tbody></table>",
+    },
+  ];
+}
+
+function sanitizePreviewHtml(html: string) {
+  if (!html.trim() || typeof window === "undefined" || typeof DOMParser === "undefined") {
+    return html;
+  }
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(`<div>${html}</div>`, "text/html");
+  const nodes = Array.from(doc.body.querySelectorAll("*"));
+  for (const node of nodes) {
+    const tag = node.tagName.toLowerCase();
+    if (!HTML_PREVIEW_TAGS.has(tag)) {
+      node.replaceWith(...Array.from(node.childNodes));
+      continue;
+    }
+    for (const attr of Array.from(node.attributes)) {
+      const allowedAttrs = HTML_PREVIEW_ATTRS[tag] ?? [];
+      const attrName = attr.name.toLowerCase();
+      const attrValue = attr.value.trim();
+      const isUnsafeUrl =
+        ["href", "src", "poster"].includes(attrName) && /^(javascript:|data:text\/html)/i.test(attrValue);
+      if (attrName.startsWith("on") || isUnsafeUrl || (!allowedAttrs.includes(attrName) && attrName !== "class")) {
+        node.removeAttribute(attr.name);
+        continue;
+      }
+      if (["href", "src", "poster"].includes(attrName) && attrValue.startsWith("/")) {
+        node.setAttribute(attr.name, resolveMediaUrl(attrValue));
+      }
+    }
+  }
+  return doc.body.innerHTML;
+}
+
+function getMediaAccept(kind: MediaKind) {
+  if (kind === "image") return ".png,.jpg,.jpeg,.gif,.webp";
+  if (kind === "video") return ".mp4,.webm,.mov,.m4v";
+  return ".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt";
+}
+
+function normalizeTextSelection(
+  selection: TextSelection | null | undefined,
+  fallback: TextSelection,
+  valueLength: number,
+) {
+  const rawStart = selection?.start ?? fallback.start;
+  const rawEnd = selection?.end ?? fallback.end;
+  const start = Math.min(valueLength, Math.max(0, rawStart));
+  const end = Math.min(valueLength, Math.max(start, rawEnd));
+  return { start, end };
+}
+
+function insertIntoValue(value: string, snippet: string, selection: TextSelection) {
+  const { start, end } = normalizeTextSelection(selection, selection, value.length);
+  const nextValue = `${value.slice(0, start)}${snippet}${value.slice(end)}`;
+  const nextCaret = start + snippet.length;
+  return { nextValue, nextCaret };
+}
+
+function insertIntoTextArea(textarea: HTMLTextAreaElement, snippet: string, selection?: TextSelection) {
+  const fallback = {
+    start: textarea.selectionStart ?? textarea.value.length,
+    end: textarea.selectionEnd ?? textarea.selectionStart ?? textarea.value.length,
+  };
+  return insertIntoValue(textarea.value, snippet, normalizeTextSelection(selection, fallback, textarea.value.length));
+}
+
+export function HtmlSourceEditor({
+  value,
+  onChange,
+  label,
+  onUploadImage,
+  onUploadVideo,
+  onUploadDocument,
+  pendingSnippet,
+  onPendingSnippetApplied,
+  onSelectionChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  label: string;
+  onUploadImage?: (selection?: TextSelection) => void;
+  onUploadVideo?: (selection?: TextSelection) => void;
+  onUploadDocument?: (selection?: TextSelection) => void;
+  pendingSnippet?: PendingHtmlSnippet | null;
+  onPendingSnippetApplied?: () => void;
+  onSelectionChange?: (selection: TextSelection) => void;
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const lastSelectionRef = useRef<TextSelection>({ start: value.length, end: value.length });
+  const previewHtml = useMemo(() => sanitizePreviewHtml(value), [value]);
+  const { language, t } = useUi();
+  const snippets = useMemo(() => getHtmlSnippets(language), [language]);
+
+  function rememberSelection(selection: TextSelection, valueLength = value.length) {
+    const normalized = normalizeTextSelection(selection, selection, valueLength);
+    lastSelectionRef.current = normalized;
+    onSelectionChange?.(normalized);
+    return normalized;
+  }
+
+  function captureSelection() {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      return rememberSelection(lastSelectionRef.current);
+    }
+    return rememberSelection({
+      start: textarea.selectionStart ?? lastSelectionRef.current.start,
+      end: textarea.selectionEnd ?? textarea.selectionStart ?? lastSelectionRef.current.end,
+    });
+  }
+
+  function applySnippet(snippet: string, selection?: TextSelection) {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      const fallback = { start: value.length, end: value.length };
+      const { nextValue, nextCaret } = insertIntoValue(
+        value,
+        snippet,
+        normalizeTextSelection(selection, fallback, value.length),
+      );
+      onChange(nextValue);
+      rememberSelection({ start: nextCaret, end: nextCaret }, nextValue.length);
+      return;
+    }
+    const { nextValue, nextCaret } = insertIntoTextArea(textarea, snippet, selection);
+    onChange(nextValue);
+    rememberSelection({ start: nextCaret, end: nextCaret }, nextValue.length);
+    queueMicrotask(() => {
+      textarea.focus();
+      textarea.selectionStart = nextCaret;
+      textarea.selectionEnd = nextCaret;
+    });
+  }
+
+  useEffect(() => {
+    if (pendingSnippet?.snippet) {
+      applySnippet(pendingSnippet.snippet, pendingSnippet.selection);
+      onPendingSnippetApplied?.();
+    }
+  }, [pendingSnippet?.nonce]);
+
+  return (
+    <div className="html-editor">
+      <div className="html-toolbar">
+        <strong>{label}</strong>
+        <div className="html-toolbar-actions">
+          {snippets.map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              className="secondary page-action"
+              onClick={() => applySnippet(item.snippet)}
+            >
+              {item.label}
+            </button>
+          ))}
+          {onUploadImage && (
+            <button type="button" className="secondary page-action" onClick={() => onUploadImage(captureSelection())}>
+              {getHtmlMediaInsertLabel("image", language)}
+            </button>
+          )}
+          {onUploadVideo && (
+            <button type="button" className="secondary page-action" onClick={() => onUploadVideo(captureSelection())}>
+              {getHtmlMediaInsertLabel("video", language)}
+            </button>
+          )}
+          {onUploadDocument && (
+            <button
+              type="button"
+              className="secondary page-action"
+              onClick={() => onUploadDocument(captureSelection())}
+            >
+              {getHtmlMediaInsertLabel("document", language)}
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="html-editor-grid">
+        <label className="html-panel">
+          <span>{t.htmlSource}</span>
+          <textarea
+            ref={textareaRef}
+            value={value}
+            onChange={(event) => {
+              onChange(event.target.value);
+              rememberSelection(
+                {
+                  start: event.target.selectionStart ?? event.target.value.length,
+                  end: event.target.selectionEnd ?? event.target.selectionStart ?? event.target.value.length,
+                },
+                event.target.value.length,
+              );
+            }}
+            onClick={captureSelection}
+            onFocus={captureSelection}
+            onKeyUp={captureSelection}
+            onSelect={captureSelection}
+            placeholder={t.htmlPlaceholder}
+            rows={12}
+          />
+        </label>
+        <div className="html-panel">
+          <span>{t.preview}</span>
+          <div
+            className="html-preview"
+            dangerouslySetInnerHTML={{ __html: previewHtml || `<p>${t.noPreviewYet}</p>` }}
+          />
+        </div>
+      </div>
+      <p className="sidebar-text">{t.htmlHelp}</p>
+    </div>
+  );
+}
+
+export function MediaSnippetLibrary({
+  assets,
+  onInsertHtml,
+  onAssignImage,
+  onAssignVideo,
+}: {
+  assets: MediaAssetInfo[];
+  onInsertHtml: (snippet: string) => void;
+  onAssignImage: (path: string) => void;
+  onAssignVideo: (path: string) => void;
+}) {
+  const { t } = useUi();
+  if (!assets.length) {
+    return null;
+  }
+  return (
+    <details className="media-library">
+      <summary>{t.localMediaLibrary}</summary>
+      <div className="media-library-list">
+        {assets.map((asset) => (
+          <article className="media-library-item" key={asset.path}>
+            <div>
+              <strong>{asset.label}</strong>
+              <span>
+                {asset.kind} • {formatBytes(asset.size_bytes)}
+              </span>
+              <code>{asset.path}</code>
+            </div>
+            <div className="media-library-actions">
+              {asset.kind === "image" ? (
+                <>
+                  <button type="button" className="secondary page-action" onClick={() => onAssignImage(asset.path)}>
+                    {t.useAsImage}
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary page-action"
+                    onClick={() => onInsertHtml(`<img src="${asset.path}" alt="${asset.label}" />`)}
+                  >
+                    {t.insertTag}
+                  </button>
+                </>
+              ) : asset.kind === "video" ? (
+                <>
+                  <button type="button" className="secondary page-action" onClick={() => onAssignVideo(asset.path)}>
+                    {t.useAsVideo}
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary page-action"
+                    onClick={() => onInsertHtml(`<video controls preload="metadata" src="${asset.path}"></video>`)}
+                  >
+                    {t.insertTag}
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="secondary page-action"
+                  onClick={() => onInsertHtml(buildDocumentLinkSnippet(asset))}
+                >
+                  {t.insertDocument}
+                </button>
+              )}
+            </div>
+          </article>
+        ))}
+      </div>
+    </details>
+  );
+}
+
+export function PageOutline({
+  pages,
+  activePageId,
+  onSelect,
+}: {
+  pages: LessonPageDraft[];
+  activePageId: string;
+  onSelect: (pageId: string) => void;
+}) {
+  const { t } = useUi();
+  return (
+    <div className="page-outline">
+      {pages.map((page, index) => (
+        <button
+          key={page.id}
+          type="button"
+          className={`page-chip ${page.id === activePageId ? "active" : ""}`}
+          onClick={() => onSelect(page.id)}
+        >
+          <strong>{index + 1}</strong>
+          <span>{page.pageTitle || `${t.page} ${index + 1}`}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function MediaFieldPreview({ url, kind, pending = false }: { url: string; kind: MediaKind; pending?: boolean }) {
+  const { t } = useUi();
+  const [hasError, setHasError] = useState(false);
+  const resolvedUrl = useMemo(() => resolveMediaUrl(url.trim()), [url]);
+
+  useEffect(() => {
+    setHasError(false);
+  }, [resolvedUrl, kind]);
+
+  if (pending) {
+    return <div className="media-preview-empty">{t.mediaDialogUploading}</div>;
+  }
+  if (!url.trim()) {
+    return (
+      <div className="media-preview-empty">
+        {kind === "image" ? t.noImageSelected : kind === "video" ? t.noVideoSelected : t.noDocumentSelected}
+      </div>
+    );
+  }
+  if (kind === "document") {
+    return (
+      <div className="media-preview-empty document-preview">
+        <strong>{t.attachDocument}</strong>
+        <span>{url.trim().split("/").pop() || url.trim()}</span>
+      </div>
+    );
+  }
+  if (hasError) {
+    return <div className="media-preview-empty">{t.mediaPreviewError}</div>;
+  }
+  return (
+    <div className="media-preview-frame">
+      {kind === "image" ? (
+        <img src={resolvedUrl} alt="Media preview" onError={() => setHasError(true)} />
+      ) : (
+        <video src={resolvedUrl} controls preload="metadata" onError={() => setHasError(true)} />
+      )}
+    </div>
+  );
+}
+
+export function MediaAttachmentCard({
+  scope,
+  kind,
+  url,
+  onAttach,
+  onRemove,
+  title,
+  attachLabel,
+  removeLabel,
+}: {
+  scope: "page" | "lesson";
+  kind: MediaKind;
+  url: string;
+  onAttach: () => void;
+  onRemove: () => void;
+  title?: string;
+  attachLabel?: string;
+  removeLabel?: string;
+}) {
+  const { t } = useUi();
+  const resolvedTitle = title ?? (kind === "image" ? t.imageBlockPreview : t.videoBlockPreview);
+  const resolvedAttachLabel = attachLabel ?? (kind === "image" ? t.attachImage : t.attachVideo);
+  const resolvedRemoveLabel = removeLabel ?? (kind === "image" ? t.removeImage : t.removeVideo);
+  return (
+    <div className="media-attachment-card" data-testid={`media-attachment-${scope}-${kind}`}>
+      <div className="media-attachment-head">
+        <strong>{resolvedTitle}</strong>
+        <div className="media-attachment-actions">
+          <button type="button" className="page-action secondary" onClick={onAttach}>
+            {resolvedAttachLabel}
+          </button>
+          <button type="button" className="page-action secondary" onClick={onRemove} disabled={!url.trim()}>
+            {resolvedRemoveLabel}
+          </button>
+        </div>
+      </div>
+      <MediaFieldPreview url={url} kind={kind} />
+      <span className="sidebar-text">{t.selectedAsset}</span>
+      <code className="media-asset-path">{url.trim() || t.noAssetSelected}</code>
+    </div>
+  );
+}
+
+export function MediaPickerDialog({
+  open,
+  kind,
+  assets,
+  onClose,
+  onSelect,
+  onUpload,
+}: {
+  open: boolean;
+  kind: MediaKind;
+  assets: MediaAssetInfo[];
+  onClose: () => void;
+  onSelect: (asset: MediaAssetInfo) => void;
+  onUpload: (file: File, kind: MediaKind, onProgress?: (progress: number) => void) => Promise<MediaAssetInfo>;
+}) {
+  const { t } = useUi();
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [activeTab, setActiveTab] = useState<"upload" | "library">("upload");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [draftPreviewUrl, setDraftPreviewUrl] = useState("");
+  const [error, setError] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [documentLinkText, setDocumentLinkText] = useState("");
+  const [libraryQuery, setLibraryQuery] = useState("");
+
+  useEffect(() => {
+    if (!open) {
+      setActiveTab("upload");
+      setSelectedFile(null);
+      setDraftPreviewUrl("");
+      setError("");
+      setUploading(false);
+      setUploadProgress(0);
+      setDocumentLinkText("");
+      setLibraryQuery("");
+      return;
+    }
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    queueMicrotask(() => closeButtonRef.current?.focus());
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab" || !dialogRef.current) {
+        return;
+      }
+      const focusables = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((element) => !element.hasAttribute("hidden"));
+      if (!focusables.length) {
+        return;
+      }
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open, onClose]);
+
+  useEffect(() => {
+    return () => {
+      if (draftPreviewUrl) {
+        URL.revokeObjectURL(draftPreviewUrl);
+      }
+    };
+  }, [draftPreviewUrl]);
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const nextFile = event.target.files?.[0] ?? null;
+    setSelectedFile(nextFile);
+    setError("");
+    setUploadProgress(0);
+    if (draftPreviewUrl) {
+      URL.revokeObjectURL(draftPreviewUrl);
+      setDraftPreviewUrl("");
+    }
+    if (nextFile) {
+      setDraftPreviewUrl(URL.createObjectURL(nextFile));
+      if (kind === "document") {
+        setDocumentLinkText(nextFile.name.replace(/\.[^.]+$/, ""));
+      }
+    }
+  }
+
+  function assetWithDocumentLabel(asset: MediaAssetInfo): MediaAssetInfo {
+    if (kind !== "document") {
+      return asset;
+    }
+    const label = documentLinkText.trim() || asset.label || asset.filename;
+    return { ...asset, label };
+  }
+
+  async function submitUpload() {
+    if (!selectedFile) {
+      setError(t.selectFileFirst);
+      return;
+    }
+    setUploading(true);
+    setUploadProgress(0);
+    setError("");
+    try {
+      const uploaded = await onUpload(selectedFile, kind, setUploadProgress);
+      onSelect(assetWithDocumentLabel(uploaded));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t.failedSaveLesson);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  if (!open) {
+    return null;
+  }
+
+  const normalizedLibraryQuery = libraryQuery.trim().toLowerCase();
+  const filteredAssets = assets.filter((asset) => {
+    if (asset.kind !== kind) {
+      return false;
+    }
+    if (!normalizedLibraryQuery) {
+      return true;
+    }
+    return [asset.label, asset.filename, asset.path, asset.mime_type, asset.kind]
+      .join(" ")
+      .toLowerCase()
+      .includes(normalizedLibraryQuery);
+  });
+  const title = getMediaDialogTitle(kind, t);
+  const isServerProcessing = kind === "video" && uploading && uploadProgress >= 100;
+  const visibleUploadProgress = isServerProcessing ? 99 : uploadProgress;
+
+  return (
+    <div
+      className="modal-backdrop"
+      role="presentation"
+      onMouseDown={(event) => event.target === event.currentTarget && onClose()}
+    >
+      <div
+        ref={dialogRef}
+        className="modal-dialog media-dialog"
+        data-testid="media-picker-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={`media-dialog-title-${kind}`}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="modal-head">
+          <div>
+            <strong className="studio-eyebrow">{getMediaKindLabel(kind, t)}</strong>
+            <h3 id={`media-dialog-title-${kind}`}>{title}</h3>
+          </div>
+          <button ref={closeButtonRef} type="button" className="page-action secondary" onClick={onClose}>
+            {t.modalClose}
+          </button>
+        </div>
+
+        <div className="modal-tabs" role="tablist" aria-label={title}>
+          <button
+            type="button"
+            className={`modal-tab ${activeTab === "upload" ? "active" : ""}`}
+            onClick={() => setActiveTab("upload")}
+          >
+            {t.mediaDialogUploadTab}
+          </button>
+          <button
+            type="button"
+            className={`modal-tab ${activeTab === "library" ? "active" : ""}`}
+            onClick={() => setActiveTab("library")}
+          >
+            {t.mediaDialogLibraryTab}
+          </button>
+        </div>
+
+        {error && <Notice text={error} tone="error" />}
+
+        {activeTab === "upload" ? (
+          <div className="modal-section stack">
+            <label className="form-card compact">
+              <span>{t.mediaDialogChooseFile}</span>
+              <input type="file" accept={getMediaAccept(kind)} onChange={handleFileChange} />
+              <span className="form-helper">{getMediaUploadHint(kind, t)}</span>
+            </label>
+            {kind === "document" && (
+              <label className="form-card compact">
+                <span>{t.mediaDialogDocumentLinkText}</span>
+                <input
+                  value={documentLinkText}
+                  onChange={(event) => setDocumentLinkText(event.target.value)}
+                  placeholder={selectedFile?.name.replace(/\.[^.]+$/, "") || t.mediaDialogDocumentLinkText}
+                />
+              </label>
+            )}
+            <div className="media-dialog-preview">
+              <MediaFieldPreview url={draftPreviewUrl} kind={kind} pending={uploading} />
+              <code className="media-asset-path">{selectedFile?.name ?? t.noAssetSelected}</code>
+            </div>
+            {uploading && (
+              <div className="media-upload-progress" aria-live="polite">
+                <div className="media-upload-progress-meta">
+                  <strong>{t.mediaDialogUploadProgress}</strong>
+                  <span>{visibleUploadProgress}%</span>
+                </div>
+                <div
+                  className="media-upload-progress-track"
+                  role="progressbar"
+                  aria-label={t.mediaDialogUploadProgress}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={visibleUploadProgress}
+                >
+                  <div
+                    className="media-upload-progress-value"
+                    style={{ width: `${Math.min(100, Math.max(0, visibleUploadProgress))}%` }}
+                  />
+                </div>
+                {isServerProcessing && <span className="form-helper">{t.mediaDialogProcessingHint}</span>}
+              </div>
+            )}
+            <div className="modal-actions">
+              <button type="button" onClick={() => void submitUpload()} disabled={!selectedFile || uploading}>
+                {isServerProcessing
+                  ? t.mediaDialogProcessing
+                  : uploading
+                    ? t.mediaDialogUploading
+                    : t.mediaDialogUploadAction}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="modal-section media-library-list">
+            <label className="media-library-search">
+              <span>{t.mediaDialogSearch}</span>
+              <input
+                value={libraryQuery}
+                onChange={(event) => setLibraryQuery(event.target.value)}
+                placeholder={t.mediaDialogSearchPlaceholder}
+                autoComplete="off"
+              />
+            </label>
+            {kind === "document" && (
+              <label className="form-card compact">
+                <span>{t.mediaDialogDocumentLinkText}</span>
+                <input
+                  value={documentLinkText}
+                  onChange={(event) => setDocumentLinkText(event.target.value)}
+                  placeholder={t.mediaDialogDocumentLinkText}
+                />
+              </label>
+            )}
+            {filteredAssets.length ? (
+              filteredAssets.map((asset) => (
+                <article className="media-library-item" key={asset.path}>
+                  <div className="media-library-body">
+                    <MediaFieldPreview url={asset.path} kind={kind} />
+                    <div className="stack compact">
+                      <strong>{asset.label}</strong>
+                      <span>
+                        {asset.filename} • {formatBytes(asset.size_bytes)}
+                      </span>
+                      <code>{asset.path}</code>
+                    </div>
+                  </div>
+                  <div className="media-library-actions">
+                    <button
+                      type="button"
+                      className="page-action secondary"
+                      onClick={() => onSelect(assetWithDocumentLabel(asset))}
+                    >
+                      {t.mediaDialogSelect}
+                    </button>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <EmptyState title={t.mediaDialogNoAssets} />
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function LessonPagePreviewCard({ page }: { page: LessonPageDraft }) {
+  const previewHtml = useMemo(() => sanitizePreviewHtml(page.html), [page.html]);
+  const { t } = useUi();
+  return (
+    <div className="lesson-preview">
+      <div className="lesson-preview-head">
+        <strong>{t.learnerPreview}</strong>
+        <span>
+          {page.chapterTitle || t.chapter} / {page.pageTitle || t.page}
+        </span>
+      </div>
+      <div
+        className="html-preview"
+        dangerouslySetInnerHTML={{ __html: previewHtml || `<p>${t.noPageContentYet}</p>` }}
+      />
+      {(page.imageUrl.trim() || page.videoUrl.trim()) && (
+        <div className="lesson-preview-media">
+          {page.imageUrl.trim() && <MediaFieldPreview url={page.imageUrl} kind="image" />}
+          {page.videoUrl.trim() && <MediaFieldPreview url={page.videoUrl} kind="video" />}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function useDebouncedValue<T>(value: T, delay = 200) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebounced(value), delay);
+    return () => window.clearTimeout(id);
+  }, [delay, value]);
+  return debounced;
+}
+
+export function useRemote<T>(path: string | null, session: SessionState | null, refreshKey = 0) {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(Boolean(path && session));
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    async function load() {
+      if (!path || !session) {
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      setError("");
+      try {
+        const payload = (await apiRequest(path, session)) as T;
+        if (active) {
+          setData(payload);
+        }
+      } catch (err) {
+        if (active) {
+          setError(err instanceof Error ? err.message : "Request failed");
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+    load();
+    return () => {
+      active = false;
+    };
+  }, [path, refreshKey, session]);
+
+  return { data, loading, error, setData };
+}
+
+export function SearchInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <label className="search-input">
+      <svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16">
+        <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" strokeWidth="2" />
+        <path d="M20 20l-3.5-3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+      <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />
+      {value ? (
+        <button type="button" className="button-ghost search-clear" aria-label="Clear" onClick={() => onChange("")}>
+          x
+        </button>
+      ) : null}
+    </label>
+  );
+}
+
+export function Pagination({
+  page,
+  totalPages,
+  onChange,
+}: {
+  page: number;
+  totalPages: number;
+  onChange: (page: number) => void;
+}) {
+  if (totalPages <= 1) {
+    return null;
+  }
+  return (
+    <nav className="pagination" aria-label="pagination">
+      <button type="button" className="button-ghost" disabled={page <= 1} onClick={() => onChange(page - 1)}>
+        &lt;
+      </button>
+      <span>
+        {page} / {totalPages}
+      </span>
+      <button type="button" className="button-ghost" disabled={page >= totalPages} onClick={() => onChange(page + 1)}>
+        &gt;
+      </button>
+    </nav>
+  );
+}
+
+export function LoginPage({
+  onLogin,
+}: {
+  onLogin: (value: SessionState, options: { login: string; organizationCode: string }) => void;
+}) {
+  const { language, t, setLanguage } = useUi();
+  const [email, setEmail] = useState(() => (ENABLE_DEV_AUTH_PREFILL ? DEV_PREFILL_EMAIL : ""));
+  const [password, setPassword] = useState(() => (ENABLE_DEV_AUTH_PREFILL ? DEV_PREFILL_PASSWORD : ""));
+  const [tenantCode, setTenantCode] = useState(() => (ENABLE_DEV_AUTH_PREFILL ? DEV_PREFILL_TENANT : ""));
+  const [error, setError] = useState("");
+
+  function mapLoginErrorMessage(raw: string) {
+    const normalized = raw.trim().toLowerCase();
+    if (!normalized) return t.loginFailed;
+    if (normalized.includes("user is deactivated")) {
+      return language === "ru" ? "Пользователь деактивирован" : "User is deactivated";
+    }
+    if (normalized.includes("invalid credentials")) {
+      return language === "ru" ? "Неверный логин или пароль" : "Invalid email or password";
+    }
+    if (normalized.includes("tenant membership required")) {
+      return language === "ru" ? "Нет доступа к выбранной организации" : "No access to selected tenant";
+    }
+    return raw;
+  }
+
+  async function submit() {
+    try {
+      setError("");
+      const normalizedTenantCode = normalizeTenantCode(tenantCode);
+      if (!normalizedTenantCode) {
+        setError(language === "ru" ? "Введите код организации" : "Enter tenant code");
+        return;
+      }
+      const tokens = await login(email, password);
+      onLogin(
+        {
+          accessToken: tokens.access_token,
+          refreshToken: tokens.refresh_token,
+          tenantCode: normalizedTenantCode,
+        },
+        {
+          login: normalizeLogin(email),
+          organizationCode: normalizedTenantCode,
+        },
+      );
+    } catch (err) {
+      setError(err instanceof Error ? mapLoginErrorMessage(err.message) : t.loginFailed);
+    }
+  }
+
+  return (
+    <section className="login-card">
+      <div className="login-language-switch">
+        <button
+          type="button"
+          className={`secondary ${language === "ru" ? "active" : ""}`}
+          onClick={() => setLanguage("ru")}
+        >
+          {t.russian}
+        </button>
+        <button
+          type="button"
+          className={`secondary ${language === "en" ? "active" : ""}`}
+          onClick={() => setLanguage("en")}
+        >
+          {t.english}
+        </button>
+      </div>
+      <div className="login-brand">
+        <img src={websiteLogo} alt="Coursum" />
+      </div>
+      <h1>{t.loginTitle}</h1>
+      <p>{t.loginSubtitle}</p>
+      <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.email} />
+      <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder={t.password} />
+      <input value={tenantCode} onChange={(e) => setTenantCode(e.target.value)} placeholder={t.tenantCode} />
+      <button onClick={submit}>{t.signIn}</button>
+      {error && <small className="error-text">{error}</small>}
+    </section>
+  );
+}
+
+export function Shell({
+  session,
+  onLogout,
+  onSessionChange,
+}: {
+  session: SessionState;
+  onLogout: () => void;
+  onSessionChange: (value: SessionState) => void;
+}) {
+  const { language, t } = useUi();
+  const location = useLocation();
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const profile = useRemote<UserProfileInfo>("/auth/me", session, session.tenantCode.length);
+  const links = useMemo(
+    () => [
+      ["/", t.dashboard],
+      ["/tenants", t.tenantSwitch],
+      ["/users", t.users],
+      ["/courses", t.courses],
+      ["/lessons", t.lessons],
+      ["/tests", t.tests],
+      ["/assignments", t.assignments],
+      ["/homework-reviews", language === "ru" ? "Проверка ДЗ" : "Homework review"],
+      ["/analytics", t.analytics],
+      ["/settings", t.settings],
+    ],
+    [language, t],
+  );
+
+  useEffect(() => {
+    setIsMobileNavOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 1100) {
+        setIsMobileNavOpen(false);
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileNavOpen) {
+      return;
+    }
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMobileNavOpen]);
+
+  if (profile.loading && !profile.data) {
+    return (
+      <section className="login-card app-loading-card">
+        <h1>{t.loading}</h1>
+        <div className="app-loading-dots" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </div>
+        <div className="app-loading-shimmer" aria-hidden="true" />
+      </section>
+    );
+  }
+
+  if (profile.error && !profile.data) {
+    return (
+      <section className="login-card">
+        <h1>{t.loginTitle}</h1>
+        <p>{profile.error}</p>
+        <button onClick={onLogout}>{t.logout}</button>
+      </section>
+    );
+  }
+
+  const permissions = getRolePermissions(profile.data?.tenant_role);
+
+  if (!permissions.canAccessWebPanel) {
+    return (
+      <section className="login-card">
+        <h1>{language === "ru" ? "Нет доступа" : "Access denied"}</h1>
+        <p>
+          {language === "ru"
+            ? "Эта веб-панель доступна только администраторам и преподавателям."
+            : "This web panel is available only for admins and teachers."}
+        </p>
+        <button onClick={onLogout}>{t.logout}</button>
+      </section>
+    );
+  }
+
+  return (
+    <div className={`layout ${isMobileNavOpen ? "layout-mobile-nav-open" : ""}`}>
+      <button
+        type="button"
+        className="mobile-nav-toggle"
+        aria-controls="admin-sidebar"
+        aria-expanded={isMobileNavOpen}
+        aria-label={language === "ru" ? "Открыть навигацию" : "Open navigation"}
+        onClick={() => setIsMobileNavOpen((current) => !current)}
+      >
+        <span />
+        <span />
+        <span />
+      </button>
+      {isMobileNavOpen ? (
+        <button
+          type="button"
+          className="mobile-nav-backdrop"
+          aria-label={language === "ru" ? "Закрыть навигацию" : "Close navigation"}
+          onClick={() => setIsMobileNavOpen(false)}
+        />
+      ) : null}
+      <aside id="admin-sidebar" className={`sidebar ${isMobileNavOpen ? "mobile-open" : ""}`}>
+        <div className="sidebar-brand">
+          <img src={websiteLogoWhite} alt="Coursum" />
+          <button
+            type="button"
+            className="sidebar-close"
+            aria-label={language === "ru" ? "Закрыть меню" : "Close menu"}
+            onClick={() => setIsMobileNavOpen(false)}
+          >
+            ×
+          </button>
+        </div>
+        <h2>
+          {t.tenant}: {session.tenantCode}
+        </h2>
+        <p className="sidebar-text">{t.organizationWorkspace}</p>
+        <nav>
+          {links.map(([href, label]) => (
+            <Link
+              key={href}
+              className={location.pathname === href ? "active" : ""}
+              to={href}
+              onClick={() => setIsMobileNavOpen(false)}
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
+        <button className="secondary" onClick={onLogout}>
+          {t.logout}
+        </button>
+      </aside>
+      <main className="main">
+        <Routes>
+          <Route path="/" element={<DashboardPage session={session} />} />
+          <Route path="/tenants" element={<TenantPage session={session} onSessionChange={onSessionChange} />} />
+          <Route path="/users" element={<UsersPage session={session} />} />
+          <Route path="/courses" element={<CoursesPage session={session} />} />
+          <Route path="/lessons" element={<LessonsPage session={session} />} />
+          <Route path="/tests" element={<TestsPage session={session} />} />
+          <Route path="/assignments" element={<AssignmentsPage session={session} />} />
+          <Route path="/homework-reviews" element={<HomeworkReviewsPage session={session} />} />
+          <Route path="/analytics" element={<AnalyticsPage session={session} />} />
+          <Route path="/settings" element={<SettingsPage session={session} />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
+    </div>
+  );
+}
+
+export function CourseMultiSelect({
+  options,
+  value,
+  onChange,
+  t,
+}: {
+  options: Array<{ id: number; title: string }>;
+  value: number[];
+  onChange: (next: number[]) => void;
+  t: UiMessages;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    function handleMouseDown(event: MouseEvent) {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleMouseDown);
+    return () => document.removeEventListener("mousedown", handleMouseDown);
+  }, [open]);
+
+  const triggerLabel =
+    value.length === 0
+      ? t.dashboardCourseFilterTrigger
+      : t.dashboardCourseFilterTriggerSelected.replace("{n}", String(value.length));
+
+  function toggleCourse(courseId: number) {
+    onChange(value.includes(courseId) ? value.filter((entry) => entry !== courseId) : [...value, courseId]);
+  }
+
+  return (
+    <div className="course-multiselect" ref={rootRef}>
+      <button type="button" className="button-ghost" onClick={() => setOpen((current) => !current)}>
+        {triggerLabel}
+      </button>
+      {open ? (
+        <div className="course-multiselect-popover" role="listbox">
+          {options.map((option) => (
+            <label key={option.id}>
+              <input type="checkbox" checked={value.includes(option.id)} onChange={() => toggleCourse(option.id)} />
+              <span>{option.title}</span>
+            </label>
+          ))}
+          <button
+            type="button"
+            className="button-ghost course-multiselect-clear"
+            onClick={() => {
+              onChange([]);
+            }}
+          >
+            {t.dashboardCourseFilterClear}
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export function DashboardPage({ session }: { session: SessionState }) {
+  const { language, t } = useUi();
+  const coursesPageSize = 4;
+  const topicsPageSize = 4;
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [selectedPeriod, setSelectedPeriod] = useState<"7d" | "30d" | "quarter" | "all">("30d");
+  const [selectedCourses, setSelectedCourses] = useState<number[]>([]);
+  const [courseView, setCourseView] = useState<"cards" | "table">("cards");
+  const [courseSort, setCourseSort] = useState<"progress_asc" | "progress_desc" | "learners_desc">("progress_desc");
+  const [coursesPage, setCoursesPage] = useState(1);
+  const [topicsPage, setTopicsPage] = useState(1);
+  const dashboardFilterQuery = useMemo(() => {
+    const params = new URLSearchParams();
+    for (const courseId of selectedCourses) {
+      params.append("course_id", String(courseId));
+    }
+    const query = params.toString();
+    return query ? `?${query}` : "";
+  }, [selectedCourses]);
+  const timelineQuery = useMemo(() => {
+    const params = new URLSearchParams();
+    params.set("period", selectedPeriod);
+    for (const courseId of selectedCourses) {
+      params.append("course_id", String(courseId));
+    }
+    return `?${params.toString()}`;
+  }, [selectedCourses, selectedPeriod]);
+  const stats = useRemote<Record<string, number>>(`/analytics/dashboard${dashboardFilterQuery}`, session, refreshKey);
+  const progress = useRemote<
+    Array<{ course_id: number; course_title: string; avg_progress: number; learners: number }>
+  >(`/analytics/course-progress${dashboardFilterQuery}`, session, refreshKey);
+  const problems = useRemote<Array<{ topic_title: string; recommendations: number }>>(
+    `/analytics/problem-topics${dashboardFilterQuery}`,
+    session,
+    refreshKey,
+  );
+  const timeline = useRemote<{ labels: string[]; attempts: number[]; completions: number[] }>(
+    `/analytics/timeline${timelineQuery}`,
+    session,
+    refreshKey,
+  );
+  const statsData = stats.data ?? {};
+  const dashboardSubtitle =
+    selectedCourses.length === 1
+      ? t.dashboardSubtitleSelectedSingle
+      : selectedCourses.length > 1
+        ? t.dashboardSubtitleSelectedMany
+        : t.dashboardSubtitle;
+  const courseHealthSubtitle =
+    selectedCourses.length === 1
+      ? t.dashboardCourseHealthSubtitleSelectedSingle
+      : selectedCourses.length > 1
+        ? t.dashboardCourseHealthSubtitleSelectedMany
+        : t.dashboardCourseHealthSubtitle;
+  const attentionSubtitle =
+    selectedCourses.length === 1
+      ? t.dashboardAttentionSubtitleSelectedSingle
+      : selectedCourses.length > 1
+        ? t.dashboardAttentionSubtitleSelectedMany
+        : t.dashboardAttentionSubtitle;
+  const avgProgressCaption =
+    selectedCourses.length === 1
+      ? t.dashboardKpiAvgProgressCaptionSelectedSingle
+      : selectedCourses.length > 1
+        ? t.dashboardKpiAvgProgressCaptionSelectedMany
+        : t.dashboardKpiAvgProgressCaption;
+  const periodLabels = {
+    "7d": t.dashboardPeriod7d,
+    "30d": t.dashboardPeriod30d,
+    quarter: t.dashboardPeriodQuarter,
+    all: t.dashboardPeriodAll,
+  } as const;
+  const filteredCourses = useMemo(() => {
+    const source = progress.data ?? [];
+    const bySelection = selectedCourses.length
+      ? source.filter((item) => selectedCourses.includes(item.course_id))
+      : source;
+    const sorted = [...bySelection];
+    if (courseSort === "progress_asc") sorted.sort((a, b) => a.avg_progress - b.avg_progress);
+    if (courseSort === "progress_desc") sorted.sort((a, b) => b.avg_progress - a.avg_progress);
+    if (courseSort === "learners_desc") sorted.sort((a, b) => b.learners - a.learners);
+    return sorted;
+  }, [courseSort, progress.data, selectedCourses]);
+  const filteredTopics = useMemo(() => problems.data ?? [], [problems.data]);
+  const coursesPageCount = Math.max(1, Math.ceil(filteredCourses.length / coursesPageSize));
+  const topicsPageCount = Math.max(1, Math.ceil(filteredTopics.length / topicsPageSize));
+  const pagedCourses = useMemo(() => {
+    const start = (coursesPage - 1) * coursesPageSize;
+    return filteredCourses.slice(start, start + coursesPageSize);
+  }, [coursesPage, coursesPageSize, filteredCourses]);
+  const pagedTopics = useMemo(() => {
+    const start = (topicsPage - 1) * topicsPageSize;
+    return filteredTopics.slice(start, start + topicsPageSize);
+  }, [filteredTopics, topicsPage, topicsPageSize]);
+  const kpis = useMemo(
+    () => [
+      {
+        key: "users",
+        label: t.dashboardKpiLearners,
+        value: String(statsData.users ?? 0),
+        primary: false,
+        caption: t.dashboardKpiLearnersCaption,
+      },
+      {
+        key: "active_attempts",
+        label: t.dashboardKpiActiveAttempts,
+        value: String(statsData.active_attempts ?? 0),
+        primary: false,
+        caption: t.dashboardKpiActiveAttemptsCaption,
+      },
+      {
+        key: "avg_progress",
+        label: t.dashboardKpiAvgProgress,
+        value: `${statsData.avg_progress ?? 0}%`,
+        primary: true,
+        caption: avgProgressCaption,
+      },
+      {
+        key: "recommendations",
+        label: t.dashboardKpiRecommendations,
+        value: String(statsData.recommendations ?? 0),
+        primary: false,
+        caption: t.dashboardKpiRecommendationsCaption,
+      },
+    ],
+    [
+      statsData.active_attempts,
+      statsData.avg_progress,
+      statsData.recommendations,
+      statsData.users,
+      t.dashboardKpiActiveAttempts,
+      t.dashboardKpiActiveAttemptsCaption,
+      t.dashboardKpiAvgProgress,
+      avgProgressCaption,
+      t.dashboardKpiLearners,
+      t.dashboardKpiLearnersCaption,
+      t.dashboardKpiRecommendations,
+      t.dashboardKpiRecommendationsCaption,
+    ],
+  );
+  const activitySeries = useMemo(
+    () => ({ attempts: timeline.data?.attempts ?? [], completions: timeline.data?.completions ?? [] }),
+    [timeline.data?.attempts, timeline.data?.completions],
+  );
+  const activityLineSeries = useMemo(
+    () => [
+      { name: t.dashboardActivityAttempts, data: activitySeries.attempts, color: "#2563eb" },
+      { name: t.dashboardActivityCompletions, data: activitySeries.completions, color: "#22c55e" },
+    ],
+    [activitySeries.attempts, activitySeries.completions, t.dashboardActivityAttempts, t.dashboardActivityCompletions],
+  );
+  const courseFilterOptions = useMemo(
+    () => (progress.data ?? []).map((item) => ({ id: item.course_id, title: item.course_title })),
+    [progress.data],
+  );
+  const hasError = Boolean(stats.error || progress.error || problems.error || timeline.error);
+  const totalAttempts = useMemo(
+    () => activitySeries.attempts.reduce((sum, value) => sum + value, 0),
+    [activitySeries.attempts],
+  );
+  const totalCompletions = useMemo(
+    () => activitySeries.completions.reduce((sum, value) => sum + value, 0),
+    [activitySeries.completions],
+  );
+  const completionRate = totalAttempts > 0 ? Math.round((totalCompletions / totalAttempts) * 100) : 0;
+  const activityPointsWithEvents = useMemo(() => {
+    const points = Math.max(activitySeries.attempts.length, activitySeries.completions.length);
+    let count = 0;
+    for (let index = 0; index < points; index++) {
+      if ((activitySeries.attempts[index] ?? 0) > 0 || (activitySeries.completions[index] ?? 0) > 0) {
+        count += 1;
+      }
+    }
+    return count;
+  }, [activitySeries.attempts, activitySeries.completions]);
+  const hasActivitySeries = activitySeries.attempts.length > 0 || activitySeries.completions.length > 0;
+  const hasActivityEvents = totalAttempts > 0 || totalCompletions > 0;
+  const isActivitySparse = hasActivityEvents && activityPointsWithEvents < 3;
+  const kpiTrendData = useMemo(
+    () => ({
+      users: [statsData.users ?? 0, statsData.users ?? 0, statsData.users ?? 0, statsData.users ?? 0],
+      active_attempts: timeline.data?.attempts?.length
+        ? timeline.data.attempts
+        : [statsData.active_attempts ?? 0, statsData.active_attempts ?? 0],
+      avg_progress: [
+        statsData.avg_progress ?? 0,
+        statsData.avg_progress ?? 0,
+        statsData.avg_progress ?? 0,
+        statsData.avg_progress ?? 0,
+      ],
+      recommendations: [
+        statsData.recommendations ?? 0,
+        statsData.recommendations ?? 0,
+        statsData.recommendations ?? 0,
+        statsData.recommendations ?? 0,
+      ],
+    }),
+    [
+      statsData.active_attempts,
+      statsData.avg_progress,
+      statsData.recommendations,
+      statsData.users,
+      timeline.data?.attempts,
+    ],
+  );
+
+  useEffect(() => {
+    setCoursesPage(1);
+  }, [selectedCourses, courseSort, courseView]);
+
+  useEffect(() => {
+    setCoursesPage((current) => Math.min(current, coursesPageCount));
+  }, [coursesPageCount]);
+
+  useEffect(() => {
+    setTopicsPage((current) => Math.min(current, topicsPageCount));
+  }, [topicsPageCount]);
+
+  return (
+    <section className="page-stack">
+      <PageHeader title={t.dashboardTitle} subtitle={dashboardSubtitle} />
+      <section className="card dashboard-toolbar">
+        <div className="dashboard-period-chips" role="tablist" aria-label={t.dashboardTitle}>
+          {Object.entries(periodLabels).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              className={`chip ${selectedPeriod === value ? "active" : ""}`}
+              aria-pressed={selectedPeriod === value}
+              onClick={() => setSelectedPeriod(value as "7d" | "30d" | "quarter" | "all")}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <CourseMultiSelect options={courseFilterOptions} value={selectedCourses} onChange={setSelectedCourses} t={t} />
+        <button type="button" className="toolbar-refresh" onClick={() => setRefreshKey((value) => value + 1)}>
+          {t.dashboardRefresh}
+        </button>
+      </section>
+      {hasError ? (
+        <Notice
+          text={[stats.error, progress.error, problems.error, timeline.error].filter(Boolean).join(" • ")}
+          tone="error"
+        />
+      ) : null}
+      {stats.loading ? (
+        <section className="dashboard-skeleton-grid" aria-busy="true">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="skeleton-card" />
+          ))}
+        </section>
+      ) : (
+        <section className="dashboard-kpi-grid">
+          {kpis.map((kpi) => (
+            <KpiCard
+              key={kpi.key}
+              label={kpi.label}
+              value={kpi.value}
+              compareLabel={t.dashboardDeltaUnavailable}
+              trendData={kpiTrendData[kpi.key as keyof typeof kpiTrendData]}
+              primary={kpi.primary}
+              caption={kpi.caption}
+            />
+          ))}
+        </section>
+      )}
+      <section className="dashboard-pill-row">
+        <article className="dashboard-pill courses">
+          <span className="dot" />
+          {t.dashboardSecondaryCourses}
+          <strong>{statsData.courses ?? 0}</strong>
+        </article>
+        <article className="dashboard-pill tests">
+          <span className="dot" />
+          {t.dashboardSecondaryTests}
+          <strong>{statsData.tests ?? 0}</strong>
+        </article>
+        <article className="dashboard-pill enrollments">
+          <span className="dot" />
+          {t.dashboardSecondaryEnrollments}
+          <strong>{statsData.enrollments ?? 0}</strong>
+        </article>
+      </section>
+      <section className="dashboard-main-grid">
+        <article className="card dashboard-panel dashboard-courses-card">
+          <div className="card-head dashboard-panel-head">
+            <div>
+              <h3>{t.dashboardCourseHealthTitle}</h3>
+              <p className="sidebar-text">{courseHealthSubtitle}</p>
+            </div>
+            <div className="dashboard-inline-controls">
+              <button
+                type="button"
+                className={courseView === "cards" ? "active" : ""}
+                aria-pressed={courseView === "cards"}
+                onClick={() => setCourseView("cards")}
+              >
+                {t.dashboardViewCards}
+              </button>
+              <button
+                type="button"
+                className={courseView === "table" ? "active" : ""}
+                aria-pressed={courseView === "table"}
+                onClick={() => setCourseView("table")}
+              >
+                {t.dashboardViewTable}
+              </button>
+              <select
+                value={courseSort}
+                onChange={(event) =>
+                  setCourseSort(event.target.value as "progress_asc" | "progress_desc" | "learners_desc")
+                }
+              >
+                <option value="progress_asc">{t.dashboardSortByProgressAsc}</option>
+                <option value="progress_desc">{t.dashboardSortByProgressDesc}</option>
+                <option value="learners_desc">{t.dashboardSortByLearners}</option>
+              </select>
+            </div>
+          </div>
+          {progress.loading ? (
+            <div className="skeleton-card compact" aria-busy="true" />
+          ) : !filteredCourses.length ? (
+            <EmptyState title={t.dashboardNoCourseProgress} />
+          ) : courseView === "cards" ? (
+            <div className="dashboard-course-list">
+              {pagedCourses.map((item) => {
+                const status = getProgressStatus(item.avg_progress, t);
+                const color = item.avg_progress < 40 ? "#ef4444" : item.avg_progress < 70 ? "#f59e0b" : "#22c55e";
+                return (
+                  <Link
+                    className="dashboard-course-card"
+                    to={`/courses?focus=${encodeURIComponent(item.course_title)}`}
+                    key={item.course_title}
+                  >
+                    <div className="dashboard-course-head">
+                      <strong>{item.course_title}</strong>
+                      <span>{item.avg_progress.toFixed(1)}%</span>
+                    </div>
+                    <div className="dashboard-progress-track">
+                      <div
+                        className="dashboard-progress-value"
+                        style={{ width: `${clampPercent(item.avg_progress)}%`, background: color }}
+                      />
+                    </div>
+                    <div className="dashboard-course-meta">
+                      <span>
+                        {item.learners} {t.dashboardLearnersLabel}
+                      </span>
+                      <span className={status.className}>
+                        {status.icon} {status.text}
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>{t.columnCourse}</th>
+                    <th>{t.learners}</th>
+                    <th>{t.averageProgress}</th>
+                    <th>{language === "ru" ? "Статус" : "Status"}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagedCourses.map((item) => {
+                    const status = getProgressStatus(item.avg_progress, t);
+                    return (
+                      <tr key={`table-${item.course_title}`}>
+                        <td>
+                          <Link to={`/courses?focus=${encodeURIComponent(item.course_title)}`}>
+                            {item.course_title}
+                          </Link>
+                        </td>
+                        <td>{item.learners}</td>
+                        <td>
+                          <div className="dashboard-table-progress">
+                            <span>{item.avg_progress.toFixed(1)}%</span>
+                            <MiniBarChart
+                              width={120}
+                              height={26}
+                              data={[
+                                item.avg_progress,
+                                item.avg_progress,
+                                item.avg_progress,
+                                item.avg_progress,
+                                item.avg_progress,
+                                item.avg_progress,
+                                item.avg_progress,
+                                item.avg_progress,
+                              ]}
+                              color="#2563eb"
+                              ariaLabel={`${item.course_title} progress`}
+                            />
+                          </div>
+                        </td>
+                        <td>
+                          <span className={status.className}>
+                            {status.icon} {status.text}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {filteredCourses.length > 0 && coursesPageCount > 1 ? (
+            <div className="dashboard-pagination">
+              <button
+                type="button"
+                className="button-ghost"
+                onClick={() => setCoursesPage((p) => Math.max(1, p - 1))}
+                disabled={coursesPage <= 1}
+              >
+                {language === "ru" ? "Назад" : "Prev"}
+              </button>
+              <span>
+                {language === "ru"
+                  ? `Страница ${coursesPage} из ${coursesPageCount}`
+                  : `Page ${coursesPage} of ${coursesPageCount}`}
+              </span>
+              <button
+                type="button"
+                className="button-ghost"
+                onClick={() => setCoursesPage((p) => Math.min(coursesPageCount, p + 1))}
+                disabled={coursesPage >= coursesPageCount}
+              >
+                {language === "ru" ? "Далее" : "Next"}
+              </button>
+            </div>
+          ) : null}
+        </article>
+        <article className="card dashboard-panel dashboard-topics-card">
+          <div className="card-head dashboard-panel-head">
+            <div>
+              <h3>{t.dashboardAttentionTitle}</h3>
+              <p className="sidebar-text">{attentionSubtitle}</p>
+            </div>
+            <span className="dashboard-topics-total">
+              {t.dashboardTopicsTotal}: {(problems.data ?? []).length}
+            </span>
+          </div>
+          {problems.loading ? (
+            <div className="skeleton-card compact" aria-busy="true" />
+          ) : !filteredTopics.length ? (
+            <EmptyState title={t.dashboardNoProblemTopics} />
+          ) : (
+            <div className="dashboard-topic-chart">
+              {pagedTopics.map((item) => {
+                const max = Math.max(1, ...(problems.data ?? []).map((entry) => entry.recommendations));
+                const barWidthPct = (item.recommendations / max) * 100;
+                const ratio = item.recommendations / max;
+                const heatClass = ratio <= 0.33 ? "cool" : ratio <= 0.66 ? "warm" : "hot";
+                return (
+                  <div className="dashboard-topic-row" key={`${item.topic_title}-${item.recommendations}`}>
+                    <span>{item.topic_title}</span>
+                    <div
+                      className="topic-bar-track"
+                      role="img"
+                      aria-label={`${item.topic_title} ${item.recommendations}`}
+                    >
+                      <div className={`topic-bar-fill ${heatClass}`} style={{ width: `${barWidthPct}%` }} />
+                    </div>
+                    <strong>{item.recommendations}</strong>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {filteredTopics.length > 0 && topicsPageCount > 1 ? (
+            <div className="dashboard-pagination">
+              <button
+                type="button"
+                className="button-ghost"
+                onClick={() => setTopicsPage((p) => Math.max(1, p - 1))}
+                disabled={topicsPage <= 1}
+              >
+                {language === "ru" ? "Назад" : "Prev"}
+              </button>
+              <span>
+                {language === "ru"
+                  ? `Страница ${topicsPage} из ${topicsPageCount}`
+                  : `Page ${topicsPage} of ${topicsPageCount}`}
+              </span>
+              <button
+                type="button"
+                className="button-ghost"
+                onClick={() => setTopicsPage((p) => Math.min(topicsPageCount, p + 1))}
+                disabled={topicsPage >= topicsPageCount}
+              >
+                {language === "ru" ? "Далее" : "Next"}
+              </button>
+            </div>
+          ) : null}
+        </article>
+        <article className="card dashboard-panel dashboard-activity-card">
+          <div className="card-head dashboard-panel-head">
+            <div>
+              <h3>{t.dashboardActivityTitle}</h3>
+              <p className="sidebar-text">{t.dashboardActivityExplanation}</p>
+            </div>
+          </div>
+          {timeline.loading ? (
+            <div className="skeleton-card compact" aria-busy="true" />
+          ) : hasActivitySeries && hasActivityEvents ? (
+            <>
+              <div className="dashboard-activity-summary">
+                <span>
+                  {t.dashboardActivityStartedTotal}: <strong>{totalAttempts}</strong>
+                </span>
+                <span>
+                  {t.dashboardActivityCompletedTotal}: <strong>{totalCompletions}</strong>
+                </span>
+                <span>
+                  {t.dashboardActivityCompletionRate}: <strong>{completionRate}%</strong>
+                </span>
+              </div>
+              {isActivitySparse ? (
+                <p className="sidebar-text dashboard-activity-note">{t.dashboardActivitySparseNote}</p>
+              ) : null}
+              <LineChart
+                width={760}
+                height={220}
+                ariaLabel={t.dashboardActivityTitle}
+                series={activityLineSeries}
+                xLabels={timeline.data?.labels}
+              />
+              <div className="dashboard-legend">
+                {activityLineSeries.map((s) => (
+                  <span key={s.name}>
+                    <i className="dot" style={{ background: s.color }} />
+                    {s.name}
+                  </span>
+                ))}
+              </div>
+            </>
+          ) : (
+            <EmptyState title={t.noData} />
+          )}
+        </article>
+      </section>
+    </section>
+  );
+}
+
+export function TenantPage({
+  session,
+  onSessionChange,
+}: {
+  session: SessionState;
+  onSessionChange: (value: SessionState) => void;
+}) {
+  const { language, t } = useUi();
+  const tenants = useRemote<TenantInfo[]>("/tenants", session);
+  const current = useRemote<TenantInfo>("/tenants/current", session, session.tenantCode.length);
+  const [status, setStatus] = useState("");
+
+  async function switchTenant(code: string) {
+    await apiPost("/tenants/select", session, { code });
+    onSessionChange({ ...session, tenantCode: code });
+    setStatus(language === "ru" ? `Переключено на организацию ${code}` : `Switched to tenant ${code}`);
+  }
+
+  return (
+    <section className="page-stack">
+      <PageHeader title={t.tenantSwitchTitle} subtitle={t.tenantSwitchSubtitle} />
+      {status && <Notice text={status} />}
+      <section className="grid two-columns">
+        <article className="card">
+          <h3>{t.currentTenant}</h3>
+          {current.data ? (
+            <KeyValueList
+              items={[
+                [t.name, current.data.name],
+                [t.code, current.data.code],
+                [t.locale, current.data.locale],
+              ]}
+            />
+          ) : (
+            <EmptyState title={t.loadingCurrentTenant} />
+          )}
+        </article>
+        <article className="card">
+          <h3>{t.availableTenants}</h3>
+          <div className="stack">
+            {(tenants.data ?? []).map((tenant) => (
+              <div className="list-row" key={tenant.id}>
+                <div>
+                  <strong>{tenant.name}</strong>
+                  <span>{tenant.code}</span>
+                </div>
+                <button onClick={() => void switchTenant(tenant.code)}>{t.switch}</button>
+              </div>
+            ))}
+          </div>
+        </article>
+      </section>
+    </section>
+  );
+}
+
+export function UsersPage({ session }: { session: SessionState }) {
+  const { t } = useUi();
+  const [refreshKey, setRefreshKey] = useState(0);
+  const profile = useRemote<UserProfileInfo>("/auth/me", session, refreshKey);
+  const users = useRemote<UserInfo[]>("/users", session, refreshKey);
+  const [form, setForm] = useState({ email: "", fullName: "", password: "", roleName: "learner" });
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [userSearch, setUserSearch] = useState("");
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
+  const userRole = profile.data?.tenant_role ?? null;
+  const permissions = getRolePermissions(userRole);
+  const canEditUsers = permissions.canManageUsers;
+  const normalizedUserSearch = userSearch.trim().toLowerCase();
+  const filteredUsers = useMemo(() => {
+    const allUsers = users.data ?? [];
+    if (!normalizedUserSearch) {
+      return allUsers;
+    }
+    return allUsers.filter((user) => {
+      const roleLabel = formatRoleLabel(user.role_name, t).toLowerCase();
+      return (
+        user.full_name.toLowerCase().includes(normalizedUserSearch) ||
+        user.email.toLowerCase().includes(normalizedUserSearch) ||
+        roleLabel.includes(normalizedUserSearch)
+      );
+    });
+  }, [users.data, normalizedUserSearch, t]);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setError("");
+    try {
+      await apiPost("/users", session, {
+        email: form.email,
+        full_name: form.fullName,
+        password: form.password,
+        role_name: form.roleName,
+      });
+      setForm({ email: "", fullName: "", password: "", roleName: "learner" });
+      setRefreshKey((value) => value + 1);
+      setStatus(t.userUpdated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t.failedCreateUser);
+    }
+  }
+
+  async function toggleUser(user: UserInfo) {
+    setError("");
+    try {
+      await apiPatch(`/users/${user.id}`, session, { is_active: !user.is_active });
+      setRefreshKey((value) => value + 1);
+      setStatus(t.userCreated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t.failedUpdateUser);
+    }
+  }
+
+  return (
+    <section className="page-stack">
+      <PageHeader title={t.usersPageTitle} subtitle={t.usersPageSubtitle} />
+      {status && <Notice text={status} />}
+      {error && <Notice text={error} tone="error" />}
+      <section className="grid two-columns users-layout">
+        {canEditUsers ? (
+          <FormCard title={t.createUser} onSubmit={submit} className="user-create-card">
+            <p className="form-helper form-helper-intro">{t.userCreateIntro}</p>
+            <div className="user-form-grid">
+              <label>
+                {t.email}
+                <input
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  placeholder={t.email}
+                  required
+                />
+              </label>
+              <label>
+                {t.fullName}
+                <input
+                  value={form.fullName}
+                  onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+                  placeholder={t.fullName}
+                  required
+                />
+              </label>
+              <label>
+                {t.password}
+                <div className="user-inline-control">
+                  <input
+                    value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    type={isPasswordVisible ? "text" : "password"}
+                    autoComplete="new-password"
+                    placeholder={t.password}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="secondary user-inline-toggle"
+                    onClick={() => setIsPasswordVisible((value) => !value)}
+                    aria-label={isPasswordVisible ? t.hidePassword : t.showPassword}
+                    title={isPasswordVisible ? t.hidePassword : t.showPassword}
+                  >
+                    {isPasswordVisible ? (
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3 3l18 18" />
+                        <path d="M10.58 10.58a2 2 0 0 0 2.83 2.83" />
+                        <path d="M9.88 5.09A10.94 10.94 0 0 1 12 4c5 0 9.27 3.11 11 8a11.8 11.8 0 0 1-3.04 4.95" />
+                        <path d="M6.61 6.61A11.83 11.83 0 0 0 1 12c1.73 4.89 6 8 11 8a10.9 10.9 0 0 0 5.39-1.39" />
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </label>
+              <label>
+                {t.role}
+                <select value={form.roleName} onChange={(e) => setForm({ ...form, roleName: e.target.value })}>
+                  <option value="learner">{t.roleLearner}</option>
+                  <option value="teacher">{t.roleTeacher}</option>
+                  <option value="org_admin">{t.roleOrgAdmin}</option>
+                </select>
+              </label>
+            </div>
+            <div className="user-role-guide">
+              <strong>{t.userRoleGuideTitle}</strong>
+              <ul>
+                <li>{t.userRoleGuideLearner}</li>
+                <li>{t.userRoleGuideTeacher}</li>
+                <li>{t.userRoleGuideOrgAdmin}</li>
+              </ul>
+            </div>
+            <div className="user-access-note">
+              <strong>{t.userAccessGuideTitle}</strong>
+              <p>{t.userAccessGuideBody}</p>
+            </div>
+            <div className="user-form-actions">
+              <button type="submit">{t.createUserAction}</button>
+            </div>
+          </FormCard>
+        ) : (
+          <article className="card user-create-card">
+            <h3>{t.createUser}</h3>
+            <p className="form-helper">{t.userDirectoryReadonly}</p>
+          </article>
+        )}
+        <article className="card user-directory-card">
+          <div className="user-directory-head">
+            <h3>{t.userDirectory}</h3>
+            <p className="sidebar-text">{t.userDirectorySubtitle}</p>
+            <input
+              value={userSearch}
+              onChange={(event) => setUserSearch(event.target.value)}
+              placeholder={t.userSearchPlaceholder}
+              className="user-directory-search"
+            />
+          </div>
+          <div className="stack user-directory-list">
+            {filteredUsers.map((user) => (
+              <div className="list-row user-row" key={user.id}>
+                <div className="user-meta">
+                  <strong>{user.full_name}</strong>
+                  <span>{user.email}</span>
+                  <div className="user-subline">
+                    <span>{formatRoleLabel(user.role_name, t)}</span>
+                    <span className={`status-pill ${user.is_active ? "active" : "inactive"}`}>
+                      {user.is_active ? t.userStatusActive : t.userStatusInactive}
+                    </span>
+                  </div>
+                </div>
+                {canEditUsers && (
+                  <div className="user-actions">
+                    <button
+                      type="button"
+                      className={user.is_active ? undefined : "page-action secondary"}
+                      onClick={() => void toggleUser(user)}
+                    >
+                      {user.is_active ? t.deactivate : t.activate}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+            {users.loading && <EmptyState title={t.loadingUsers} />}
+            {!users.loading && filteredUsers.length === 0 && (
+              <EmptyState title={normalizedUserSearch ? t.userSearchNoResults : t.noData} />
+            )}
+          </div>
+        </article>
+      </section>
+    </section>
+  );
+}
+
+export function CoursesPage({ session }: { session: SessionState }) {
+  const { language, t } = useUi();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [refreshKey, setRefreshKey] = useState(0);
+  const courses = useRemote<CourseInfo[]>("/courses", session, refreshKey);
+  const profile = useRemote<UserProfileInfo>("/auth/me", session, refreshKey);
+  const [mediaRefreshKey, setMediaRefreshKey] = useState(0);
+  const mediaAssets = useRemote<MediaAssetInfo[]>("/media/library", session, mediaRefreshKey);
+  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
+  const [isCreatingCourse, setIsCreatingCourse] = useState(false);
+  const [coverPickerOpen, setCoverPickerOpen] = useState(false);
+  const lessons = useRemote<LessonInfo[]>(
+    selectedCourseId ? `/lessons?course_id=${selectedCourseId}` : null,
+    session,
+    refreshKey + (selectedCourseId ?? 0),
+  );
+  const sections = useRemote<SectionInfo[]>(
+    selectedCourseId ? `/courses/${selectedCourseId}/sections` : null,
+    session,
+    refreshKey + (selectedCourseId ?? 0),
+  );
+  const [editingCourseId, setEditingCourseId] = useState<number | null>(null);
+  const [form, setForm] = useState<CourseEditorFormState>(() => getDefaultCourseForm(language));
+  const [preview, setPreview] = useState<CoursePreviewInfo | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState("");
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
+  const requestedCourseId = parseCourseIdParam(searchParams.get("courseId"));
+
+  function updateCourseSearchParam(courseId: number | null) {
+    const currentValue = searchParams.get("courseId");
+    const nextValue = courseId === null ? null : String(courseId);
+    if (currentValue === nextValue) {
+      return;
+    }
+    const nextParams = new URLSearchParams(searchParams);
+    if (nextValue === null) {
+      nextParams.delete("courseId");
+    } else {
+      nextParams.set("courseId", nextValue);
+    }
+    setSearchParams(nextParams, { replace: true });
+  }
+
+  useEffect(() => {
+    if (isCreatingCourse || !courses.data?.length) {
+      return;
+    }
+    const requestedCourse = requestedCourseId
+      ? (courses.data.find((course) => course.id === requestedCourseId) ?? null)
+      : null;
+    if (requestedCourse) {
+      if (selectedCourseId !== requestedCourse.id || editingCourseId !== requestedCourse.id) {
+        setSelectedCourseId(requestedCourse.id);
+        setEditingCourseId(requestedCourse.id);
+        setForm(buildCourseFormFromCourse(requestedCourse, language));
+      }
+      return;
+    }
+    if (!selectedCourseId) {
+      const firstCourse = courses.data[0];
+      setSelectedCourseId(firstCourse.id);
+      setEditingCourseId(firstCourse.id);
+      setForm(buildCourseFormFromCourse(firstCourse, language));
+      updateCourseSearchParam(firstCourse.id);
+    }
+  }, [courses.data, editingCourseId, isCreatingCourse, language, requestedCourseId, selectedCourseId]);
+
+  useEffect(() => {
+    if (!selectedCourseId || isCreatingCourse) {
+      setPreview(null);
+      setPreviewError("");
+      return;
+    }
+    let active = true;
+    async function loadPreview() {
+      setPreviewLoading(true);
+      setPreviewError("");
+      try {
+        const payload = (await apiRequest(`/courses/${selectedCourseId}/preview`, session)) as CoursePreviewInfo;
+        if (active) {
+          setPreview(payload);
+        }
+      } catch (err) {
+        if (active) {
+          setPreview(null);
+          setPreviewError(
+            err instanceof Error
+              ? err.message
+              : language === "ru"
+                ? "Не удалось загрузить предпросмотр курса"
+                : "Failed to load course preview",
+          );
+        }
+      } finally {
+        if (active) {
+          setPreviewLoading(false);
+        }
+      }
+    }
+    void loadPreview();
+    return () => {
+      active = false;
+    };
+  }, [isCreatingCourse, language, selectedCourseId, session]);
+
+  function selectCourse(course: CourseInfo) {
+    setIsCreatingCourse(false);
+    setSelectedCourseId(course.id);
+    setEditingCourseId(course.id);
+    updateCourseSearchParam(course.id);
+    setError("");
+    setStatus("");
+    setForm(buildCourseFormFromCourse(course, language));
+  }
+
+  function startNewCourse() {
+    setIsCreatingCourse(true);
+    setSelectedCourseId(null);
+    setEditingCourseId(null);
+    updateCourseSearchParam(null);
+    setError("");
+    setStatus("");
+    setForm(getDefaultCourseForm(language));
+  }
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setError("");
+    try {
+      const payload = {
+        title: form.title,
+        description: form.description,
+        image_url: form.imageUrl || null,
+        status: form.status,
+        category: form.category.trim() || null,
+        access_settings: {
+          self_enrollment: form.selfEnrollment,
+          language: form.contentLanguage.trim() || language,
+        },
+        available_from: toIsoDateOrNull(form.availableFrom),
+        available_to: toIsoDateOrNull(form.availableTo),
+      };
+      const savedCourse = (
+        editingCourseId
+          ? await apiPatch(`/courses/${editingCourseId}`, session, payload)
+          : await apiPost("/courses", session, payload)
+      ) as CourseInfo;
+      setIsCreatingCourse(false);
+      setSelectedCourseId(savedCourse.id);
+      setEditingCourseId(savedCourse.id);
+      updateCourseSearchParam(savedCourse.id);
+      setForm(buildCourseFormFromCourse(savedCourse, language));
+      setRefreshKey((value) => value + 1);
+      setStatus(editingCourseId ? t.courseUpdated : t.courseCreated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t.failedSaveCourse);
+    }
+  }
+
+  function applySelectedCourseCover(asset: MediaAssetInfo) {
+    setForm((current) => ({ ...current, imageUrl: asset.path }));
+    setCoverPickerOpen(false);
+  }
+
+  async function uploadCourseCover(file: File, kind: MediaKind, onProgress?: (progress: number) => void) {
+    const payload = new FormData();
+    payload.set("target_kind", kind);
+    payload.set("file", file);
+    const uploaded = (await apiUpload("/media/upload", session, payload, onProgress)) as MediaAssetInfo;
+    setMediaRefreshKey((value) => value + 1);
+    return uploaded;
+  }
+
+  async function removeCourse() {
+    const courseToDelete = (courses.data ?? []).find((course) => course.id === editingCourseId) ?? null;
+    if (!editingCourseId || !courseToDelete) {
+      return;
+    }
+    const confirmText =
+      language === "ru"
+        ? `Курс будет архивирован, а не удалён безвозвратно.\n\nБудут отключены назначения и доступ учеников к курсу.\n\n${courseToDelete.title}`
+        : `The course will be archived instead of permanently deleted.\n\nLearner access and course assignments will be disabled.\n\n${courseToDelete.title}`;
+    if (typeof window !== "undefined" && !window.confirm(confirmText)) {
+      return;
+    }
+    setError("");
+    setStatus("");
+    try {
+      await apiDelete(`/courses/${editingCourseId}`, session);
+      const nextCourses = (courses.data ?? []).filter((course) => course.id !== editingCourseId);
+      courses.setData(nextCourses);
+      lessons.setData([]);
+      setRefreshKey((value) => value + 1);
+      if (nextCourses.length) {
+        const nextCourse = nextCourses[0];
+        setIsCreatingCourse(false);
+        setSelectedCourseId(nextCourse.id);
+        setEditingCourseId(nextCourse.id);
+        updateCourseSearchParam(nextCourse.id);
+        setForm(buildCourseFormFromCourse(nextCourse, language));
+      } else {
+        startNewCourse();
+      }
+      setStatus(language === "ru" ? "Курс архивирован" : "Course archived");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t.failedDeleteCourse);
+    }
+  }
+
+  async function setCourseStatus(nextStatus: "draft" | "published" | "archived") {
+    if (!editingCourseId) {
+      return;
+    }
+    setError("");
+    setStatus("");
+    try {
+      const saved = (await apiPatch(`/courses/${editingCourseId}/status`, session, {
+        status: nextStatus,
+      })) as CourseInfo;
+      setForm(buildCourseFormFromCourse(saved, language));
+      setRefreshKey((value) => value + 1);
+      setStatus(
+        nextStatus === "published"
+          ? language === "ru"
+            ? "Курс опубликован"
+            : "Course published"
+          : nextStatus === "archived"
+            ? language === "ru"
+              ? "Курс отправлен в архив"
+              : "Course archived"
+            : language === "ru"
+              ? "Курс переведён в черновик"
+              : "Course moved to draft",
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : language === "ru"
+            ? "Не удалось обновить статус курса"
+            : "Failed to update course status",
+      );
+    }
+  }
+
+  const selectedCourse = (courses.data ?? []).find((course) => course.id === selectedCourseId) ?? null;
+  const permissions = getRolePermissions(profile.data?.tenant_role);
+  const canEditCourses = permissions.canManageCourses;
+  const courseEditorLocked = profile.data?.tenant_role === "learner";
+  const selectedCourseStatus = normalizeCourseStatus(selectedCourse?.status ?? form.status);
+  const previewSectionTitles = new Map((preview?.sections ?? []).map((section) => [section.id, section.title]));
+
+  return (
+    <section className="page-stack">
+      <PageHeader title={t.coursesPageTitle} subtitle={t.coursesPageSubtitle} />
+      {status && <Notice text={status} />}
+      {error && <Notice text={error} tone="error" />}
+      <section className="lessons-builder">
+        <aside className="card studio-sidebar lessons-sidebar">
+          <div className="studio-sidebar-head">
+            <div>
+              <strong className="studio-eyebrow">{t.courseCatalog}</strong>
+              <h3>{t.curriculumContainers}</h3>
+              <p className="sidebar-text">{t.selectCourseToEdit}</p>
+            </div>
+            <button type="button" className="page-action secondary" onClick={startNewCourse} disabled={!canEditCourses}>
+              {t.newCourse}
+            </button>
+          </div>
+          <div className="studio-list">
+            {(courses.data ?? []).map((course) => (
+              <button
+                key={course.id}
+                type="button"
+                className={`studio-list-item ${course.id === selectedCourseId ? "active" : ""}`}
+                onClick={() => selectCourse(course)}
+              >
+                <div className="studio-list-main">
+                  <strong>{course.title}</strong>
+                  <span>{course.description || t.noDescriptionYet}</span>
+                </div>
+                <span className="studio-list-meta">#{course.id}</span>
+              </button>
+            ))}
+            {courses.loading && <EmptyState title={t.loadingCourses} />}
+            {courses.error && <EmptyState title={courses.error} />}
+          </div>
+        </aside>
+
+        <div className="studio-workspace">
+          {courseEditorLocked ? (
+            <section className="card studio-panel form-card">
+              <div className="studio-panel-head">
+                <div>
+                  <strong className="studio-eyebrow">{t.courseSettings}</strong>
+                  <h3>{t.courseEditorRestrictedTitle}</h3>
+                </div>
+              </div>
+              <Notice text={t.courseEditorRestrictedBody} tone="error" />
+              <div className="user-access-note">
+                <strong>{t.currentRole}</strong>
+                <p>{formatRoleLabel(profile.data?.tenant_role, t)}</p>
+              </div>
+            </section>
+          ) : (
+            <form className="card studio-panel form-card" onSubmit={submit}>
+              <div className="studio-panel-head">
+                <div>
+                  <strong className="studio-eyebrow">{editingCourseId ? t.courseSettings : t.createCourseLabel}</strong>
+                  <h3>{editingCourseId ? t.editSelectedCourse : t.createCourseShell}</h3>
+                </div>
+                <div className="studio-actions compact">
+                  {editingCourseId && (
+                    <span className="status-pill active">{getCourseStatusLabel(selectedCourseStatus, language)}</span>
+                  )}
+                  {selectedCourse && (
+                    <Link className="page-action secondary" to={`/lessons?courseId=${selectedCourse.id}`}>
+                      {t.openLessonBuilder}
+                    </Link>
+                  )}
+                </div>
+              </div>
+              <div className="studio-form-grid">
+                <label>
+                  {t.courseTitle}
+                  <input
+                    value={form.title}
+                    onChange={(e) => setForm({ ...form, title: e.target.value })}
+                    placeholder={t.courseTitle}
+                    required
+                  />
+                </label>
+                <label>
+                  {language === "ru" ? "Статус курса" : "Course status"}
+                  <select
+                    value={form.status}
+                    onChange={(e) => setForm({ ...form, status: normalizeCourseStatus(e.target.value) })}
+                  >
+                    <option value="draft">{language === "ru" ? "Черновик" : "Draft"}</option>
+                    <option value="published">{language === "ru" ? "Опубликован" : "Published"}</option>
+                    <option value="archived">{language === "ru" ? "Архив" : "Archived"}</option>
+                  </select>
+                </label>
+                <label>
+                  {language === "ru" ? "Категория" : "Category"}
+                  <input
+                    value={form.category}
+                    onChange={(e) => setForm({ ...form, category: e.target.value })}
+                    placeholder={language === "ru" ? "Например, Soft Skills" : "For example, Soft Skills"}
+                  />
+                </label>
+                <label>
+                  {language === "ru" ? "Язык контента" : "Content language"}
+                  <input
+                    value={form.contentLanguage}
+                    onChange={(e) => setForm({ ...form, contentLanguage: e.target.value })}
+                    placeholder="ru / en"
+                  />
+                </label>
+                <label>
+                  {language === "ru" ? "Доступен с" : "Available from"}
+                  <input
+                    type="datetime-local"
+                    value={form.availableFrom}
+                    onChange={(e) => setForm({ ...form, availableFrom: e.target.value })}
+                  />
+                </label>
+                <label>
+                  {language === "ru" ? "Доступен до" : "Available to"}
+                  <input
+                    type="datetime-local"
+                    value={form.availableTo}
+                    onChange={(e) => setForm({ ...form, availableTo: e.target.value })}
+                  />
+                </label>
+                <label className="studio-form-span">
+                  {t.description}
+                  <textarea
+                    value={form.description}
+                    onChange={(e) => setForm({ ...form, description: e.target.value })}
+                    placeholder={t.courseDescriptionPlaceholder}
+                    rows={5}
+                  />
+                </label>
+                <label className="studio-form-span">
+                  <span>{language === "ru" ? "Настройки доступа" : "Access settings"}</span>
+                  <div className="course-access-checkbox">
+                    <input
+                      id="course-self-enrollment"
+                      type="checkbox"
+                      checked={form.selfEnrollment}
+                      onChange={(e) => setForm({ ...form, selfEnrollment: e.target.checked })}
+                    />
+                    <label htmlFor="course-self-enrollment">
+                      {language === "ru" ? "Разрешить само-запись слушателя" : "Allow learner self-enrollment"}
+                    </label>
+                  </div>
+                </label>
+                <div className="studio-form-span stack compact">
+                  <span>{t.courseCover}</span>
+                  <span className="form-helper">{t.courseCoverHint}</span>
+                  <MediaAttachmentCard
+                    scope="lesson"
+                    kind="image"
+                    url={form.imageUrl}
+                    title={t.courseCover}
+                    onAttach={() => setCoverPickerOpen(true)}
+                    onRemove={() => setForm((current) => ({ ...current, imageUrl: "" }))}
+                  />
+                  {mediaAssets.error && <span className="form-helper">{mediaAssets.error}</span>}
+                </div>
+              </div>
+              <div className="studio-actions">
+                <button type="submit">{editingCourseId ? t.saveCourse : t.createCourseAction}</button>
+                {editingCourseId && (
+                  <button type="button" className="page-action secondary" onClick={startNewCourse}>
+                    {t.createAnotherCourse}
+                  </button>
+                )}
+                {editingCourseId && selectedCourseStatus !== "published" && (
+                  <button
+                    type="button"
+                    className="page-action secondary"
+                    onClick={() => void setCourseStatus("published")}
+                  >
+                    {language === "ru" ? "Опубликовать" : "Publish"}
+                  </button>
+                )}
+                {editingCourseId && selectedCourseStatus === "published" && (
+                  <button type="button" className="page-action secondary" onClick={() => void setCourseStatus("draft")}>
+                    {language === "ru" ? "Снять с публикации" : "Unpublish"}
+                  </button>
+                )}
+                {editingCourseId && selectedCourseStatus !== "archived" && (
+                  <button
+                    type="button"
+                    className="page-action secondary"
+                    onClick={() => void setCourseStatus("archived")}
+                  >
+                    {language === "ru" ? "В архив" : "Archive"}
+                  </button>
+                )}
+                {editingCourseId && selectedCourseStatus === "archived" && (
+                  <button type="button" className="page-action secondary" onClick={() => void setCourseStatus("draft")}>
+                    {language === "ru" ? "Восстановить из архива" : "Restore from archive"}
+                  </button>
+                )}
+                {editingCourseId && (
+                  <button type="button" className="page-action secondary" onClick={() => void removeCourse()}>
+                    {t.deleteCourse}
+                  </button>
+                )}
+              </div>
+            </form>
+          )}
+
+          <section className="card studio-panel">
+            <div className="studio-panel-head">
+              <div>
+                <strong className="studio-eyebrow">{t.curriculumPreview}</strong>
+                <h3>{selectedCourse ? selectedCourse.title : t.selectCourse}</h3>
+              </div>
+              <span className="studio-list-meta">
+                {lessons.data?.length ?? 0} {t.lessonsCount}
+              </span>
+            </div>
+            {selectedCourse ? (
+              <div className="stack">
+                <article className="course-preview-block">
+                  <div className="course-preview-head">
+                    <strong>{language === "ru" ? "Предпросмотр как ученик" : "Preview as learner"}</strong>
+                    {previewLoading && <span className="studio-list-meta">{t.loading}</span>}
+                  </div>
+                  {previewError && <span className="form-helper">{previewError}</span>}
+                  <div className="course-preview-list">
+                    {(preview?.lessons ?? []).map((lesson) => (
+                      <div className="course-preview-item" key={`preview-${lesson.id}`}>
+                        <div>
+                          <strong>{lesson.title}</strong>
+                          <span>
+                            {previewSectionTitles.get(lesson.section_id ?? -1) ??
+                              (language === "ru" ? "Без секции" : "No section")}
+                          </span>
+                        </div>
+                        <span>
+                          {lesson.duration_minutes} {language === "ru" ? "мин" : "min"}
+                        </span>
+                      </div>
+                    ))}
+                    {!previewLoading && !(preview?.lessons ?? []).length && (
+                      <EmptyState
+                        title={language === "ru" ? "Нет доступных уроков для ученика" : "No learner-visible lessons"}
+                      />
+                    )}
+                  </div>
+                </article>
+
+                <div className="course-preview-grid">
+                  <article className="course-preview-block">
+                    <strong>{language === "ru" ? "Секции курса" : "Course sections"}</strong>
+                    <div className="course-preview-list">
+                      {(sections.data ?? []).map((section) => (
+                        <div key={section.id} className="course-preview-item">
+                          <div>
+                            <strong>{section.title}</strong>
+                            <span>#{section.sort_order}</span>
+                          </div>
+                          <span>
+                            {section.is_visible
+                              ? language === "ru"
+                                ? "Видна"
+                                : "Visible"
+                              : language === "ru"
+                                ? "Скрыта"
+                                : "Hidden"}
+                          </span>
+                        </div>
+                      ))}
+                      {!sections.loading && !(sections.data ?? []).length && (
+                        <EmptyState title={language === "ru" ? "Секций пока нет" : "No sections yet"} />
+                      )}
+                    </div>
+                  </article>
+                </div>
+
+                <div className="studio-outline-list">
+                  {(lessons.data ?? []).map((lesson, index) => (
+                    <article className="studio-outline-item" key={lesson.id}>
+                      <div className="studio-outline-index">{index + 1}</div>
+                      <div className="studio-outline-body">
+                        <strong>{lesson.title}</strong>
+                        <span>{lesson.summary || t.lessonSummaryEmpty}</span>
+                      </div>
+                      <div className="studio-outline-meta">
+                        <span>
+                          {lesson.content_pages?.length ?? 1} {t.pages.toLowerCase()}
+                        </span>
+                        <span>
+                          {lesson.duration_minutes} {language === "ru" ? "мин" : "min"}
+                        </span>
+                      </div>
+                    </article>
+                  ))}
+                  {!lessons.loading && !(lessons.data ?? []).length && <EmptyState title={t.noLessonsYet} />}
+                </div>
+              </div>
+            ) : (
+              <EmptyState title={t.pickCoursePrompt} />
+            )}
+          </section>
+        </div>
+      </section>
+      <MediaPickerDialog
+        open={coverPickerOpen}
+        kind="image"
+        assets={mediaAssets.data ?? []}
+        onClose={() => setCoverPickerOpen(false)}
+        onSelect={applySelectedCourseCover}
+        onUpload={uploadCourseCover}
+      />
+    </section>
+  );
+}
+
+export function LessonsPage({ session }: { session: SessionState }) {
+  const { language, t } = useUi();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const courses = useRemote<CourseInfo[]>("/courses", session);
+  const [mediaRefreshKey, setMediaRefreshKey] = useState(0);
+  const mediaAssets = useRemote<MediaAssetInfo[]>("/media/library", session, mediaRefreshKey);
+  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const lessons = useRemote<LessonInfo[]>(
+    selectedCourseId ? `/lessons?course_id=${selectedCourseId}` : null,
+    session,
+    refreshKey + (selectedCourseId ?? 0),
+  );
+  const sections = useRemote<SectionInfo[]>(
+    selectedCourseId ? `/courses/${selectedCourseId}/sections` : null,
+    session,
+    refreshKey + (selectedCourseId ?? 0),
+  );
+  const recommendations = useRemote<EditorRecommendationInfo[]>(
+    selectedCourseId ? `/recommendations/editor?course_id=${selectedCourseId}` : null,
+    session,
+    refreshKey + (selectedCourseId ?? 0),
+  );
+  const assignments = useRemote<AssignmentInfo[]>(
+    selectedCourseId ? `/assignments?course_id=${selectedCourseId}` : null,
+    session,
+    refreshKey + (selectedCourseId ?? 0),
+  );
+  const [editingLessonId, setEditingLessonId] = useState<number | null>(null);
+  const lessonIdToKeepAfterRefresh = useRef<number | null>(null);
+  const [activePageId, setActivePageId] = useState<string | null>(null);
+  const [mediaTarget, setMediaTarget] = useState<MediaPickerTarget | null>(null);
+  const [pendingHtmlSnippet, setPendingHtmlSnippet] = useState<PendingHtmlSnippet | null>(null);
+  const htmlSelectionByPageRef = useRef<Record<string, TextSelection>>({});
+  const [saveState, setSaveState] = useState<"saved" | "dirty" | "saving" | "error">("saved");
+  const [lastSavedSnapshot, setLastSavedSnapshot] = useState("");
+  const [sectionDraftTitle, setSectionDraftTitle] = useState("");
+  const [renamingSectionId, setRenamingSectionId] = useState<number | null>(null);
+  const [renamingSectionTitle, setRenamingSectionTitle] = useState("");
+  const [renamingLessonId, setRenamingLessonId] = useState<number | null>(null);
+  const [renamingLessonTitle, setRenamingLessonTitle] = useState("");
+  const [pendingDeleteLesson, setPendingDeleteLesson] = useState<LessonInfo | null>(null);
+  const pendingDeleteTimerRef = useRef<number | null>(null);
+  const [lastOrderSnapshot, setLastOrderSnapshot] = useState<{
+    lessonIds: number[];
+    sectionIds: number[];
+  } | null>(null);
+  const [recommendationDraft, setRecommendationDraft] = useState({ title: "", text: "", lessonId: "" });
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
+  const [form, setForm] = useState({
+    title: "",
+    summary: "",
+    content: "",
+    durationMinutes: 8,
+    imageUrl: "",
+    videoUrl: "",
+    sectionId: null as number | null,
+    isVisible: true,
+    isPublished: true,
+    sortOrder: 1,
+    pages: [createLessonPageDraft(1, language)],
+  });
+  const requestedCourseId = parseCourseIdParam(searchParams.get("courseId"));
+  const requestedLessonId = parseCourseIdParam(searchParams.get("lessonId"));
+  const requestedAssignmentId = parseCourseIdParam(searchParams.get("assignmentId"));
+  const requestedAssignmentTitle = (searchParams.get("assignmentTitle") || "").trim();
+  const requestedPageId = (searchParams.get("pageId") || "").trim() || null;
+  const requestedOpenPractice = (searchParams.get("openPractice") || "").trim() === "1";
+  const appliedRequestedPageIdRef = useRef<string | null>(null);
+  const appliedRequestedAssignmentIdRef = useRef<number | null>(null);
+
+  const contentPagesPayload = useMemo(() => buildLessonPagesPayload(form.pages), [form.pages]);
+  const lessonSnapshot = useMemo(
+    () =>
+      JSON.stringify({
+        title: form.title,
+        summary: form.summary,
+        content: form.content,
+        durationMinutes: form.durationMinutes,
+        imageUrl: form.imageUrl,
+        videoUrl: form.videoUrl,
+        sectionId: form.sectionId,
+        isVisible: form.isVisible,
+        isPublished: form.isPublished,
+        sortOrder: form.sortOrder,
+        pages: form.pages,
+      }),
+    [form],
+  );
+
+  function updateCourseSearchParam(courseId: number | null) {
+    const currentValue = searchParams.get("courseId");
+    const nextValue = courseId === null ? null : String(courseId);
+    if (currentValue === nextValue) {
+      return;
+    }
+    const nextParams = new URLSearchParams(searchParams);
+    if (nextValue === null) {
+      nextParams.delete("courseId");
+    } else {
+      nextParams.set("courseId", nextValue);
+    }
+    setSearchParams(nextParams, { replace: true });
+  }
+
+  function updateLessonAndPageSearchParams(lessonId: number | null, pageId: string | null) {
+    const currentLessonId = searchParams.get("lessonId");
+    const currentPageId = searchParams.get("pageId");
+    const nextLessonId = lessonId === null ? null : String(lessonId);
+    const nextPageId = pageId && pageId.trim() ? pageId.trim() : null;
+    if (currentLessonId === nextLessonId && currentPageId === nextPageId) {
+      return;
+    }
+    const nextParams = new URLSearchParams(searchParams);
+    if (nextLessonId === null) {
+      nextParams.delete("lessonId");
+      nextParams.delete("pageId");
+    } else {
+      nextParams.set("lessonId", nextLessonId);
+      if (nextPageId === null) {
+        nextParams.delete("pageId");
+      } else {
+        nextParams.set("pageId", nextPageId);
+      }
+    }
+    setSearchParams(nextParams, { replace: true });
+  }
+
+  function selectCourseId(courseId: number) {
+    lessonIdToKeepAfterRefresh.current = null;
+    if (pendingDeleteTimerRef.current !== null) {
+      window.clearTimeout(pendingDeleteTimerRef.current);
+      pendingDeleteTimerRef.current = null;
+    }
+    setPendingDeleteLesson(null);
+    setLastOrderSnapshot(null);
+    setSelectedCourseId(courseId);
+    updateCourseSearchParam(courseId);
+  }
+
+  useEffect(() => {
+    if (!courses.data?.length) {
+      return;
+    }
+    const requestedCourse = requestedCourseId
+      ? (courses.data.find((course) => course.id === requestedCourseId) ?? null)
+      : null;
+    if (requestedCourse) {
+      if (selectedCourseId !== requestedCourse.id) {
+        setSelectedCourseId(requestedCourse.id);
+      }
+      return;
+    }
+    if (!selectedCourseId) {
+      const firstCourseId = courses.data[0].id;
+      setSelectedCourseId(firstCourseId);
+      updateCourseSearchParam(firstCourseId);
+    }
+  }, [courses.data, requestedCourseId, selectedCourseId]);
+
+  useEffect(() => {
+    if (!requestedLessonId || !(lessons.data ?? []).length) {
+      return;
+    }
+    const matchedLesson = (lessons.data ?? []).find((lesson) => lesson.id === requestedLessonId);
+    if (!matchedLesson) {
+      return;
+    }
+    if (editingLessonId === matchedLesson.id) {
+      return;
+    }
+    // Explicit "openPractice=1" forces practice-page selection even if pageId is stale.
+    const preferredPageId = requestedOpenPractice ? resolvePracticePageId(matchedLesson, null) : requestedPageId;
+    loadLessonIntoForm(matchedLesson, "", preferredPageId, null);
+  }, [editingLessonId, lessons.data, requestedLessonId, requestedOpenPractice, requestedPageId]);
+
+  useEffect(() => {
+    if (editingLessonId === null) {
+      return;
+    }
+    updateLessonAndPageSearchParams(editingLessonId, activePageId);
+  }, [activePageId, editingLessonId]);
+
+  function selectActivePage(pageId: string) {
+    setActivePageId(pageId);
+    updateLessonAndPageSearchParams(editingLessonId, pageId);
+  }
+
+  useEffect(() => {
+    if (!requestedPageId || !(form.pages ?? []).length) {
+      appliedRequestedPageIdRef.current = null;
+      return;
+    }
+    if (appliedRequestedPageIdRef.current === requestedPageId) {
+      return;
+    }
+    const matchedPage = form.pages.find((page) => page.id === requestedPageId);
+    if (!matchedPage) {
+      return;
+    }
+    appliedRequestedPageIdRef.current = requestedPageId;
+    if (activePageId === requestedPageId) {
+      return;
+    }
+    setActivePageId(matchedPage.id);
+  }, [activePageId, form.pages, requestedPageId]);
+
+  useEffect(() => {
+    if (!requestedAssignmentId) {
+      appliedRequestedAssignmentIdRef.current = null;
+      return;
+    }
+    if (appliedRequestedAssignmentIdRef.current === requestedAssignmentId) {
+      return;
+    }
+    if (!(assignments.data ?? []).length || !(lessons.data ?? []).length) {
+      return;
+    }
+    const linkedAssignment = (assignments.data ?? []).find((item) => item.id === requestedAssignmentId);
+    if (!linkedAssignment) {
+      return;
+    }
+    const matchedLesson = findLinkedLessonForAssignment(linkedAssignment, lessons.data ?? []);
+    if (!matchedLesson) {
+      return;
+    }
+    const assignmentPageId = (linkedAssignment.page_id || "").trim() || null;
+    const practicePageId = resolvePracticePageId(matchedLesson, requestedPageId ?? assignmentPageId);
+    loadLessonIntoForm(matchedLesson, "", practicePageId, null);
+    appliedRequestedAssignmentIdRef.current = requestedAssignmentId;
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("assignmentId");
+    setSearchParams(nextParams, { replace: true });
+  }, [assignments.data, lessons.data, requestedAssignmentId, requestedPageId, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (!requestedOpenPractice || requestedLessonId || !(lessons.data ?? []).length) {
+      return;
+    }
+    let matchedLesson: LessonInfo | null = null;
+    if (requestedAssignmentId && (assignments.data ?? []).length) {
+      const linkedAssignment = (assignments.data ?? []).find((item) => item.id === requestedAssignmentId) ?? null;
+      if (linkedAssignment) {
+        matchedLesson = findLinkedLessonForAssignment(linkedAssignment, lessons.data ?? []);
+      }
+    }
+    if (!matchedLesson && requestedAssignmentTitle) {
+      const normalized = requestedAssignmentTitle.toLowerCase();
+      const titleMatches = (lessons.data ?? []).filter(
+        (lesson) => (lesson.title || "").trim().toLowerCase() === normalized,
+      );
+      matchedLesson =
+        titleMatches[0] ??
+        (lessons.data ?? []).find((lesson) => (lesson.title || "").trim().toLowerCase().includes(normalized)) ??
+        null;
+    }
+    if (!matchedLesson) {
+      return;
+    }
+    const practicePageId = resolvePracticePageId(matchedLesson, null);
+    loadLessonIntoForm(matchedLesson, "", practicePageId, null);
+  }, [
+    assignments.data,
+    lessons.data,
+    requestedAssignmentId,
+    requestedAssignmentTitle,
+    requestedLessonId,
+    requestedOpenPractice,
+  ]);
+
+  useEffect(() => {
+    if (!form.pages.length) {
+      setActivePageId(null);
+      return;
+    }
+    if (!activePageId || !form.pages.some((page) => page.id === activePageId)) {
+      setActivePageId(form.pages[0].id);
+    }
+  }, [activePageId, form.pages]);
+
+  useEffect(() => {
+    if (!lastSavedSnapshot || saveState === "saving") {
+      return;
+    }
+    setSaveState(lessonSnapshot === lastSavedSnapshot ? "saved" : "dirty");
+  }, [lastSavedSnapshot, lessonSnapshot, saveState]);
+
+  useEffect(() => {
+    return () => {
+      if (pendingDeleteTimerRef.current !== null) {
+        window.clearTimeout(pendingDeleteTimerRef.current);
+      }
+    };
+  }, []);
+
+  function loadLessonIntoForm(
+    lesson: LessonInfo,
+    nextStatus = "",
+    preferredActivePageId: string | null = null,
+    preferredActivePageIndex: number | null = null,
+  ) {
+    let draftPages = buildDraftPagesFromLesson(lesson);
+    const linkedAssignment =
+      (assignments.data ?? []).find((item) => item.lesson_id === lesson.id && item.is_active) ?? null;
+    if (linkedAssignment && !draftPages.some((page) => page.isPractice) && draftPages.length) {
+      draftPages = draftPages.map((page, index) => ({ ...page, isPractice: index === draftPages.length - 1 }));
+    }
+    const nextActivePage =
+      draftPages.find((page) => page.id === preferredActivePageId) ??
+      (preferredActivePageIndex !== null ? draftPages[preferredActivePageIndex] : undefined) ??
+      draftPages[0] ??
+      null;
+    const nextDraft = {
+      title: lesson.title,
+      summary: lesson.summary,
+      content: lesson.content,
+      durationMinutes: lesson.duration_minutes,
+      imageUrl: lesson.image_url ?? "",
+      videoUrl: lesson.video_url ?? "",
+      sectionId: lesson.section_id ?? null,
+      isVisible: lesson.is_visible ?? true,
+      isPublished: lesson.is_published ?? true,
+      sortOrder: lesson.sort_order,
+      pages: draftPages,
+    };
+    setEditingLessonId(lesson.id);
+    setError("");
+    setStatus(nextStatus);
+    setForm(nextDraft);
+    setActivePageId(nextActivePage?.id ?? null);
+    updateLessonAndPageSearchParams(lesson.id, nextActivePage?.id ?? null);
+    setLastSavedSnapshot(JSON.stringify(nextDraft));
+    setSaveState("saved");
+    setRenamingLessonId(null);
+  }
+
+  function startNewLesson() {
+    lessonIdToKeepAfterRefresh.current = null;
+    setEditingLessonId(null);
+    setError("");
+    setStatus(selectedCourseId ? t.draftingLesson : "");
+    const nextPage = createLessonPageDraft(1, language);
+    const nextDraft = {
+      title: "",
+      summary: "",
+      content: "",
+      durationMinutes: 8,
+      imageUrl: "",
+      videoUrl: "",
+      sectionId: null as number | null,
+      isVisible: true,
+      isPublished: true,
+      sortOrder: (lessons.data?.length ?? 0) + 1,
+      pages: [nextPage],
+    };
+    setForm(nextDraft);
+    setActivePageId(nextPage.id);
+    setLastSavedSnapshot(JSON.stringify(nextDraft));
+    setSaveState("saved");
+    setRenamingLessonId(null);
+  }
+
+  function discardDraftChanges() {
+    const prompt = language === "ru" ? "Отменить несохранённые изменения?" : "Discard unsaved changes?";
+    if (typeof window !== "undefined" && !window.confirm(prompt)) {
+      return;
+    }
+    if (editingLessonId) {
+      const source = (lessons.data ?? []).find((lesson) => lesson.id === editingLessonId);
+      if (source) {
+        loadLessonIntoForm(source, language === "ru" ? "Изменения отменены" : "Changes reverted");
+        return;
+      }
+    }
+    startNewLesson();
+  }
+
+  useEffect(() => {
+    if (!selectedCourseId || lessons.loading) {
+      return;
+    }
+    if (!(lessons.data ?? []).length) {
+      if (editingLessonId !== null) {
+        startNewLesson();
+      }
+      return;
+    }
+    const currentLesson = (lessons.data ?? []).find((lesson) => lesson.id === editingLessonId);
+    const lessonToKeep = lessonIdToKeepAfterRefresh.current;
+    if (lessonToKeep !== null) {
+      const savedLessonInList = (lessons.data ?? []).find((lesson) => lesson.id === lessonToKeep);
+      if (savedLessonInList) {
+        lessonIdToKeepAfterRefresh.current = null;
+        if (editingLessonId !== savedLessonInList.id) {
+          setEditingLessonId(savedLessonInList.id);
+        }
+        return;
+      }
+    }
+    if (requestedLessonId) {
+      const requestedLessonExists = (lessons.data ?? []).some((lesson) => lesson.id === requestedLessonId);
+      if (!requestedLessonExists) {
+        return;
+      }
+      // Deep-link selection has priority over auto-opening the first lesson.
+      if (requestedLessonExists && editingLessonId !== requestedLessonId) {
+        return;
+      }
+    }
+    if (!currentLesson) {
+      if (requestedOpenPractice || requestedAssignmentId) {
+        return;
+      }
+      lessonIdToKeepAfterRefresh.current = null;
+      loadLessonIntoForm((lessons.data ?? [])[0]);
+    }
+  }, [
+    editingLessonId,
+    lessons.data,
+    lessons.loading,
+    requestedAssignmentId,
+    requestedLessonId,
+    requestedOpenPractice,
+    selectedCourseId,
+  ]);
+
+  function updatePage(pageId: string, patch: Partial<LessonPageDraft>) {
+    setForm((current) => ({
+      ...current,
+      pages: current.pages.map((page) => (page.id === pageId ? { ...page, ...patch } : page)),
+    }));
+  }
+
+  function setPracticePage(pageId: string, enabled: boolean) {
+    setForm((current) => ({
+      ...current,
+      pages: current.pages.map((page) => {
+        if (page.id === pageId) {
+          return { ...page, isPractice: enabled };
+        }
+        return enabled ? { ...page, isPractice: false } : page;
+      }),
+    }));
+  }
+
+  function addPage() {
+    const nextPage = createLessonPageDraft(form.pages.length + 1, language);
+    setForm((current) => ({
+      ...current,
+      pages: [...current.pages, nextPage],
+    }));
+    setActivePageId(nextPage.id);
+  }
+
+  function removePage(pageId: string) {
+    setForm((current) => ({
+      ...current,
+      pages: current.pages.length === 1 ? current.pages : current.pages.filter((page) => page.id !== pageId),
+    }));
+  }
+
+  function movePage(pageId: string, direction: -1 | 1) {
+    setForm((current) => {
+      const index = current.pages.findIndex((page) => page.id === pageId);
+      const nextIndex = index + direction;
+      if (index === -1 || nextIndex < 0 || nextIndex >= current.pages.length) {
+        return current;
+      }
+      const nextPages = [...current.pages];
+      const [page] = nextPages.splice(index, 1);
+      nextPages.splice(nextIndex, 0, page);
+      return { ...current, pages: nextPages };
+    });
+  }
+
+  function startEditing(lesson: LessonInfo) {
+    lessonIdToKeepAfterRefresh.current = null;
+    selectCourseId(lesson.course_id);
+    loadLessonIntoForm(
+      lesson,
+      language === "ru" ? `Редактирование урока «${lesson.title}»` : `Editing lesson "${lesson.title}"`,
+    );
+  }
+
+  function openMediaDialog(target: MediaPickerTarget) {
+    setMediaTarget(target);
+  }
+
+  function rememberHtmlSelection(pageId: string, selection: TextSelection) {
+    htmlSelectionByPageRef.current[pageId] = selection;
+  }
+
+  function openHtmlMediaDialog(kind: MediaKind, pageId: string, selection?: TextSelection) {
+    const htmlSelection = selection ?? htmlSelectionByPageRef.current[pageId];
+    openMediaDialog({ scope: "html", kind, pageId, htmlSelection });
+  }
+
+  function applySelectedMedia(asset: MediaAssetInfo) {
+    if (!mediaTarget) {
+      return;
+    }
+    if (mediaTarget.scope === "html" || mediaTarget.kind === "document") {
+      const targetPageId = mediaTarget.pageId ?? activePage?.id;
+      if (targetPageId) {
+        setActivePageId(targetPageId);
+        setPendingHtmlSnippet({
+          pageId: targetPageId,
+          snippet: buildMediaHtmlSnippet(asset),
+          nonce: Date.now(),
+          selection: mediaTarget.htmlSelection ?? htmlSelectionByPageRef.current[targetPageId],
+        });
+      }
+      setMediaTarget(null);
+      return;
+    }
+    const field = mediaTarget.kind === "image" ? "imageUrl" : "videoUrl";
+    if (mediaTarget.scope === "page" && mediaTarget.pageId) {
+      updatePage(mediaTarget.pageId, { [field]: asset.path } as Partial<LessonPageDraft>);
+    } else {
+      setForm((current) => ({ ...current, [field]: asset.path }));
+    }
+    setMediaTarget(null);
+  }
+
+  async function uploadMediaFile(file: File, kind: MediaKind, onProgress?: (progress: number) => void) {
+    const payload = new FormData();
+    payload.set("target_kind", kind);
+    payload.set("file", file);
+    const uploaded = (await apiUpload("/media/upload", session, payload, onProgress)) as MediaAssetInfo;
+    setMediaRefreshKey((value) => value + 1);
+    return uploaded;
+  }
+
+  function rememberOrderSnapshot() {
+    setLastOrderSnapshot({
+      lessonIds: (lessons.data ?? []).map((lesson) => lesson.id),
+      sectionIds: (sections.data ?? []).map((section) => section.id),
+    });
+  }
+
+  async function undoLastReorder() {
+    if (!selectedCourseId || !lastOrderSnapshot) {
+      return;
+    }
+    setError("");
+    try {
+      await apiPost(`/courses/${selectedCourseId}/lessons/reorder`, session, {
+        lesson_ids: lastOrderSnapshot.lessonIds,
+      });
+      await apiPost(`/courses/${selectedCourseId}/sections/reorder`, session, {
+        section_ids: lastOrderSnapshot.sectionIds,
+      });
+      setRefreshKey((value) => value + 1);
+      setLastOrderSnapshot(null);
+      setStatus(language === "ru" ? "Порядок восстановлен" : "Order restored");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : language === "ru"
+            ? "Не удалось отменить изменение порядка"
+            : "Failed to undo reorder",
+      );
+    }
+  }
+
+  async function createSection(event: FormEvent) {
+    event.preventDefault();
+    if (!selectedCourseId || !sectionDraftTitle.trim()) {
+      return;
+    }
+    setError("");
+    try {
+      await apiPost(`/courses/${selectedCourseId}/sections`, session, {
+        title: sectionDraftTitle.trim(),
+        sort_order: (sections.data?.length ?? 0) + 1,
+        is_visible: true,
+      });
+      setSectionDraftTitle("");
+      setRefreshKey((value) => value + 1);
+      setStatus(language === "ru" ? "Секция добавлена" : "Section created");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : language === "ru"
+            ? "Не удалось добавить секцию"
+            : "Failed to create section",
+      );
+    }
+  }
+
+  async function saveSectionTitle(section: SectionInfo) {
+    const nextTitle = renamingSectionTitle.trim();
+    if (!selectedCourseId || !nextTitle) {
+      return;
+    }
+    setError("");
+    try {
+      await apiPatch(`/courses/${selectedCourseId}/sections/${section.id}`, session, {
+        title: nextTitle,
+        sort_order: section.sort_order,
+        is_visible: section.is_visible,
+      });
+      setRenamingSectionId(null);
+      setRenamingSectionTitle("");
+      setRefreshKey((value) => value + 1);
+      setStatus(language === "ru" ? "Название секции обновлено" : "Section renamed");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : language === "ru"
+            ? "Не удалось переименовать секцию"
+            : "Failed to rename section",
+      );
+    }
+  }
+
+  async function moveSection(sectionId: number, direction: -1 | 1) {
+    if (!selectedCourseId || !(sections.data ?? []).length) {
+      return;
+    }
+    const current = [...(sections.data ?? [])];
+    const index = current.findIndex((item) => item.id === sectionId);
+    const targetIndex = index + direction;
+    if (index < 0 || targetIndex < 0 || targetIndex >= current.length) {
+      return;
+    }
+    rememberOrderSnapshot();
+    const next = [...current];
+    const [moved] = next.splice(index, 1);
+    next.splice(targetIndex, 0, moved);
+    sections.setData(next.map((item, orderIndex) => ({ ...item, sort_order: orderIndex + 1 })));
+    try {
+      await apiPost(`/courses/${selectedCourseId}/sections/reorder`, session, {
+        section_ids: next.map((item) => item.id),
+      });
+      setStatus(language === "ru" ? "Порядок секций обновлён" : "Section order updated");
+    } catch (err) {
+      sections.setData(current);
+      setError(
+        err instanceof Error
+          ? err.message
+          : language === "ru"
+            ? "Не удалось изменить порядок секций"
+            : "Failed to reorder sections",
+      );
+    }
+  }
+
+  async function toggleSectionVisibility(section: SectionInfo) {
+    if (!selectedCourseId) {
+      return;
+    }
+    setError("");
+    try {
+      await apiPatch(`/courses/${selectedCourseId}/sections/${section.id}`, session, {
+        title: section.title,
+        sort_order: section.sort_order,
+        is_visible: !section.is_visible,
+      });
+      setRefreshKey((value) => value + 1);
+      setStatus(
+        !section.is_visible
+          ? language === "ru"
+            ? "Секция отображается"
+            : "Section visible"
+          : language === "ru"
+            ? "Секция скрыта"
+            : "Section hidden",
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : language === "ru"
+            ? "Не удалось изменить видимость секции"
+            : "Failed to update section visibility",
+      );
+    }
+  }
+
+  async function removeSection(section: SectionInfo) {
+    if (!selectedCourseId) {
+      return;
+    }
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm(language === "ru" ? `Удалить секцию «${section.title}»?` : `Delete section "${section.title}"?`)
+    ) {
+      return;
+    }
+    setError("");
+    try {
+      await apiDelete(`/courses/${selectedCourseId}/sections/${section.id}`, session);
+      setRefreshKey((value) => value + 1);
+      setStatus(language === "ru" ? "Секция удалена" : "Section deleted");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : language === "ru"
+            ? "Не удалось удалить секцию"
+            : "Failed to delete section",
+      );
+    }
+  }
+
+  async function moveLesson(lessonId: number, direction: -1 | 1) {
+    if (!selectedCourseId || !(lessons.data ?? []).length) {
+      return;
+    }
+    const current = [...(lessons.data ?? [])];
+    const index = current.findIndex((item) => item.id === lessonId);
+    const targetIndex = index + direction;
+    if (index < 0 || targetIndex < 0 || targetIndex >= current.length) {
+      return;
+    }
+    rememberOrderSnapshot();
+    const next = [...current];
+    const [moved] = next.splice(index, 1);
+    next.splice(targetIndex, 0, moved);
+    const withSort = next.map((item, orderIndex) => ({ ...item, sort_order: orderIndex + 1 }));
+    lessons.setData(withSort);
+    if (editingLessonId === lessonId) {
+      setForm((currentForm) => ({ ...currentForm, sortOrder: targetIndex + 1 }));
+    }
+    try {
+      await apiPost(`/courses/${selectedCourseId}/lessons/reorder`, session, {
+        lesson_ids: withSort.map((item) => item.id),
+      });
+      setStatus(language === "ru" ? "Порядок уроков обновлён" : "Lesson order updated");
+    } catch (err) {
+      lessons.setData(current);
+      setError(
+        err instanceof Error
+          ? err.message
+          : language === "ru"
+            ? "Не удалось изменить порядок уроков"
+            : "Failed to reorder lessons",
+      );
+    }
+  }
+
+  async function setLessonSection(lesson: LessonInfo, sectionId: number | null) {
+    setError("");
+    try {
+      await apiPatch(
+        `/lessons/${lesson.id}`,
+        session,
+        buildLessonUpdatePayloadFromLesson(lesson, { section_id: sectionId }),
+      );
+      setRefreshKey((value) => value + 1);
+      setStatus(language === "ru" ? "Урок перемещён" : "Lesson moved");
+      if (editingLessonId === lesson.id) {
+        setForm((current) => ({ ...current, sectionId }));
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : language === "ru"
+            ? "Не удалось переместить урок"
+            : "Failed to move lesson",
+      );
+    }
+  }
+
+  async function duplicateLesson(lessonId: number) {
+    setError("");
+    try {
+      await apiPost(`/lessons/${lessonId}/duplicate`, session, {});
+      setRefreshKey((value) => value + 1);
+      setStatus(language === "ru" ? "Урок дублирован" : "Lesson duplicated");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : language === "ru"
+            ? "Не удалось дублировать урок"
+            : "Failed to duplicate lesson",
+      );
+    }
+  }
+
+  async function toggleLessonVisibility(lesson: LessonInfo) {
+    setError("");
+    try {
+      await apiPatch(`/lessons/${lesson.id}/visibility`, session, { value: !(lesson.is_visible ?? true) });
+      setRefreshKey((value) => value + 1);
+      setStatus(
+        !(lesson.is_visible ?? true)
+          ? language === "ru"
+            ? "Урок показан"
+            : "Lesson visible"
+          : language === "ru"
+            ? "Урок скрыт"
+            : "Lesson hidden",
+      );
+      if (editingLessonId === lesson.id) {
+        setForm((current) => ({ ...current, isVisible: !(lesson.is_visible ?? true) }));
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : language === "ru"
+            ? "Не удалось изменить видимость урока"
+            : "Failed to update lesson visibility",
+      );
+    }
+  }
+
+  async function toggleLessonPublication(lesson: LessonInfo) {
+    setError("");
+    try {
+      await apiPatch(`/lessons/${lesson.id}/publication`, session, { value: !(lesson.is_published ?? true) });
+      setRefreshKey((value) => value + 1);
+      setStatus(
+        !(lesson.is_published ?? true)
+          ? language === "ru"
+            ? "Урок опубликован"
+            : "Lesson published"
+          : language === "ru"
+            ? "Урок снят с публикации"
+            : "Lesson unpublished",
+      );
+      if (editingLessonId === lesson.id) {
+        setForm((current) => ({ ...current, isPublished: !(lesson.is_published ?? true) }));
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : language === "ru"
+            ? "Не удалось изменить публикацию урока"
+            : "Failed to update lesson publication",
+      );
+    }
+  }
+
+  async function saveLessonTitle(lesson: LessonInfo) {
+    const nextTitle = renamingLessonTitle.trim();
+    if (!nextTitle) {
+      return;
+    }
+    setError("");
+    try {
+      await apiPatch(
+        `/lessons/${lesson.id}`,
+        session,
+        buildLessonUpdatePayloadFromLesson(lesson, { title: nextTitle }),
+      );
+      setRenamingLessonId(null);
+      setRenamingLessonTitle("");
+      setRefreshKey((value) => value + 1);
+      setStatus(language === "ru" ? "Название урока обновлено" : "Lesson title updated");
+      if (editingLessonId === lesson.id) {
+        setForm((current) => ({ ...current, title: nextTitle }));
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : language === "ru"
+            ? "Не удалось переименовать урок"
+            : "Failed to rename lesson",
+      );
+    }
+  }
+
+  async function finalizeLessonDeletion(lesson: LessonInfo) {
+    try {
+      await apiDelete(`/lessons/${lesson.id}`, session);
+      setRefreshKey((value) => value + 1);
+      setStatus(language === "ru" ? "Урок удалён" : "Lesson deleted");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : language === "ru" ? "Не удалось удалить урок" : "Failed to delete lesson",
+      );
+      lessons.setData((current) =>
+        [...(current ?? []), lesson].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id),
+      );
+    } finally {
+      setPendingDeleteLesson(null);
+      pendingDeleteTimerRef.current = null;
+    }
+  }
+
+  function requestDeleteLesson(lesson: LessonInfo) {
+    if (pendingDeleteTimerRef.current !== null) {
+      window.clearTimeout(pendingDeleteTimerRef.current);
+      pendingDeleteTimerRef.current = null;
+    }
+    const nextList = (lessons.data ?? []).filter((item) => item.id !== lesson.id);
+    lessons.setData(nextList);
+    setPendingDeleteLesson(lesson);
+    if (editingLessonId === lesson.id) {
+      if (nextList.length) {
+        loadLessonIntoForm(
+          nextList[0],
+          language === "ru" ? "Урок удалён. Можно отменить действие." : "Lesson deleted. You can undo the action.",
+        );
+      } else {
+        startNewLesson();
+      }
+    } else {
+      setStatus(
+        language === "ru" ? "Урок удалён. Можно отменить действие." : "Lesson deleted. You can undo the action.",
+      );
+    }
+    pendingDeleteTimerRef.current = window.setTimeout(() => {
+      void finalizeLessonDeletion(lesson);
+    }, 7000);
+  }
+
+  function undoDeleteLesson() {
+    if (!pendingDeleteLesson) {
+      return;
+    }
+    if (pendingDeleteTimerRef.current !== null) {
+      window.clearTimeout(pendingDeleteTimerRef.current);
+      pendingDeleteTimerRef.current = null;
+    }
+    lessons.setData((current) =>
+      [...(current ?? []), pendingDeleteLesson].sort((a, b) => a.sort_order - b.sort_order || a.id - b.id),
+    );
+    setStatus(language === "ru" ? "Удаление отменено" : "Delete cancelled");
+    setPendingDeleteLesson(null);
+  }
+
+  async function createRecommendation() {
+    if (!selectedCourseId || !recommendationDraft.title.trim() || !recommendationDraft.text.trim()) {
+      return;
+    }
+    setError("");
+    try {
+      await apiPost("/recommendations/editor", session, {
+        title: recommendationDraft.title.trim(),
+        text: recommendationDraft.text.trim(),
+        course_id: selectedCourseId,
+        lesson_id: recommendationDraft.lessonId ? Number(recommendationDraft.lessonId) : null,
+        sort_order: (recommendations.data?.length ?? 0) + 1,
+        is_active: true,
+      });
+      setRecommendationDraft({ title: "", text: "", lessonId: "" });
+      setRefreshKey((value) => value + 1);
+      setStatus(language === "ru" ? "Рекомендация добавлена" : "Recommendation created");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : language === "ru"
+            ? "Не удалось добавить рекомендацию"
+            : "Failed to create recommendation",
+      );
+    }
+  }
+
+  async function removeRecommendation(recommendationId: number) {
+    setError("");
+    try {
+      await apiDelete(`/recommendations/editor/${recommendationId}`, session);
+      setRefreshKey((value) => value + 1);
+      setStatus(language === "ru" ? "Рекомендация удалена" : "Recommendation deleted");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : language === "ru"
+            ? "Не удалось удалить рекомендацию"
+            : "Failed to delete recommendation",
+      );
+    }
+  }
+
+  const activePage = form.pages.find((page) => page.id === activePageId) ?? form.pages[0];
+  const hasPracticePage = form.pages.some((page) => page.isPractice);
+  const practicePage = form.pages.find((page) => page.isPractice) ?? null;
+  const selectedCourse = (courses.data ?? []).find((course) => course.id === selectedCourseId) ?? null;
+  const sectionGroups = useMemo(
+    () =>
+      (sections.data ?? []).map((section) => ({
+        section,
+        lessons: (lessons.data ?? []).filter((lesson) => (lesson.section_id ?? null) === section.id),
+      })),
+    [lessons.data, sections.data],
+  );
+  const unsectionedLessons = useMemo(
+    () => (lessons.data ?? []).filter((lesson) => lesson.section_id == null),
+    [lessons.data],
+  );
+  const saveStateLabel =
+    saveState === "saved"
+      ? language === "ru"
+        ? "Сохранено"
+        : "Saved"
+      : saveState === "saving"
+        ? language === "ru"
+          ? "Сохранение..."
+          : "Saving..."
+        : saveState === "error"
+          ? language === "ru"
+            ? "Ошибка сохранения"
+            : "Save error"
+          : language === "ru"
+            ? "Есть несохранённые изменения"
+            : "Unsaved changes";
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!selectedCourseId) return;
+    setError("");
+    setSaveState("saving");
+    const activePageIdBeforeSave = activePageId;
+    const activePageIndexBeforeSave = form.pages.findIndex((page) => page.id === activePageIdBeforeSave);
+    const payload = {
+      course_id: selectedCourseId,
+      section_id: form.sectionId,
+      title: form.title,
+      summary: form.summary,
+      content: form.content.trim() || buildLegacyLessonContent(form.summary, form.pages),
+      content_pages: contentPagesPayload,
+      duration_minutes: form.durationMinutes,
+      image_url: form.imageUrl || null,
+      video_url: form.videoUrl || null,
+      is_visible: form.isVisible,
+      is_published: form.isPublished,
+      sort_order: form.sortOrder,
+    };
+    try {
+      let practiceSyncWarning = "";
+      const savedLesson = (
+        editingLessonId
+          ? await apiPatch(`/lessons/${editingLessonId}`, session, payload)
+          : await apiPost("/lessons", session, payload)
+      ) as LessonInfo;
+      try {
+        const linkedAssignment = (assignments.data ?? []).find((item) => item.lesson_id === savedLesson.id) ?? null;
+        const autoPracticeTitle = form.title.trim() || savedLesson.title;
+        const autoPracticeDescription = (form.summary || "").trim();
+        const practicePage = form.pages.find((page) => page.isPractice) ?? null;
+        const hasPracticePage = Boolean(practicePage);
+        const practicePageId = practicePage?.id ?? null;
+        if (hasPracticePage && autoPracticeTitle) {
+          if (linkedAssignment) {
+            try {
+              await apiPatch(`/assignments/${linkedAssignment.id}`, session, {
+                title: autoPracticeTitle,
+                description: autoPracticeDescription,
+                is_active: true,
+                due_at: linkedAssignment.due_at ?? null,
+                page_id: practicePageId,
+              });
+            } catch {
+              await apiPost("/assignments", session, {
+                course_id: selectedCourseId,
+                lesson_id: savedLesson.id,
+                page_id: practicePageId,
+                title: autoPracticeTitle,
+                description: autoPracticeDescription,
+                is_active: true,
+              });
+            }
+          } else {
+            await apiPost("/assignments", session, {
+              course_id: selectedCourseId,
+              lesson_id: savedLesson.id,
+              page_id: practicePageId,
+              title: autoPracticeTitle,
+              description: autoPracticeDescription,
+              is_active: true,
+            });
+          }
+        } else if (linkedAssignment && linkedAssignment.is_active) {
+          try {
+            await apiPatch(`/assignments/${linkedAssignment.id}`, session, {
+              title: linkedAssignment.title,
+              description: linkedAssignment.description,
+              is_active: false,
+              due_at: linkedAssignment.due_at ?? null,
+              page_id: linkedAssignment.page_id ?? null,
+            });
+          } catch {
+            // Assignment might already be deleted; no action required when disabling practice.
+          }
+        }
+      } catch {
+        practiceSyncWarning =
+          language === "ru"
+            ? "Урок сохранён, но практику не удалось синхронизировать (на сервере недоступен endpoint assignments)."
+            : "Lesson saved, but practice sync failed (assignments endpoint is unavailable on server).";
+      }
+      lessonIdToKeepAfterRefresh.current = savedLesson.id;
+      loadLessonIntoForm(
+        savedLesson,
+        practiceSyncWarning || (editingLessonId ? t.lessonUpdated : t.lessonCreated),
+        activePageIdBeforeSave,
+        activePageIndexBeforeSave >= 0 ? activePageIndexBeforeSave : null,
+      );
+      setLastSavedSnapshot(
+        JSON.stringify({
+          title: savedLesson.title,
+          summary: savedLesson.summary,
+          content: savedLesson.content,
+          durationMinutes: savedLesson.duration_minutes,
+          imageUrl: savedLesson.image_url ?? "",
+          videoUrl: savedLesson.video_url ?? "",
+          sectionId: savedLesson.section_id ?? null,
+          isVisible: savedLesson.is_visible ?? true,
+          isPublished: savedLesson.is_published ?? true,
+          sortOrder: savedLesson.sort_order,
+          pages: buildDraftPagesFromLesson(savedLesson),
+        }),
+      );
+      setSaveState("saved");
+      setRefreshKey((value) => value + 1);
+    } catch (err) {
+      setSaveState("error");
+      setError(err instanceof Error ? err.message : t.failedSaveLesson);
+    }
+  }
+
+  return (
+    <section className="page-stack">
+      <PageHeader
+        title={t.lessons}
+        subtitle={
+          language === "ru"
+            ? "Рабочее место конструктора уроков в духе Moodle и Canvas: выберите курс, откройте один урок и редактируйте по одной странице."
+            : "Course-builder workspace inspired by Moodle and Canvas: choose a course, pick one lesson, then edit one page at a time."
+        }
+      />
+      {status && <Notice text={status} />}
+      {error && <Notice text={error} tone="error" />}
+      <section className="lessons-builder">
+        <aside className="card studio-sidebar lessons-sidebar">
+          <div className="studio-sidebar-head">
+            <div>
+              <strong className="studio-eyebrow">{t.curriculum}</strong>
+              <h3>{t.courseAndLessons}</h3>
+              <p className="sidebar-text">{t.pickCourseFirst}</p>
+            </div>
+          </div>
+          <label className="studio-select lessons-course-select">
+            {t.courseLabel}
+            <select value={selectedCourseId ?? ""} onChange={(e) => selectCourseId(Number(e.target.value))}>
+              {(courses.data ?? []).map((course) => (
+                <option key={course.id} value={course.id}>
+                  {course.title}
+                </option>
+              ))}
+            </select>
+          </label>
+          {selectedCourse && (
+            <div className="studio-course-summary lessons-course-summary">
+              <strong>{selectedCourse.title}</strong>
+              <span>{selectedCourse.description || t.noCourseDescription}</span>
+            </div>
+          )}
+          <div className="studio-sidebar-toolbar lessons-sidebar-toolbar">
+            <button
+              type="button"
+              className="page-action secondary"
+              onClick={startNewLesson}
+              disabled={!selectedCourseId}
+            >
+              {t.newLessonAction}
+            </button>
+            <Link
+              className="page-action secondary"
+              to={selectedCourse ? `/courses?courseId=${selectedCourse.id}` : "/courses"}
+            >
+              {t.editCourse}
+            </Link>
+          </div>
+          <form className="lesson-section-create" onSubmit={createSection}>
+            <label>
+              {language === "ru" ? "Новая секция" : "New section"}
+              <input
+                value={sectionDraftTitle}
+                onChange={(e) => setSectionDraftTitle(e.target.value)}
+                placeholder={language === "ru" ? "Название секции" : "Section title"}
+              />
+            </label>
+            <button
+              type="submit"
+              className="page-action secondary"
+              disabled={!selectedCourseId || !sectionDraftTitle.trim()}
+            >
+              {language === "ru" ? "Добавить секцию" : "Add section"}
+            </button>
+          </form>
+          <div className="lessons-sidebar-list" data-testid="lessons-sidebar-list">
+            {sectionGroups.map(({ section, lessons: sectionLessons }, sectionIndex) => (
+              <div key={section.id} className="lesson-section-group">
+                <div className="lesson-section-head">
+                  {renamingSectionId === section.id ? (
+                    <div className="lesson-section-rename">
+                      <input
+                        value={renamingSectionTitle}
+                        onChange={(e) => setRenamingSectionTitle(e.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            void saveSectionTitle(section);
+                          }
+                          if (event.key === "Escape") {
+                            setRenamingSectionId(null);
+                            setRenamingSectionTitle("");
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="page-action secondary"
+                        onClick={() => void saveSectionTitle(section)}
+                      >
+                        {t.save}
+                      </button>
+                    </div>
+                  ) : (
+                    <strong>{section.title}</strong>
+                  )}
+                  <div className="lesson-section-actions">
+                    <button
+                      type="button"
+                      className="page-action secondary"
+                      onClick={() => {
+                        setRenamingSectionId(section.id);
+                        setRenamingSectionTitle(section.title);
+                      }}
+                    >
+                      {language === "ru" ? "Переименовать" : "Rename"}
+                    </button>
+                    <button
+                      type="button"
+                      className="page-action secondary"
+                      onClick={() => void moveSection(section.id, -1)}
+                      disabled={sectionIndex === 0}
+                    >
+                      {t.up}
+                    </button>
+                    <button
+                      type="button"
+                      className="page-action secondary"
+                      onClick={() => void moveSection(section.id, 1)}
+                      disabled={sectionIndex === sectionGroups.length - 1}
+                    >
+                      {t.down}
+                    </button>
+                    <button
+                      type="button"
+                      className="page-action secondary"
+                      onClick={() => void toggleSectionVisibility(section)}
+                    >
+                      {section.is_visible
+                        ? language === "ru"
+                          ? "Скрыть"
+                          : "Hide"
+                        : language === "ru"
+                          ? "Показать"
+                          : "Show"}
+                    </button>
+                    <button type="button" className="page-action secondary" onClick={() => void removeSection(section)}>
+                      {t.remove}
+                    </button>
+                  </div>
+                </div>
+                <div className="lesson-section-lessons">
+                  {sectionLessons.map((lesson) => (
+                    <article
+                      key={lesson.id}
+                      className={`studio-list-item lessons-lesson-card ${lesson.id === editingLessonId ? "active" : ""}`}
+                    >
+                      <button type="button" className="lesson-card-open" onClick={() => startEditing(lesson)}>
+                        <div className="studio-list-main lessons-lesson-main">
+                          {renamingLessonId === lesson.id ? (
+                            <input
+                              value={renamingLessonTitle}
+                              onChange={(e) => setRenamingLessonTitle(e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter") {
+                                  event.preventDefault();
+                                  void saveLessonTitle(lesson);
+                                }
+                                if (event.key === "Escape") {
+                                  setRenamingLessonId(null);
+                                  setRenamingLessonTitle("");
+                                }
+                              }}
+                            />
+                          ) : (
+                            <strong>{lesson.title}</strong>
+                          )}
+                          <span>{lesson.summary || t.lessonSummaryEmpty}</span>
+                        </div>
+                        <div className="studio-list-meta lessons-lesson-meta">
+                          <span>
+                            {lesson.content_pages?.length ?? 1} {t.pages.toLowerCase()}
+                          </span>
+                          <span>
+                            {lesson.duration_minutes} {language === "ru" ? "мин" : "min"}
+                          </span>
+                        </div>
+                      </button>
+                      <div className="lesson-card-actions">
+                        <select
+                          value={lesson.section_id ?? ""}
+                          onChange={(e) =>
+                            void setLessonSection(lesson, e.target.value ? Number(e.target.value) : null)
+                          }
+                        >
+                          <option value="">{language === "ru" ? "Без секции" : "No section"}</option>
+                          {(sections.data ?? []).map((sectionOption) => (
+                            <option key={sectionOption.id} value={sectionOption.id}>
+                              {sectionOption.title}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          className="page-action secondary"
+                          onClick={() => {
+                            setRenamingLessonId(lesson.id);
+                            setRenamingLessonTitle(lesson.title);
+                          }}
+                        >
+                          {language === "ru" ? "Переименовать" : "Rename"}
+                        </button>
+                        <button
+                          type="button"
+                          className="page-action secondary"
+                          onClick={() => void moveLesson(lesson.id, -1)}
+                        >
+                          {t.up}
+                        </button>
+                        <button
+                          type="button"
+                          className="page-action secondary"
+                          onClick={() => void moveLesson(lesson.id, 1)}
+                        >
+                          {t.down}
+                        </button>
+                        <button
+                          type="button"
+                          className="page-action secondary"
+                          onClick={() => void duplicateLesson(lesson.id)}
+                        >
+                          {language === "ru" ? "Дублировать" : "Duplicate"}
+                        </button>
+                        <button
+                          type="button"
+                          className="page-action secondary"
+                          onClick={() => void toggleLessonVisibility(lesson)}
+                        >
+                          {(lesson.is_visible ?? true)
+                            ? language === "ru"
+                              ? "Скрыть"
+                              : "Hide"
+                            : language === "ru"
+                              ? "Показать"
+                              : "Show"}
+                        </button>
+                        <button
+                          type="button"
+                          className="page-action secondary"
+                          onClick={() => void toggleLessonPublication(lesson)}
+                        >
+                          {(lesson.is_published ?? true)
+                            ? language === "ru"
+                              ? "Снять"
+                              : "Unpublish"
+                            : language === "ru"
+                              ? "Опубликовать"
+                              : "Publish"}
+                        </button>
+                        <button
+                          type="button"
+                          className="page-action secondary"
+                          onClick={() => requestDeleteLesson(lesson)}
+                        >
+                          {t.remove}
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                  {!sectionLessons.length && (
+                    <EmptyState
+                      title={language === "ru" ? "В этой секции пока нет уроков" : "No lessons in this section yet"}
+                    />
+                  )}
+                </div>
+              </div>
+            ))}
+            {Boolean(unsectionedLessons.length) && (
+              <div className="lesson-section-group">
+                <div className="lesson-section-head">
+                  <strong>{language === "ru" ? "Без секции" : "No section"}</strong>
+                </div>
+                <div className="lesson-section-lessons">
+                  {unsectionedLessons.map((lesson) => (
+                    <article
+                      key={lesson.id}
+                      className={`studio-list-item lessons-lesson-card ${lesson.id === editingLessonId ? "active" : ""}`}
+                    >
+                      <button type="button" className="lesson-card-open" onClick={() => startEditing(lesson)}>
+                        <div className="studio-list-main lessons-lesson-main">
+                          <strong>{lesson.title}</strong>
+                          <span>{lesson.summary || t.lessonSummaryEmpty}</span>
+                        </div>
+                        <div className="studio-list-meta lessons-lesson-meta">
+                          <span>
+                            {lesson.content_pages?.length ?? 1} {t.pages.toLowerCase()}
+                          </span>
+                          <span>
+                            {lesson.duration_minutes} {language === "ru" ? "мин" : "min"}
+                          </span>
+                        </div>
+                      </button>
+                      <div className="lesson-card-actions">
+                        <select
+                          value={lesson.section_id ?? ""}
+                          onChange={(e) =>
+                            void setLessonSection(lesson, e.target.value ? Number(e.target.value) : null)
+                          }
+                        >
+                          <option value="">{language === "ru" ? "Без секции" : "No section"}</option>
+                          {(sections.data ?? []).map((sectionOption) => (
+                            <option key={sectionOption.id} value={sectionOption.id}>
+                              {sectionOption.title}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          className="page-action secondary"
+                          onClick={() => void moveLesson(lesson.id, -1)}
+                        >
+                          {t.up}
+                        </button>
+                        <button
+                          type="button"
+                          className="page-action secondary"
+                          onClick={() => void moveLesson(lesson.id, 1)}
+                        >
+                          {t.down}
+                        </button>
+                        <button
+                          type="button"
+                          className="page-action secondary"
+                          onClick={() => void duplicateLesson(lesson.id)}
+                        >
+                          {language === "ru" ? "Дублировать" : "Duplicate"}
+                        </button>
+                        <button
+                          type="button"
+                          className="page-action secondary"
+                          onClick={() => requestDeleteLesson(lesson)}
+                        >
+                          {t.remove}
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            )}
+            {lessons.loading && <EmptyState title={t.loadingLessons} />}
+            {lessons.error && <EmptyState title={lessons.error} />}
+            {!lessons.loading && !(lessons.data ?? []).length && selectedCourseId && (
+              <EmptyState title={t.noLessonsYet} />
+            )}
+          </div>
+        </aside>
+
+        <form className="lessons-editor" onSubmit={submit}>
+          <section className="card studio-panel">
+            <div className="studio-panel-head">
+              <div>
+                <strong className="studio-eyebrow">{editingLessonId ? t.lessonSettings : t.newLessonLabel}</strong>
+                <h3>
+                  {editingLessonId
+                    ? language === "ru"
+                      ? "Редактирование выбранного урока"
+                      : "Edit selected lesson"
+                    : t.createLessonInCourse}
+                </h3>
+              </div>
+              <div className="studio-actions">
+                <span className={`status-pill ${saveState === "error" ? "inactive" : "active"}`}>{saveStateLabel}</span>
+                <button type="submit" disabled={!selectedCourseId}>
+                  {editingLessonId ? t.saveLesson : t.createLessonAction}
+                </button>
+                <button
+                  type="button"
+                  className="page-action secondary"
+                  onClick={discardDraftChanges}
+                  disabled={!selectedCourseId}
+                >
+                  {language === "ru" ? "Отменить несохранённые изменения" : "Discard unsaved changes"}
+                </button>
+                {lastOrderSnapshot && (
+                  <button type="button" className="page-action secondary" onClick={() => void undoLastReorder()}>
+                    {language === "ru" ? "Undo reorder" : "Undo reorder"}
+                  </button>
+                )}
+                {pendingDeleteLesson && (
+                  <button type="button" className="page-action secondary" onClick={undoDeleteLesson}>
+                    {language === "ru" ? "Отменить удаление" : "Undo delete"}
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="studio-form-grid lessons-settings-grid">
+              <label>
+                {t.lessonTitle}
+                <input
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  placeholder={t.lessonTitle}
+                  required
+                />
+              </label>
+              <label>
+                {t.sortOrder}
+                <input
+                  type="number"
+                  value={form.sortOrder}
+                  onChange={(e) => setForm({ ...form, sortOrder: Number(e.target.value) })}
+                  placeholder={t.sortOrder}
+                  required
+                />
+              </label>
+              <label>
+                {t.durationMinutes}
+                <input
+                  type="number"
+                  min={1}
+                  value={form.durationMinutes}
+                  onChange={(e) => setForm({ ...form, durationMinutes: Number(e.target.value) })}
+                  placeholder={t.durationMinutes}
+                  required
+                />
+              </label>
+              <label>
+                {language === "ru" ? "Секция" : "Section"}
+                <select
+                  value={form.sectionId ?? ""}
+                  onChange={(e) => setForm({ ...form, sectionId: e.target.value ? Number(e.target.value) : null })}
+                >
+                  <option value="">{language === "ru" ? "Без секции" : "No section"}</option>
+                  {(sections.data ?? []).map((section) => (
+                    <option key={section.id} value={section.id}>
+                      {section.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                {language === "ru" ? "Видимость" : "Visibility"}
+                <select
+                  value={form.isVisible ? "visible" : "hidden"}
+                  onChange={(e) => setForm({ ...form, isVisible: e.target.value === "visible" })}
+                >
+                  <option value="visible">{language === "ru" ? "Показан" : "Visible"}</option>
+                  <option value="hidden">{language === "ru" ? "Скрыт" : "Hidden"}</option>
+                </select>
+              </label>
+              <label>
+                {language === "ru" ? "Публикация" : "Publication"}
+                <select
+                  value={form.isPublished ? "published" : "draft"}
+                  onChange={(e) => setForm({ ...form, isPublished: e.target.value === "published" })}
+                >
+                  <option value="published">{language === "ru" ? "Опубликован" : "Published"}</option>
+                  <option value="draft">{language === "ru" ? "Черновик" : "Draft"}</option>
+                </select>
+              </label>
+              <label className="studio-form-span">
+                {t.lessonSummary}
+                <textarea
+                  value={form.summary}
+                  onChange={(e) => setForm({ ...form, summary: e.target.value })}
+                  placeholder={t.lessonSummaryPlaceholder}
+                  rows={3}
+                  required
+                />
+              </label>
+              <div className="studio-form-span lesson-practice-note">
+                <span className="form-helper">
+                  {language === "ru"
+                    ? "Практика настраивается внутри редактирования страницы: отметьте нужную страницу в блоке «Активная страница»."
+                    : 'Practice is configured at the page level: mark the required page in the "Active page" block.'}
+                </span>
+                <span className="form-helper">
+                  {practicePage
+                    ? language === "ru"
+                      ? `Текущая страница практики: «${practicePage.pageTitle || "Без названия"}».`
+                      : `Current practice page: "${practicePage.pageTitle || "Untitled"}".`
+                    : language === "ru"
+                      ? "Страница практики пока не выбрана."
+                      : "No practice page selected yet."}
+                </span>
+                {hasPracticePage && (
+                  <Link className="page-action secondary lesson-practice-link" to="/homework-reviews">
+                    {language === "ru" ? "Проверка отправленных работ" : "Review submitted work"}
+                  </Link>
+                )}
+              </div>
+            </div>
+          </section>
+
+          <section className="lesson-builder-layout lessons-pages-shell">
+            <aside className="card lesson-builder-sidebar lessons-pages-sidebar">
+              <div className="studio-panel-head">
+                <div>
+                  <strong className="studio-eyebrow">{t.pages}</strong>
+                  <h3>{t.lessonOutline}</h3>
+                </div>
+                <button type="button" className="page-action secondary" onClick={addPage}>
+                  {t.addPage}
+                </button>
+              </div>
+              <p className="sidebar-text">{t.outlineHint}</p>
+              <div className="lessons-page-list">
+                {form.pages.map((page, index) => (
+                  <article key={page.id} className={`page-list-item ${page.id === activePage?.id ? "active" : ""}`}>
+                    <button type="button" className="page-list-select" onClick={() => selectActivePage(page.id)}>
+                      <strong>
+                        {index + 1}. {page.pageTitle || t.untitledPage}
+                      </strong>
+                      <span>{page.chapterTitle || t.noChapterLabel}</span>
+                    </button>
+                    <div className="page-list-actions">
+                      <button
+                        type="button"
+                        className="page-action secondary"
+                        onClick={() => movePage(page.id, -1)}
+                        disabled={index === 0}
+                      >
+                        {t.up}
+                      </button>
+                      <button
+                        type="button"
+                        className="page-action secondary"
+                        onClick={() => movePage(page.id, 1)}
+                        disabled={index === form.pages.length - 1}
+                      >
+                        {t.down}
+                      </button>
+                      <button
+                        type="button"
+                        className="page-action secondary"
+                        onClick={() => removePage(page.id)}
+                        disabled={form.pages.length === 1}
+                      >
+                        {t.remove}
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </aside>
+
+            <div className="lessons-page-main">
+              {activePage ? (
+                <section className="card studio-panel">
+                  <div className="studio-panel-head">
+                    <div>
+                      <strong className="studio-eyebrow">{t.activePage}</strong>
+                      <h3>{activePage.pageTitle || t.untitledPage}</h3>
+                    </div>
+                    <span className="studio-list-meta">
+                      {form.pages.findIndex((page) => page.id === activePage.id) + 1} / {form.pages.length}
+                    </span>
+                  </div>
+                  <div className="page-editor-grid">
+                    <label>
+                      {t.chapterTitle}
+                      <input
+                        value={activePage.chapterTitle}
+                        onChange={(e) => updatePage(activePage.id, { chapterTitle: e.target.value })}
+                        placeholder={t.chapterTitle}
+                      />
+                    </label>
+                    <label>
+                      {t.pageTitle}
+                      <input
+                        value={activePage.pageTitle}
+                        onChange={(e) => updatePage(activePage.id, { pageTitle: e.target.value })}
+                        placeholder={t.pageTitle}
+                      />
+                    </label>
+                  </div>
+                  <div className="course-access-checkbox">
+                    <input
+                      id="page-practice-enabled"
+                      type="checkbox"
+                      checked={activePage.isPractice}
+                      onChange={(e) => setPracticePage(activePage.id, e.target.checked)}
+                    />
+                    <label htmlFor="page-practice-enabled">
+                      {language === "ru"
+                        ? "Это страница с практикой. Блок отправки решения появится у ученика именно здесь."
+                        : "This is the practice page. The learner submission block will appear on this page."}
+                    </label>
+                  </div>
+                  <span className="form-helper">
+                    {language === "ru"
+                      ? "В одном уроке может быть только одна страница с практикой."
+                      : "Only one practice page can be selected per lesson."}
+                  </span>
+                  <div className="media-attachment-grid">
+                    <MediaAttachmentCard
+                      scope="page"
+                      kind="image"
+                      url={activePage.imageUrl}
+                      onAttach={() => openMediaDialog({ scope: "page", kind: "image", pageId: activePage.id })}
+                      onRemove={() => updatePage(activePage.id, { imageUrl: "" })}
+                    />
+                    <MediaAttachmentCard
+                      scope="page"
+                      kind="video"
+                      url={activePage.videoUrl}
+                      onAttach={() => openMediaDialog({ scope: "page", kind: "video", pageId: activePage.id })}
+                      onRemove={() => updatePage(activePage.id, { videoUrl: "" })}
+                    />
+                  </div>
+                  <div className="document-insert-bar">
+                    <button
+                      type="button"
+                      className="page-action secondary"
+                      onClick={() => openHtmlMediaDialog("image", activePage.id)}
+                    >
+                      {getHtmlMediaInsertLabel("image", language)}
+                    </button>
+                    <button
+                      type="button"
+                      className="page-action secondary"
+                      onClick={() => openHtmlMediaDialog("video", activePage.id)}
+                    >
+                      {getHtmlMediaInsertLabel("video", language)}
+                    </button>
+                    <button
+                      type="button"
+                      className="page-action secondary"
+                      onClick={() => openHtmlMediaDialog("document", activePage.id)}
+                    >
+                      {getHtmlMediaInsertLabel("document", language)}
+                    </button>
+                    <span className="sidebar-text">
+                      {language === "ru"
+                        ? "Загрузите файл или выберите его из медиатеки, и он автоматически вставится в текст урока."
+                        : "Upload a file or pick one from the media library, and it will be inserted into the lesson text."}
+                    </span>
+                  </div>
+                  <LessonPagePreviewCard page={activePage} />
+                  <details className="advanced-panel">
+                    <summary>{t.advancedSettings}</summary>
+                    <p className="sidebar-text">{t.pageAdvancedHint}</p>
+                    <HtmlSourceEditor
+                      value={activePage.html}
+                      onChange={(html) => updatePage(activePage.id, { html })}
+                      label={t.pageContent}
+                      onUploadImage={(selection) => openHtmlMediaDialog("image", activePage.id, selection)}
+                      onUploadVideo={(selection) => openHtmlMediaDialog("video", activePage.id, selection)}
+                      onUploadDocument={(selection) => openHtmlMediaDialog("document", activePage.id, selection)}
+                      pendingSnippet={pendingHtmlSnippet?.pageId === activePage.id ? pendingHtmlSnippet : null}
+                      onPendingSnippetApplied={() => setPendingHtmlSnippet(null)}
+                      onSelectionChange={(selection) => rememberHtmlSelection(activePage.id, selection)}
+                    />
+                    <div className="page-editor-grid">
+                      <label>
+                        {t.spotlightImageUrl}
+                        <input
+                          value={activePage.imageUrl}
+                          onChange={(e) => updatePage(activePage.id, { imageUrl: e.target.value })}
+                          placeholder={t.optionalImageUrl}
+                        />
+                      </label>
+                      <label>
+                        {t.spotlightVideoUrl}
+                        <input
+                          value={activePage.videoUrl}
+                          onChange={(e) => updatePage(activePage.id, { videoUrl: e.target.value })}
+                          placeholder={t.optionalVideoUrl}
+                        />
+                      </label>
+                    </div>
+                  </details>
+                </section>
+              ) : (
+                <section className="card studio-panel">
+                  <EmptyState
+                    title={
+                      language === "ru"
+                        ? "Добавьте первую страницу, чтобы начать редактировать урок."
+                        : "Add the first page to start editing this lesson."
+                    }
+                  />
+                </section>
+              )}
+
+              <section className="card studio-panel">
+                <div className="studio-panel-head">
+                  <div>
+                    <strong className="studio-eyebrow">{language === "ru" ? "Рекомендации" : "Recommendations"}</strong>
+                    <h3>{language === "ru" ? "Подсказки к курсу и урокам" : "Course and lesson recommendations"}</h3>
+                  </div>
+                </div>
+                <div className="stack">
+                  <label>
+                    {language === "ru" ? "Заголовок" : "Title"}
+                    <input
+                      value={recommendationDraft.title}
+                      onChange={(e) => setRecommendationDraft((current) => ({ ...current, title: e.target.value }))}
+                      placeholder={
+                        language === "ru"
+                          ? "Например, Повторите тему перед тестом"
+                          : "For example, Review this topic before the test"
+                      }
+                    />
+                  </label>
+                  <label>
+                    {language === "ru" ? "Текст рекомендации" : "Recommendation text"}
+                    <textarea
+                      value={recommendationDraft.text}
+                      onChange={(e) => setRecommendationDraft((current) => ({ ...current, text: e.target.value }))}
+                      rows={3}
+                    />
+                  </label>
+                  <label>
+                    {language === "ru" ? "Привязать к уроку" : "Attach to lesson"}
+                    <select
+                      value={recommendationDraft.lessonId}
+                      onChange={(e) => setRecommendationDraft((current) => ({ ...current, lessonId: e.target.value }))}
+                    >
+                      <option value="">{language === "ru" ? "Только для курса" : "Course-level recommendation"}</option>
+                      {(lessons.data ?? []).map((lesson) => (
+                        <option key={lesson.id} value={lesson.id}>
+                          {lesson.title}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    className="page-action secondary"
+                    onClick={() => void createRecommendation()}
+                    disabled={
+                      !selectedCourseId || !recommendationDraft.title.trim() || !recommendationDraft.text.trim()
+                    }
+                  >
+                    {language === "ru" ? "Добавить рекомендацию" : "Add recommendation"}
+                  </button>
+                </div>
+                <div className="stack">
+                  {(recommendations.data ?? []).map((item) => (
+                    <article key={item.id} className="list-row">
+                      <div>
+                        <strong>{item.title}</strong>
+                        <span>{item.text}</span>
+                        <div className="user-subline">
+                          <span>
+                            {item.lesson_id
+                              ? `${language === "ru" ? "Урок" : "Lesson"} #${item.lesson_id}`
+                              : language === "ru"
+                                ? "Привязка к курсу"
+                                : "Course level"}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="page-action secondary"
+                        onClick={() => void removeRecommendation(item.id)}
+                      >
+                        {t.remove}
+                      </button>
+                    </article>
+                  ))}
+                  {!recommendations.loading && !(recommendations.data ?? []).length && (
+                    <EmptyState title={language === "ru" ? "Рекомендаций пока нет" : "No recommendations yet"} />
+                  )}
+                </div>
+              </section>
+            </div>
+          </section>
+        </form>
+      </section>
+      <MediaPickerDialog
+        open={Boolean(mediaTarget)}
+        kind={mediaTarget?.kind ?? "image"}
+        assets={mediaAssets.data ?? []}
+        onClose={() => setMediaTarget(null)}
+        onSelect={applySelectedMedia}
+        onUpload={uploadMediaFile}
+      />
+    </section>
+  );
+}
+
+const TEST_PRESETS = [
+  { id: "quick", baselineDifficulty: 2, questionLimit: 5 },
+  { id: "standard", baselineDifficulty: 3, questionLimit: 10 },
+  { id: "exam", baselineDifficulty: 4, questionLimit: 15 },
+] as const;
+const QUESTIONS_PAGE_SIZE = 10;
+
+export function createQuestionDraft(difficulty = 3) {
+  return {
+    text: "",
+    explanation: "",
+    difficulty,
+    estimatedSeconds: 30,
+    shuffleOptions: false,
+    topicIds: [] as string[],
+    options: ["", "", "", ""],
+    correctIndex: 0,
+  };
+}
+
+export function TestsPage({ session }: { session: SessionState }) {
+  const { language, t } = useUi();
+  const courses = useRemote<CourseInfo[]>("/courses", session);
+  const tests = useRemote<TestInfo[]>("/tests", session);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const testsRefresh = useRemote<TestInfo[]>("/tests", session, refreshKey);
+  const [form, setForm] = useState({ courseId: "", title: "", baselineDifficulty: 3, questionLimit: 10 });
+  const topics = useRemote<TopicInfo[]>(form.courseId ? `/topics?course_id=${form.courseId}` : null, session);
+  const [selectedTestId, setSelectedTestId] = useState("");
+  const [editingTestId, setEditingTestId] = useState<number | null>(null);
+  const [questionRefreshKey, setQuestionRefreshKey] = useState(0);
+  const [questionStatus, setQuestionStatus] = useState("");
+  const [questionError, setQuestionError] = useState("");
+  const [questionSearch, setQuestionSearch] = useState("");
+  const [questionPage, setQuestionPage] = useState(1);
+  const [testError, setTestError] = useState("");
+  const [editingQuestionId, setEditingQuestionId] = useState<number | null>(null);
+  const [questionForm, setQuestionForm] = useState(createQuestionDraft());
+  const questionEditorRef = useRef<HTMLFormElement | null>(null);
+  const questionTextFieldRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    if (!form.courseId && courses.data?.length) {
+      setForm((current) => ({ ...current, courseId: String(courses.data?.[0].id ?? "") }));
+    }
+  }, [courses.data, form.courseId]);
+
+  useEffect(() => {
+    setQuestionForm((current) => (current.topicIds.length ? { ...current, topicIds: [] } : current));
+  }, [form.courseId]);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setTestError("");
+    try {
+      if (editingTestId) {
+        await apiPatch(`/tests/${editingTestId}`, session, {
+          title: form.title,
+          baseline_difficulty: form.baselineDifficulty,
+          question_limit: form.questionLimit,
+        });
+        setEditingTestId(null);
+        setForm((current) => ({ ...current, title: "", baselineDifficulty: 3, questionLimit: 10 }));
+        setSelectedTestId(String(editingTestId));
+        setRefreshKey((value) => value + 1);
+        return;
+      }
+
+      const created = (await apiPost("/tests", session, {
+        course_id: Number(form.courseId),
+        title: form.title,
+        baseline_difficulty: form.baselineDifficulty,
+        question_limit: form.questionLimit,
+      })) as { id?: number };
+      setForm((current) => ({ ...current, title: "", baselineDifficulty: 3, questionLimit: 10 }));
+      if (created.id) {
+        setSelectedTestId(String(created.id));
+      }
+      setRefreshKey((value) => value + 1);
+    } catch (err) {
+      setTestError(
+        err instanceof Error ? err.message : language === "ru" ? "Не удалось сохранить тест" : "Failed to save test",
+      );
+    }
+  }
+
+  const effectiveTests = testsRefresh.data ?? tests.data ?? [];
+  const activeCourseId = form.courseId || String(courses.data?.[0]?.id ?? "");
+  const selectedCourse = (courses.data ?? []).find((course) => String(course.id) === activeCourseId);
+  const courseTitles = new Map((courses.data ?? []).map((course) => [course.id, course.title]));
+  const testsForCourse = effectiveTests.filter((item) => String(item.course_id) === activeCourseId);
+  const difficultyDescriptions = [
+    t.baselineDifficultyLevel1,
+    t.baselineDifficultyLevel2,
+    t.baselineDifficultyLevel3,
+    t.baselineDifficultyLevel4,
+    t.baselineDifficultyLevel5,
+  ];
+  const difficultyDescription = difficultyDescriptions[Math.max(0, Math.min(4, form.baselineDifficulty - 1))];
+  const questionPlanLabel =
+    form.questionLimit <= 6
+      ? t.testsLengthShort
+      : form.questionLimit <= 10
+        ? t.testsLengthBalanced
+        : t.testsLengthExtended;
+  const suggestedTitle = t.testsRecommendedTitle.replace("{course}", selectedCourse?.title ?? t.courseLabel);
+  const courseQuestionBankCount = testsForCourse.reduce((total, item) => total + (item.question_count ?? 0), 0);
+  const activeTestId = selectedTestId || String(testsForCourse[0]?.id ?? "");
+  const questionSearchQuery = questionSearch.trim();
+  const questionsPath = activeTestId
+    ? questionSearchQuery
+      ? `/questions?test_id=${activeTestId}`
+      : `/questions?test_id=${activeTestId}&page=${questionPage}&page_size=${QUESTIONS_PAGE_SIZE}`
+    : null;
+  const questions = useRemote<TestQuestionInfo[] | PaginatedResponse<TestQuestionInfo>>(
+    questionsPath,
+    session,
+    questionRefreshKey,
+  );
+  const questionItems = useMemo(() => {
+    if (!questions.data) {
+      return [] as TestQuestionInfo[];
+    }
+    return Array.isArray(questions.data) ? questions.data : (questions.data.items ?? []);
+  }, [questions.data]);
+  const questionTotal = useMemo(() => {
+    if (!questions.data) {
+      return 0;
+    }
+    return Array.isArray(questions.data) ? questions.data.length : (questions.data.total ?? 0);
+  }, [questions.data]);
+  const totalQuestionPages = Math.max(1, Math.ceil(questionTotal / QUESTIONS_PAGE_SIZE));
+  const filteredQuestions = useMemo(() => {
+    const source = questionItems;
+    const query = questionSearchQuery.toLowerCase();
+    if (!query) {
+      return source;
+    }
+    return source.filter((item) => {
+      const haystack = [String(item.id), item.text, item.explanation, ...(item.topic_titles ?? [])]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [questionItems, questionSearchQuery]);
+  const selectedTest = testsForCourse.find((item) => String(item.id) === activeTestId);
+  const defaultQuestionDifficulty = selectedTest?.baseline_difficulty ?? form.baselineDifficulty;
+
+  useEffect(() => {
+    if (questionSearchQuery) {
+      return;
+    }
+    if (questionPage > totalQuestionPages) {
+      setQuestionPage(totalQuestionPages);
+    }
+  }, [questionPage, questionSearchQuery, totalQuestionPages]);
+
+  useEffect(() => {
+    if (!testsForCourse.length) {
+      setSelectedTestId("");
+      return;
+    }
+    if (!selectedTestId || !testsForCourse.some((item) => String(item.id) === selectedTestId)) {
+      setSelectedTestId(String(testsForCourse[0].id));
+    }
+  }, [selectedTestId, testsForCourse]);
+
+  useEffect(() => {
+    setEditingQuestionId(null);
+    setQuestionStatus("");
+    setQuestionError("");
+    setQuestionSearch("");
+    setQuestionPage(1);
+    setQuestionForm(createQuestionDraft(defaultQuestionDifficulty));
+  }, [activeTestId, defaultQuestionDifficulty]);
+
+  useEffect(() => {
+    if (!editingQuestionId) {
+      return;
+    }
+    questionEditorRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    window.setTimeout(() => {
+      questionTextFieldRef.current?.focus({ preventScroll: true });
+      questionTextFieldRef.current?.setSelectionRange(0, 0);
+    }, 150);
+  }, [editingQuestionId]);
+
+  function applyPreset(presetId: (typeof TEST_PRESETS)[number]["id"]) {
+    const preset = TEST_PRESETS.find((item) => item.id === presetId);
+    if (!preset) {
+      return;
+    }
+    setForm((current) => ({
+      ...current,
+      baselineDifficulty: preset.baselineDifficulty,
+      questionLimit: preset.questionLimit,
+    }));
+  }
+
+  function startTestEditing(item: TestInfo) {
+    setEditingTestId(item.id);
+    setTestError("");
+    setSelectedTestId(String(item.id));
+    setForm({
+      courseId: String(item.course_id),
+      title: item.title,
+      baselineDifficulty: item.baseline_difficulty ?? 3,
+      questionLimit: item.question_limit,
+    });
+  }
+
+  function cancelTestEditing() {
+    setEditingTestId(null);
+    setTestError("");
+    setForm((current) => ({ ...current, title: "", baselineDifficulty: 3, questionLimit: 10 }));
+  }
+
+  async function deleteTest(testId: number) {
+    setTestError("");
+    try {
+      await apiDelete(`/tests/${testId}`, session);
+      if (selectedTestId === String(testId)) {
+        setSelectedTestId("");
+      }
+      if (editingTestId === testId) {
+        setEditingTestId(null);
+      }
+      setEditingQuestionId(null);
+      setQuestionStatus("");
+      setQuestionError("");
+      setQuestionRefreshKey((value) => value + 1);
+      setRefreshKey((value) => value + 1);
+      setForm((current) => ({ ...current, title: "", baselineDifficulty: 3, questionLimit: 10 }));
+    } catch (err) {
+      setTestError(
+        err instanceof Error ? err.message : language === "ru" ? "Не удалось удалить тест" : "Failed to delete test",
+      );
+    }
+  }
+
+  async function deleteQuestion(questionId: number) {
+    setQuestionError("");
+    if (editingQuestionId === questionId) {
+      setEditingQuestionId(null);
+      setQuestionStatus("");
+      setQuestionError("");
+      setQuestionForm(createQuestionDraft(defaultQuestionDifficulty));
+    }
+    try {
+      await apiDelete(`/questions/${questionId}`, session);
+      setQuestionRefreshKey((value) => value + 1);
+      setRefreshKey((value) => value + 1);
+    } catch (err) {
+      setQuestionError(
+        err instanceof Error
+          ? err.message
+          : language === "ru"
+            ? "Не удалось удалить вопрос"
+            : "Failed to delete question",
+      );
+    }
+  }
+
+  async function activateTest(testId: number) {
+    setTestError("");
+    try {
+      await apiPost(`/tests/${testId}/activate`, session, {});
+      setSelectedTestId(String(testId));
+      setRefreshKey((value) => value + 1);
+    } catch (err) {
+      setTestError(
+        err instanceof Error
+          ? err.message
+          : language === "ru"
+            ? "Не удалось активировать тест"
+            : "Failed to activate test",
+      );
+    }
+  }
+
+  function updateQuestionOption(index: number, value: string) {
+    setQuestionForm((current) => ({
+      ...current,
+      options: current.options.map((item, itemIndex) => (itemIndex === index ? value : item)),
+    }));
+  }
+
+  function addQuestionOption() {
+    setQuestionForm((current) => {
+      if (current.options.length >= 6) {
+        return current;
+      }
+      return { ...current, options: [...current.options, ""] };
+    });
+  }
+
+  function removeQuestionOption(index: number) {
+    setQuestionForm((current) => {
+      if (current.options.length <= 2) {
+        return current;
+      }
+      const nextOptions = current.options.filter((_, itemIndex) => itemIndex !== index);
+      return {
+        ...current,
+        options: nextOptions,
+        correctIndex: Math.min(current.correctIndex, nextOptions.length - 1),
+      };
+    });
+  }
+
+  function toggleQuestionTopic(topicId: string) {
+    setQuestionForm((current) => ({
+      ...current,
+      topicIds: current.topicIds.includes(topicId)
+        ? current.topicIds.filter((item) => item !== topicId)
+        : [...current.topicIds, topicId],
+    }));
+  }
+
+  function resetQuestionEditor() {
+    setEditingQuestionId(null);
+    setQuestionStatus("");
+    setQuestionError("");
+    setQuestionForm(createQuestionDraft(defaultQuestionDifficulty));
+  }
+
+  function startQuestionEditing(question: TestQuestionInfo) {
+    const optionTexts = (question.options ?? []).map((item) => item.text);
+    while (optionTexts.length < 4) {
+      optionTexts.push("");
+    }
+    setEditingQuestionId(question.id);
+    setQuestionStatus("");
+    setQuestionError("");
+    setQuestionForm({
+      text: question.text,
+      explanation: question.explanation,
+      difficulty: question.difficulty,
+      estimatedSeconds: question.estimated_seconds,
+      shuffleOptions: Boolean(question.shuffle_options),
+      topicIds: (question.topic_ids ?? []).map((item) => String(item)),
+      options: optionTexts,
+      correctIndex: Math.max(
+        0,
+        (question.options ?? []).findIndex((item) => item.is_correct),
+      ),
+    });
+  }
+
+  return (
+    <section className="page-stack">
+      <PageHeader title={t.testsPageTitle} subtitle={t.testsPageSubtitle} />
+      <section className="grid tests-layout">
+        <FormCard
+          title={editingTestId ? (language === "ru" ? "Редактирование теста" : "Edit test") : t.createTest}
+          onSubmit={submit}
+        >
+          <p className="form-helper">{t.testsSetupHint}</p>
+          {testError ? <Notice text={testError} tone="error" /> : null}
+          <label>
+            {t.courseLabel}
+            <select
+              value={form.courseId}
+              onChange={(e) => setForm({ ...form, courseId: e.target.value })}
+              disabled={Boolean(editingTestId)}
+            >
+              {(courses.data ?? []).map((course) => (
+                <option key={course.id} value={course.id}>
+                  {course.title}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            {t.testTitle}
+            <input
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              placeholder={suggestedTitle}
+              required
+            />
+          </label>
+          <section className="test-config-panel">
+            <div className="test-config-head">
+              <strong>{t.testsPresetLabel}</strong>
+              <span>{t.testsPresetHint}</span>
+            </div>
+            <div className="test-preset-grid">
+              <button type="button" className="secondary" onClick={() => applyPreset("quick")}>
+                {t.testsPresetQuick}
+              </button>
+              <button type="button" className="secondary" onClick={() => applyPreset("standard")}>
+                {t.testsPresetStandard}
+              </button>
+              <button type="button" className="secondary" onClick={() => applyPreset("exam")}>
+                {t.testsPresetExam}
+              </button>
+            </div>
+          </section>
+          <label>
+            {t.baselineDifficulty}
+            <input
+              type="range"
+              value={form.baselineDifficulty}
+              min={1}
+              max={5}
+              onChange={(e) => setForm({ ...form, baselineDifficulty: Number(e.target.value) })}
+              aria-label={t.baselineDifficulty}
+            />
+            <span className="form-value-badge">{form.baselineDifficulty}</span>
+            <span className="form-helper">{t.baselineDifficultyHint}</span>
+            <span className="form-helper strong">{difficultyDescription}</span>
+          </label>
+          <label>
+            {t.questionLimit}
+            <input
+              type="number"
+              value={form.questionLimit}
+              min={1}
+              max={50}
+              onChange={(e) => setForm({ ...form, questionLimit: Number(e.target.value) })}
+              aria-label={t.questionLimit}
+            />
+            <span className="form-helper">{t.questionLimitHint}</span>
+            <span className="form-helper strong">{questionPlanLabel}</span>
+          </label>
+          <section className="test-config-panel summary" aria-label={t.selectedCourseOverview}>
+            <div className="test-config-head">
+              <strong>{t.selectedCourseOverview}</strong>
+            </div>
+            <div className="test-summary-grid">
+              <article>
+                <strong>{t.selectedCourseDescription}</strong>
+                <span>{selectedCourse?.title ?? t.loading}</span>
+              </article>
+              <article>
+                <strong>{t.selectedCourseTestsCount}</strong>
+                <span>{testsForCourse.length}</span>
+                <p>
+                  {t.questionBankLabel}: {courseQuestionBankCount || t.testsBankEmpty}
+                </p>
+              </article>
+              <article>
+                <strong>{t.selectedCourseDifficultyPlan}</strong>
+                <span>{form.baselineDifficulty}</span>
+                <p>{difficultyDescription}</p>
+              </article>
+              <article>
+                <strong>{t.selectedCourseQuestionPlan}</strong>
+                <span>{form.questionLimit}</span>
+                <p>{questionPlanLabel}</p>
+              </article>
+            </div>
+          </section>
+          <button type="submit">
+            {editingTestId ? (language === "ru" ? "Сохранить тест" : "Save test") : t.createTestAction}
+          </button>
+          {editingTestId ? (
+            <button type="button" className="secondary" onClick={cancelTestEditing}>
+              {language === "ru" ? "Отменить" : "Cancel"}
+            </button>
+          ) : null}
+        </FormCard>
+        <section className="stack">
+          <DataTable
+            title={t.testsLabel}
+            columns={[
+              t.id,
+              t.title,
+              t.courseLabel,
+              t.baselineDifficulty,
+              t.questionLimit,
+              t.questionBankLabel,
+              t.activeTestLabel,
+              language === "ru" ? "Действия" : "Actions",
+            ]}
+            rows={testsForCourse.map((item) => [
+              String(item.id),
+              item.title,
+              courseTitles.get(item.course_id) ?? String(item.course_id),
+              String(item.baseline_difficulty ?? "-"),
+              String(item.question_limit),
+              item.question_count ? String(item.question_count) : t.testsBankEmpty,
+              item.is_active ? t.activeTestState : "—",
+              <div className="question-list-actions" key={`actions-${item.id}`}>
+                <button
+                  type="button"
+                  className="secondary icon-action-button"
+                  aria-label={t.setActiveTestAction}
+                  title={t.setActiveTestAction}
+                  onClick={() => void activateTest(item.id)}
+                  disabled={Boolean(item.is_active)}
+                >
+                  ★
+                </button>
+                <button
+                  type="button"
+                  className="secondary icon-action-button"
+                  aria-label={language === "ru" ? "Редактировать тест" : "Edit test"}
+                  title={language === "ru" ? "Редактировать тест" : "Edit test"}
+                  onClick={() => startTestEditing(item)}
+                >
+                  ✎
+                </button>
+                <button
+                  type="button"
+                  className="secondary icon-action-button danger"
+                  aria-label={language === "ru" ? "Удалить тест" : "Remove test"}
+                  title={language === "ru" ? "Удалить тест" : "Remove test"}
+                  onClick={() => void deleteTest(item.id)}
+                >
+                  🗑
+                </button>
+              </div>,
+            ])}
+            loading={tests.loading && testsRefresh.loading}
+            error={tests.error || testsRefresh.error}
+          />
+          <FormCard
+            title={t.questionEditorTitle}
+            onSubmit={async (event) => {
+              event.preventDefault();
+              if (!activeTestId) {
+                return;
+              }
+              const options = questionForm.options
+                .map((item, index) => ({ text: item.trim(), is_correct: index === questionForm.correctIndex }))
+                .filter((item) => item.text);
+              const payload = {
+                test_id: Number(activeTestId),
+                text: questionForm.text,
+                explanation: questionForm.explanation,
+                difficulty: questionForm.difficulty,
+                estimated_seconds: questionForm.estimatedSeconds,
+                topic_ids: questionForm.topicIds.map((item) => Number(item)),
+                shuffle_options: questionForm.shuffleOptions,
+                options,
+              };
+              setQuestionError("");
+              try {
+                if (editingQuestionId) {
+                  await apiPatch(`/questions/${editingQuestionId}`, session, payload);
+                  setQuestionStatus(t.questionUpdated);
+                } else {
+                  await apiPost("/questions", session, payload);
+                  setQuestionStatus(t.questionCreated);
+                }
+                setEditingQuestionId(null);
+                setQuestionForm(createQuestionDraft(defaultQuestionDifficulty));
+                setQuestionRefreshKey((value) => value + 1);
+                setRefreshKey((value) => value + 1);
+              } catch (err) {
+                setQuestionError(err instanceof Error ? err.message : t.failedSaveQuestion);
+              }
+            }}
+            className="question-editor-card"
+            formRef={questionEditorRef}
+          >
+            <p className="form-helper">{t.questionEditorHint}</p>
+            {questionStatus ? <Notice text={questionStatus} /> : null}
+            {questionError ? <Notice text={questionError} tone="error" /> : null}
+            <label>
+              {t.selectTestForQuestions}
+              <select
+                value={activeTestId}
+                onChange={(e) => setSelectedTestId(e.target.value)}
+                disabled={!testsForCourse.length}
+              >
+                {testsForCourse.length ? (
+                  testsForCourse.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.title}
+                    </option>
+                  ))
+                ) : (
+                  <option value="">{t.selectTestFirst}</option>
+                )}
+              </select>
+            </label>
+            {selectedTest ? (
+              <>
+                <div className="test-summary-note">
+                  <strong>{selectedTest.title}</strong>
+                  <span>
+                    {t.baselineDifficulty}: {selectedTest.baseline_difficulty ?? form.baselineDifficulty} |{" "}
+                    {t.questionLimit}: {selectedTest.question_limit}
+                  </span>
+                </div>
+                {editingQuestionId ? (
+                  <div className="question-editor-banner">
+                    <strong>{t.editingQuestionLabel.replace("{id}", String(editingQuestionId))}</strong>
+                    <button type="button" className="secondary" onClick={resetQuestionEditor}>
+                      {t.cancelQuestionEditing}
+                    </button>
+                  </div>
+                ) : null}
+                <label>
+                  {t.questionText}
+                  <textarea
+                    ref={questionTextFieldRef}
+                    value={questionForm.text}
+                    onChange={(e) => setQuestionForm((current) => ({ ...current, text: e.target.value }))}
+                    rows={4}
+                    required
+                  />
+                </label>
+                <div className="question-editor-grid">
+                  <label>
+                    {t.questionDifficulty}
+                    <input
+                      type="number"
+                      min={1}
+                      max={5}
+                      value={questionForm.difficulty}
+                      onChange={(e) =>
+                        setQuestionForm((current) => ({ ...current, difficulty: Number(e.target.value) }))
+                      }
+                      required
+                    />
+                  </label>
+                  <label>
+                    {t.questionEstimatedSeconds}
+                    <input
+                      type="number"
+                      min={10}
+                      max={600}
+                      value={questionForm.estimatedSeconds}
+                      onChange={(e) =>
+                        setQuestionForm((current) => ({ ...current, estimatedSeconds: Number(e.target.value) }))
+                      }
+                      required
+                    />
+                  </label>
+                </div>
+                <label>
+                  {t.questionExplanation}
+                  <textarea
+                    value={questionForm.explanation}
+                    onChange={(e) => setQuestionForm((current) => ({ ...current, explanation: e.target.value }))}
+                    rows={3}
+                  />
+                </label>
+                <section className="test-config-panel">
+                  <div className="test-config-head">
+                    <strong>{t.questionTopics}</strong>
+                    <span>{t.questionTopicsHint}</span>
+                  </div>
+                  {topics.data?.length ? (
+                    <div className="question-topics-grid">
+                      {topics.data.map((topic) => (
+                        <label key={topic.id} className="topic-chip">
+                          <input
+                            type="checkbox"
+                            checked={questionForm.topicIds.includes(String(topic.id))}
+                            onChange={() => toggleQuestionTopic(String(topic.id))}
+                          />
+                          <span>{topic.title}</span>
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="form-helper">{t.noTopicsAvailable}</p>
+                  )}
+                </section>
+                <section className="test-config-panel">
+                  <div className="test-config-head">
+                    <strong>{t.questionOptions}</strong>
+                    <span>{t.questionCorrectOption}</span>
+                  </div>
+                  <label className="course-access-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={questionForm.shuffleOptions}
+                      onChange={(e) => setQuestionForm((current) => ({ ...current, shuffleOptions: e.target.checked }))}
+                    />
+                    <span>
+                      {t.shuffleOptions}
+                      <small className="form-helper">{t.shuffleOptionsHint}</small>
+                    </span>
+                  </label>
+                  <div className="question-options-list">
+                    {questionForm.options.map((option, index) => (
+                      <div key={`option-${index}`} className="question-option-row">
+                        <label className="question-option-radio">
+                          <input
+                            type="radio"
+                            name="correctOption"
+                            checked={questionForm.correctIndex === index}
+                            onChange={() => setQuestionForm((current) => ({ ...current, correctIndex: index }))}
+                          />
+                          <span>{t.answerOptionLabel.replace("{number}", String(index + 1))}</span>
+                        </label>
+                        <input
+                          value={option}
+                          onChange={(e) => updateQuestionOption(index, e.target.value)}
+                          placeholder={t.answerOptionLabel.replace("{number}", String(index + 1))}
+                          required
+                        />
+                        <button
+                          type="button"
+                          className="secondary"
+                          onClick={() => removeQuestionOption(index)}
+                          disabled={questionForm.options.length <= 2}
+                        >
+                          {t.removeAnswerOption}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={addQuestionOption}
+                    disabled={questionForm.options.length >= 6}
+                  >
+                    {t.addAnswerOption}
+                  </button>
+                </section>
+                <div className="question-editor-actions">
+                  <button type="submit">{editingQuestionId ? t.saveQuestionAction : t.createQuestionAction}</button>
+                  {editingQuestionId ? (
+                    <button type="button" className="secondary" onClick={resetQuestionEditor}>
+                      {t.cancelQuestionEditing}
+                    </button>
+                  ) : null}
+                </div>
+                <article className="test-config-panel question-list-card">
+                  <h3>{t.questionsInTest}</h3>
+                  {questions.error ? <Notice text={questions.error} tone="error" /> : null}
+                  <label>
+                    {t.questionSearch}
+                    <input
+                      type="search"
+                      value={questionSearch}
+                      onChange={(e) => {
+                        setQuestionPage(1);
+                        setQuestionSearch(e.target.value);
+                      }}
+                      placeholder={t.questionSearchPlaceholder}
+                    />
+                  </label>
+                  {!questionSearchQuery && questionTotal > QUESTIONS_PAGE_SIZE ? (
+                    <div className="question-pagination">
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => setQuestionPage((value) => Math.max(1, value - 1))}
+                        disabled={questionPage <= 1}
+                      >
+                        {t.previousPage}
+                      </button>
+                      <span>
+                        {t.questionPageLabel
+                          .replace("{page}", String(questionPage))
+                          .replace("{total}", String(totalQuestionPages))}
+                      </span>
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => setQuestionPage((value) => Math.min(totalQuestionPages, value + 1))}
+                        disabled={questionPage >= totalQuestionPages}
+                      >
+                        {t.nextPage}
+                      </button>
+                    </div>
+                  ) : null}
+                  {questions.loading ? (
+                    <EmptyState title={t.loading} />
+                  ) : filteredQuestions.length ? (
+                    <div className="question-list">
+                      {filteredQuestions.map((item) => (
+                        <article key={item.id} className="question-list-item">
+                          <div className="question-list-head">
+                            <strong>{item.text}</strong>
+                            <span>#{item.id}</span>
+                          </div>
+                          <div className="question-list-meta">
+                            <span>
+                              {t.questionDifficulty}: {item.difficulty}
+                            </span>
+                            <span>
+                              {t.questionEstimatedSeconds}: {item.estimated_seconds}
+                            </span>
+                            <span>
+                              {t.optionCount}: {item.option_count}
+                            </span>
+                          </div>
+                          <div className="question-list-actions">
+                            <button
+                              type="button"
+                              className="secondary icon-action-button"
+                              aria-label={t.editQuestionAction}
+                              title={t.editQuestionAction}
+                              onClick={() => startQuestionEditing(item)}
+                            >
+                              ✎
+                            </button>
+                            <button
+                              type="button"
+                              className="secondary icon-action-button danger"
+                              aria-label={language === "ru" ? "Удалить вопрос" : "Remove question"}
+                              title={language === "ru" ? "Удалить вопрос" : "Remove question"}
+                              onClick={() => void deleteQuestion(item.id)}
+                            >
+                              🗑
+                            </button>
+                          </div>
+                          {item.topic_titles.length ? <span>{item.topic_titles.join(", ")}</span> : null}
+                          {item.explanation ? <p>{item.explanation}</p> : null}
+                        </article>
+                      ))}
+                    </div>
+                  ) : questionItems.length > 0 ? (
+                    <EmptyState title={t.noQuestionsMatchSearch} />
+                  ) : (
+                    <EmptyState title={t.noQuestionsInTest} />
+                  )}
+                </article>
+              </>
+            ) : (
+              <EmptyState title={t.selectTestFirst} />
+            )}
+          </FormCard>
+        </section>
+      </section>
+    </section>
+  );
+}
+
+type CourseStatusFilter = "all" | "published" | "draft" | "archived";
+type AssignmentTab = "assigned" | "assign";
+type AssignmentMode = "individual" | "group";
+type AssignmentRoleFilter = "all" | "learner" | "teacher";
+type AssignedLearnerRow = {
+  assignment: CourseAssignmentInfo;
+  userId: number;
+  user: UserInfo | null;
+};
+
+function courseStatusMeta(course: CourseInfo, t: UiMessages) {
+  if (course.status === "archived") {
+    return { label: t.assignmentsCourseStatus_archived, className: "status-chip blocked" };
+  }
+  if (course.is_published) {
+    return { label: t.assignmentsCourseStatus_published, className: "status-chip ok" };
+  }
+  return { label: t.assignmentsCourseStatus_draft, className: "status-chip risk" };
+}
+
+function formatAssignmentDate(value: string, language: Language) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+  return parsed.toLocaleString(language === "ru" ? "ru-RU" : "en-US");
+}
+
+function CourseListPanel({
+  courses,
+  loading,
+  selectedId,
+  onSelect,
+  session,
+  refreshKey,
+}: {
+  courses: CourseInfo[];
+  loading: boolean;
+  selectedId: number | null;
+  onSelect: (id: number) => void;
+  session: SessionState;
+  refreshKey: number;
+}) {
+  const { t } = useUi();
+  const [query, setQuery] = useState("");
+  const debouncedQuery = useDebouncedValue(query);
+  const [statusFilter, setStatusFilter] = useState<CourseStatusFilter>("all");
+  const [page, setPage] = useState(1);
+  const [assignmentCounts, setAssignmentCounts] = useState<Record<number, number>>({});
+  const pageSize = 10;
+  const filtered = useMemo(() => {
+    const normalizedQuery = debouncedQuery.trim().toLowerCase();
+    return courses.filter((course) => {
+      const matchQuery =
+        !normalizedQuery ||
+        course.title.toLowerCase().includes(normalizedQuery) ||
+        (course.description ?? "").toLowerCase().includes(normalizedQuery);
+      const matchStatus =
+        statusFilter === "all" ||
+        (statusFilter === "published" && course.is_published) ||
+        (statusFilter === "draft" && !course.is_published && course.status !== "archived") ||
+        (statusFilter === "archived" && course.status === "archived");
+      return matchQuery && matchStatus;
+    });
+  }, [courses, debouncedQuery, statusFilter]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const visibleCourses = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const visibleCourseIdsKey = visibleCourses.map((course) => course.id).join(",");
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedQuery, statusFilter]);
+
+  useEffect(() => {
+    let active = true;
+    async function loadCounts() {
+      const nextCounts: Record<number, number> = {};
+      await Promise.all(
+        visibleCourses.map(async (course) => {
+          try {
+            const rows = (await apiRequest(`/courses/${course.id}/assignments`, session)) as CourseAssignmentInfo[];
+            nextCounts[course.id] = rows.length;
+          } catch {
+            nextCounts[course.id] = -1;
+          }
+        }),
+      );
+      if (active) {
+        setAssignmentCounts((current) => ({ ...current, ...nextCounts }));
+      }
+    }
+    if (visibleCourses.length) {
+      void loadCounts();
+    }
+    return () => {
+      active = false;
+    };
+  }, [refreshKey, session, visibleCourseIdsKey]);
+
+  return (
+    <article className="card assignments-courses-panel">
+      <header className="assignments-panel-head">
+        <h3>{t.assignmentsCoursesTitle}</h3>
+        <span className="assignments-counter">
+          {t.assignmentsTotal}: {filtered.length}
+        </span>
+      </header>
+      <SearchInput value={query} onChange={setQuery} placeholder={t.assignmentsCourseSearchPlaceholder} />
+      <div className="assignments-status-chips" role="tablist">
+        {(["all", "published", "draft", "archived"] as const).map((key) => (
+          <button
+            key={key}
+            type="button"
+            className={`button-ghost ${statusFilter === key ? "active" : ""}`.trim()}
+            aria-pressed={statusFilter === key}
+            onClick={() => setStatusFilter(key)}
+          >
+            {t[`assignmentsCourseStatus_${key}`]}
+          </button>
+        ))}
+      </div>
+      {loading ? <div className="skeleton-card compact" aria-busy="true" /> : null}
+      {!loading && !visibleCourses.length ? <EmptyState title={t.assignmentsCourseSearchEmpty} /> : null}
+      <ul className="assignments-courses-list">
+        {visibleCourses.map((course) => {
+          const status = courseStatusMeta(course, t);
+          const count = assignmentCounts[course.id];
+          return (
+            <li key={course.id}>
+              <button
+                type="button"
+                className={`course-tile ${selectedId === course.id ? "active" : ""}`.trim()}
+                onClick={() => onSelect(course.id)}
+              >
+                <span className="course-tile-thumb" aria-hidden="true">
+                  {course.image_url ? (
+                    <img src={resolveMediaUrl(course.image_url)} alt="" />
+                  ) : (
+                    course.title.trim().charAt(0).toUpperCase()
+                  )}
+                </span>
+                <span className="course-tile-body">
+                  <strong>{course.title}</strong>
+                  <span className="course-tile-meta">
+                    <span className={status.className}>{status.label}</span>
+                    <span className="course-tile-count">
+                      {count === undefined || count < 0 ? "-" : count} {t.assignmentsAssigneesCount}
+                    </span>
+                  </span>
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <Pagination page={safePage} totalPages={totalPages} onChange={setPage} />
+    </article>
+  );
+}
+
+function LearnerAssignPanel({
+  course,
+  session,
+  refreshKey,
+  onRefresh,
+  onStatus,
+}: {
+  course: CourseInfo | null;
+  session: SessionState;
+  refreshKey: number;
+  onRefresh: () => void;
+  onStatus: (message: string) => void;
+}) {
+  const { language, t } = useUi();
+  const [tab, setTab] = useState<AssignmentTab>("assigned");
+  const [mode, setMode] = useState<AssignmentMode>("individual");
+  const [assignedQuery, setAssignedQuery] = useState("");
+  const [assignQuery, setAssignQuery] = useState("");
+  const [groupQuery, setGroupQuery] = useState("");
+  const debouncedAssignedQuery = useDebouncedValue(assignedQuery);
+  const debouncedAssignQuery = useDebouncedValue(assignQuery);
+  const debouncedGroupQuery = useDebouncedValue(groupQuery);
+  const [roleFilter, setRoleFilter] = useState<AssignmentRoleFilter>("all");
+  const [assignedPage, setAssignedPage] = useState(1);
+  const [assignPage, setAssignPage] = useState(1);
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<number>>(() => new Set());
+  const [selectedGroupId, setSelectedGroupId] = useState("");
+  const [newGroupName, setNewGroupName] = useState("");
+  const [groupMemberSearch, setGroupMemberSearch] = useState("");
+  const [addMemberUserId, setAddMemberUserId] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const users = useRemote<UserInfo[]>("/users", session, refreshKey);
+  const groups = useRemote<GroupInfo[]>("/groups", session, refreshKey);
+  const assignments = useRemote<CourseAssignmentInfo[]>(
+    course ? `/courses/${course.id}/assignments` : null,
+    session,
+    refreshKey + (course?.id ?? 0),
+  );
+  const groupMembers = useRemote<GroupMemberInfo[]>(
+    selectedGroupId ? `/groups/${selectedGroupId}/members` : null,
+    session,
+    refreshKey + Number(selectedGroupId || 0),
+  );
+  const pageSize = 20;
+  const userById = useMemo(() => new Map((users.data ?? []).map((user) => [user.id, user])), [users.data]);
+  const groupById = useMemo(() => new Map((groups.data ?? []).map((group) => [group.id, group])), [groups.data]);
+  const assignedRows = useMemo<AssignedLearnerRow[]>(() => {
+    return (assignments.data ?? []).flatMap((assignment) => {
+      const userIds = assignment.effective_user_ids.length
+        ? assignment.effective_user_ids
+        : assignment.user_id
+          ? [assignment.user_id]
+          : [];
+      return userIds.map((userId) => ({
+        assignment,
+        userId,
+        user: userById.get(userId) ?? null,
+      }));
+    });
+  }, [assignments.data, userById]);
+  const assignedUserIds = useMemo(() => new Set(assignedRows.map((row) => row.userId)), [assignedRows]);
+  const assignedTotal = assignedRows.length;
+
+  useEffect(() => {
+    setAssignedPage(1);
+  }, [debouncedAssignedQuery]);
+
+  useEffect(() => {
+    setAssignPage(1);
+  }, [debouncedAssignQuery, roleFilter, mode, debouncedGroupQuery]);
+
+  useEffect(() => {
+    setSelectedUserIds(new Set());
+    setAssignedPage(1);
+    setAssignPage(1);
+    setSelectedGroupId("");
+  }, [course?.id]);
+
+  const filteredAssignedRows = useMemo(() => {
+    const normalizedQuery = debouncedAssignedQuery.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return assignedRows;
+    }
+    return assignedRows.filter((row) => {
+      const haystack = [row.user?.full_name ?? "", row.user?.email ?? "", String(row.userId)].join(" ").toLowerCase();
+      return haystack.includes(normalizedQuery);
+    });
+  }, [assignedRows, debouncedAssignedQuery]);
+  const assignedTotalPages = Math.max(1, Math.ceil(filteredAssignedRows.length / pageSize));
+  const assignedSafePage = Math.min(assignedPage, assignedTotalPages);
+  const visibleAssignedRows = filteredAssignedRows.slice(
+    (assignedSafePage - 1) * pageSize,
+    assignedSafePage * pageSize,
+  );
+
+  const filteredUsers = useMemo(() => {
+    const normalizedQuery = debouncedAssignQuery.trim().toLowerCase();
+    return (users.data ?? []).filter((user) => {
+      const matchQuery = !normalizedQuery || `${user.full_name} ${user.email}`.toLowerCase().includes(normalizedQuery);
+      const matchRole =
+        roleFilter === "all" ||
+        (roleFilter === "learner" && user.role_name === "learner") ||
+        (roleFilter === "teacher" && user.role_name === "teacher");
+      return matchQuery && matchRole;
+    });
+  }, [debouncedAssignQuery, roleFilter, users.data]);
+  const assignTotalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+  const assignSafePage = Math.min(assignPage, assignTotalPages);
+  const visibleUsers = filteredUsers.slice((assignSafePage - 1) * pageSize, assignSafePage * pageSize);
+  const filteredGroups = useMemo(() => {
+    const normalizedQuery = debouncedGroupQuery.trim().toLowerCase();
+    return (groups.data ?? []).filter(
+      (group) => !normalizedQuery || group.name.toLowerCase().includes(normalizedQuery),
+    );
+  }, [debouncedGroupQuery, groups.data]);
+  const selectedGroup = filteredGroups.find((group) => String(group.id) === selectedGroupId) ?? null;
+  const selectedAssignableIds = Array.from(selectedUserIds).filter((userId) => !assignedUserIds.has(userId));
+  const groupMemberUserIds = useMemo(
+    () => new Set((groupMembers.data ?? []).map((member) => member.user_id)),
+    [groupMembers.data],
+  );
+  const addableUsers = useMemo(
+    () => (users.data ?? []).filter((user) => !groupMemberUserIds.has(user.id)),
+    [users.data, groupMemberUserIds],
+  );
+  const filteredGroupMembers = useMemo(() => {
+    const normalizedQuery = groupMemberSearch.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return groupMembers.data ?? [];
+    }
+    return (groupMembers.data ?? []).filter((member) =>
+      `${member.full_name} ${member.email}`.toLowerCase().includes(normalizedQuery),
+    );
+  }, [groupMemberSearch, groupMembers.data]);
+
+  async function assignUser(userId: number) {
+    if (!course || assignedUserIds.has(userId)) {
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await apiPost(`/courses/${course.id}/assign`, session, { user_id: userId });
+      onStatus(t.assignmentsAssignSuccess);
+      setSelectedUserIds(new Set());
+      onRefresh();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function assignSelectedUsers() {
+    if (!course || !selectedAssignableIds.length) {
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await Promise.all(
+        selectedAssignableIds.map((userId) => apiPost(`/courses/${course.id}/assign`, session, { user_id: userId })),
+      );
+      onStatus(t.assignmentsAssignSuccess);
+      setSelectedUserIds(new Set());
+      onRefresh();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function assignGroup() {
+    if (!course || !selectedGroup) {
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await apiPost(`/courses/${course.id}/assign`, session, { group_id: selectedGroup.id });
+      onStatus(t.assignmentsAssignSuccess);
+      setSelectedGroupId("");
+      onRefresh();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function createGroup() {
+    const trimmed = newGroupName.trim();
+    if (!trimmed) {
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const created = (await apiPost("/groups", session, { name: trimmed })) as GroupInfo;
+      onStatus(t.assignmentsCreateGroupSuccess);
+      setNewGroupName("");
+      setSelectedGroupId(String(created.id));
+      onRefresh();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function addMemberToGroup() {
+    if (!selectedGroupId || !addMemberUserId) {
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await apiPost(`/groups/${selectedGroupId}/members`, session, { user_id: Number(addMemberUserId) });
+      setAddMemberUserId("");
+      onRefresh();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function removeMemberFromGroup(userId: number) {
+    if (!selectedGroupId) {
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await apiDelete(`/groups/${selectedGroupId}/members/${userId}`, session);
+      onRefresh();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function revokeAssignment(assignment: CourseAssignmentInfo) {
+    if (!course || !window.confirm(t.assignmentsRevokeConfirm)) {
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await apiDelete(`/courses/${course.id}/assignments/${assignment.id}`, session);
+      onStatus(t.assignmentsRevokeSuccess);
+      onRefresh();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function toggleSelectedUser(userId: number) {
+    setSelectedUserIds((current) => {
+      const next = new Set(current);
+      if (next.has(userId)) {
+        next.delete(userId);
+      } else {
+        next.add(userId);
+      }
+      return next;
+    });
+  }
+
+  if (!course) {
+    return (
+      <article className="card assignments-empty">
+        <EmptyState title={t.assignmentsPickCourseHint} />
+      </article>
+    );
+  }
+
+  const courseStatus = courseStatusMeta(course, t);
+  return (
+    <article className="card assignments-learners-panel">
+      <header className="assignments-panel-head">
+        <div className="assignments-panel-title">
+          <h3>{course.title}</h3>
+          <span className="assignments-counter">
+            <span className={courseStatus.className}>{courseStatus.label}</span>
+            {t.assignmentsAssigneesCount}: {assignments.loading ? "-" : assignedTotal}
+          </span>
+        </div>
+        <div className="dashboard-inline-controls" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            className={`button-ghost ${tab === "assigned" ? "active" : ""}`.trim()}
+            aria-pressed={tab === "assigned"}
+            onClick={() => setTab("assigned")}
+          >
+            {t.assignmentsTabAssigned}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            className={`button-ghost ${tab === "assign" ? "active" : ""}`.trim()}
+            aria-pressed={tab === "assign"}
+            onClick={() => setTab("assign")}
+          >
+            {t.assignmentsTabAssign}
+          </button>
+        </div>
+      </header>
+
+      {tab === "assigned" ? (
+        <section className="assignments-panel-section">
+          <SearchInput
+            value={assignedQuery}
+            onChange={setAssignedQuery}
+            placeholder={t.assignmentsLearnerSearchPlaceholder}
+          />
+          {assignments.loading || users.loading ? <div className="skeleton-card compact" aria-busy="true" /> : null}
+          {!assignments.loading && !users.loading && !visibleAssignedRows.length ? (
+            <EmptyState title={t.assignmentsNoAssigned} />
+          ) : null}
+          <div className="assignments-users-list">
+            {visibleAssignedRows.map((row) => {
+              const group = row.assignment.group_id ? groupById.get(row.assignment.group_id) : null;
+              return (
+                <article key={`${row.assignment.id}-${row.userId}`} className="assignment-row is-assigned">
+                  <span className="role-chip">{formatRoleLabel(row.user?.role_name, t)}</span>
+                  <div className="meta">
+                    <strong>{row.user?.full_name ?? `${t.learner} #${row.userId}`}</strong>
+                    <span>{row.user?.email ?? `user_id=${row.userId}`}</span>
+                    <span>
+                      {t.assignmentsAssignedAt}: {formatAssignmentDate(row.assignment.created_at, language)}
+                      {group ? ` · ${t.assignmentsByGroup.replace("{name}", group.name)}` : ""}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="button-ghost row-action"
+                    disabled={submitting}
+                    onClick={() => void revokeAssignment(row.assignment)}
+                  >
+                    {t.assignmentsRevokeAction}
+                  </button>
+                </article>
+              );
+            })}
+          </div>
+          <Pagination page={assignedSafePage} totalPages={assignedTotalPages} onChange={setAssignedPage} />
+        </section>
+      ) : (
+        <section className="assignments-panel-section">
+          <div className="dashboard-inline-controls">
+            <button
+              type="button"
+              className={`button-ghost ${mode === "individual" ? "active" : ""}`.trim()}
+              aria-pressed={mode === "individual"}
+              onClick={() => setMode("individual")}
+            >
+              {t.assignmentsModeIndividual}
+            </button>
+            <button
+              type="button"
+              className={`button-ghost ${mode === "group" ? "active" : ""}`.trim()}
+              aria-pressed={mode === "group"}
+              onClick={() => setMode("group")}
+            >
+              {t.assignmentsModeGroup}
+            </button>
+          </div>
+          {mode === "individual" ? (
+            <>
+              <SearchInput
+                value={assignQuery}
+                onChange={setAssignQuery}
+                placeholder={t.assignmentsLearnerSearchPlaceholder}
+              />
+              <div className="assignments-status-chips">
+                {(["all", "learner", "teacher"] as const).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`button-ghost ${roleFilter === key ? "active" : ""}`.trim()}
+                    aria-pressed={roleFilter === key}
+                    onClick={() => setRoleFilter(key)}
+                  >
+                    {key === "all"
+                      ? t.assignmentsRoleAll
+                      : key === "learner"
+                        ? t.assignmentsRoleLearner
+                        : t.assignmentsRoleTeacher}
+                  </button>
+                ))}
+              </div>
+              {users.loading || assignments.loading ? <div className="skeleton-card compact" aria-busy="true" /> : null}
+              {!users.loading && !visibleUsers.length ? <EmptyState title={t.assignmentsNoLearners} /> : null}
+              <div className="assignments-users-list">
+                {visibleUsers.map((user) => {
+                  const alreadyAssigned = assignedUserIds.has(user.id);
+                  return (
+                    <article key={user.id} className={`assignment-row ${alreadyAssigned ? "is-assigned" : ""}`.trim()}>
+                      <input
+                        type="checkbox"
+                        aria-label={user.full_name}
+                        checked={selectedUserIds.has(user.id)}
+                        disabled={alreadyAssigned || submitting}
+                        onChange={() => toggleSelectedUser(user.id)}
+                      />
+                      <div className="meta">
+                        <strong>{user.full_name}</strong>
+                        <span>{user.email}</span>
+                      </div>
+                      <span className="role-chip">{formatRoleLabel(user.role_name, t)}</span>
+                      {alreadyAssigned ? (
+                        <span className="status-chip ok row-action">{t.assignmentsAlreadyAssigned}</span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="button-ghost row-action"
+                          disabled={submitting}
+                          onClick={() => void assignUser(user.id)}
+                        >
+                          {t.assignmentsAssignAction}
+                        </button>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+              <Pagination page={assignSafePage} totalPages={assignTotalPages} onChange={setAssignPage} />
+              {selectedAssignableIds.length ? (
+                <div className="assignments-bulk-bar">
+                  <span>{t.assignmentsBulkAssignAction.replace("{count}", String(selectedAssignableIds.length))}</span>
+                  <button type="button" disabled={submitting} onClick={() => void assignSelectedUsers()}>
+                    {submitting
+                      ? t.assignmentsBulkAssigning
+                      : t.assignmentsBulkAssignAction.replace("{count}", String(selectedAssignableIds.length))}
+                  </button>
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <section className="assignments-panel-section">
+              <div className="inline-form">
+                <input
+                  value={newGroupName}
+                  onChange={(event) => setNewGroupName(event.target.value)}
+                  placeholder={t.assignmentsCreateGroupPlaceholder}
+                />
+                <button type="button" disabled={submitting || !newGroupName.trim()} onClick={() => void createGroup()}>
+                  {t.assignmentsCreateGroupAction}
+                </button>
+              </div>
+              <SearchInput
+                value={groupQuery}
+                onChange={setGroupQuery}
+                placeholder={t.assignmentsGroupSearchPlaceholder}
+              />
+              {groups.loading ? <div className="skeleton-card compact" aria-busy="true" /> : null}
+              {!groups.loading && !filteredGroups.length ? <EmptyState title={t.assignmentsNoGroups} /> : null}
+              {filteredGroups.length ? (
+                <label>
+                  {t.assignmentsGroupPlaceholder}
+                  <select value={selectedGroupId} onChange={(event) => setSelectedGroupId(event.target.value)}>
+                    <option value="">{t.assignmentsGroupPlaceholder}</option>
+                    {filteredGroups.map((group) => (
+                      <option key={group.id} value={group.id}>
+                        {group.name} ({t.assignmentsGroupMemberCount.replace("{count}", String(group.member_count))})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              {selectedGroup ? (
+                <>
+                  <section className="assignments-panel-section">
+                    <strong>{t.assignmentsGroupMembersTitle}</strong>
+                    <SearchInput
+                      value={groupMemberSearch}
+                      onChange={setGroupMemberSearch}
+                      placeholder={t.assignmentsGroupMemberSearchPlaceholder}
+                    />
+                    <div className="inline-form">
+                      <select value={addMemberUserId} onChange={(event) => setAddMemberUserId(event.target.value)}>
+                        <option value="">{t.learner}</option>
+                        {addableUsers.map((user) => (
+                          <option key={user.id} value={user.id}>
+                            {user.full_name} ({user.email})
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="button-ghost"
+                        disabled={submitting || !addMemberUserId}
+                        onClick={() => void addMemberToGroup()}
+                      >
+                        {t.assignmentsAddToGroupAction}
+                      </button>
+                    </div>
+                    {groupMembers.loading ? <div className="skeleton-card compact" aria-busy="true" /> : null}
+                    {!groupMembers.loading && !filteredGroupMembers.length ? (
+                      <EmptyState title={t.assignmentsNoGroupMembers} />
+                    ) : null}
+                    <div className="assignments-users-list">
+                      {filteredGroupMembers.map((member) => (
+                        <article key={member.id} className="assignment-row">
+                          <span className="role-chip">#{member.user_id}</span>
+                          <div className="meta">
+                            <strong>{member.full_name}</strong>
+                            <span>{member.email}</span>
+                          </div>
+                          <span />
+                          <button
+                            type="button"
+                            className="button-ghost row-action"
+                            disabled={submitting}
+                            onClick={() => void removeMemberFromGroup(member.user_id)}
+                          >
+                            {t.assignmentsRemoveFromGroupAction}
+                          </button>
+                        </article>
+                      ))}
+                    </div>
+                  </section>
+                  <button type="button" disabled={submitting} onClick={() => void assignGroup()}>
+                    {t.assignmentsAssignWholeGroup.replace("{name}", selectedGroup.name)}
+                  </button>
+                </>
+              ) : null}
+            </section>
+          )}
+        </section>
+      )}
+    </article>
+  );
+}
+
+export function AssignmentsPage({ session }: { session: SessionState }) {
+  const { language, t } = useUi();
+  const courses = useRemote<CourseInfo[]>("/courses", session);
+  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [status, setStatus] = useState("");
+  const statusTimeoutRef = useRef<number | null>(null);
+  const selectedCourse = (courses.data ?? []).find((course) => course.id === selectedCourseId) ?? null;
+
+  useEffect(() => {
+    return () => {
+      if (statusTimeoutRef.current !== null) {
+        window.clearTimeout(statusTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  function showStatus(message: string) {
+    setStatus(message);
+    if (statusTimeoutRef.current !== null) {
+      window.clearTimeout(statusTimeoutRef.current);
+    }
+    statusTimeoutRef.current = window.setTimeout(() => setStatus(""), 4500);
+  }
+
+  return (
+    <section className="page-stack">
+      <PageHeader title={t.assignmentsPageTitle} subtitle={t.assignmentsPageSubtitle} />
+      <p className="page-helper">
+        {language === "ru"
+          ? "Назначайте курсы отдельным слушателям и группам, отзывайте доступ при ошибках."
+          : "Assign courses to individual learners or groups, and revoke access when needed."}
+      </p>
+      {status && <Notice text={status} />}
+      <section className="assignments-shell">
+        <CourseListPanel
+          courses={courses.data ?? []}
+          loading={courses.loading}
+          selectedId={selectedCourseId}
+          onSelect={setSelectedCourseId}
+          session={session}
+          refreshKey={refreshKey}
+        />
+        <LearnerAssignPanel
+          course={selectedCourse}
+          session={session}
+          refreshKey={refreshKey}
+          onRefresh={() => setRefreshKey((value) => value + 1)}
+          onStatus={showStatus}
+        />
+      </section>
+    </section>
+  );
+}
+
+export function HomeworkReviewsPage({ session }: { session: SessionState }) {
+  const { language, t } = useUi();
+  const navigate = useNavigate();
+  const assignments = useRemote<AssignmentInfo[]>("/assignments", session);
+  const users = useRemote<UserInfo[]>("/users", session);
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState<string>("");
+  const [assignmentSearch, setAssignmentSearch] = useState("");
+  const [selectedSubmissionId, setSelectedSubmissionId] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [submissionSearch, setSubmissionSearch] = useState("");
+  const [submissionsRefreshKey, setSubmissionsRefreshKey] = useState(0);
+  const [reviewForm, setReviewForm] = useState({ status: "approved", comment: "", grade: "" });
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
+  const [openingAssignment, setOpeningAssignment] = useState(false);
+  const submissionsUrl = selectedAssignmentId
+    ? `/assignments/${selectedAssignmentId}/submissions${statusFilter ? `?status=${statusFilter}` : ""}`
+    : null;
+  const practicalSubmissions = useRemote<AssignmentSubmissionInfo[]>(submissionsUrl, session, submissionsRefreshKey);
+  const userById = useMemo(() => new Map((users.data ?? []).map((user) => [user.id, user])), [users.data]);
+  const activeAssignments = useMemo(
+    () => (assignments.data ?? []).filter((item) => item.is_active),
+    [assignments.data],
+  );
+  const filteredSubmissions = useMemo(() => {
+    const normalizedQuery = submissionSearch.trim().toLowerCase();
+    const source = practicalSubmissions.data ?? [];
+    if (!normalizedQuery) return source;
+    return source.filter((submission) => {
+      const learner = userById.get(submission.student_user_id);
+      const haystack = [
+        String(submission.id),
+        String(submission.student_user_id),
+        learner?.full_name ?? "",
+        learner?.email ?? "",
+      ]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(normalizedQuery);
+    });
+  }, [practicalSubmissions.data, submissionSearch, userById]);
+  const selectedSubmission = filteredSubmissions.find((item) => String(item.id) === selectedSubmissionId) ?? null;
+
+  useEffect(() => {
+    if (!activeAssignments.length) {
+      if (selectedAssignmentId) {
+        setSelectedAssignmentId("");
+      }
+      return;
+    }
+    if (!selectedAssignmentId || !activeAssignments.some((item) => String(item.id) === selectedAssignmentId)) {
+      setSelectedAssignmentId(String(activeAssignments[0].id));
+    }
+  }, [activeAssignments, selectedAssignmentId]);
+
+  useEffect(() => {
+    setSelectedSubmissionId("");
+  }, [selectedAssignmentId, statusFilter]);
+
+  useEffect(() => {
+    const list = filteredSubmissions;
+    if (!list.length) {
+      setSelectedSubmissionId("");
+      return;
+    }
+    if (!selectedSubmissionId || !list.some((item) => String(item.id) === selectedSubmissionId)) {
+      setSelectedSubmissionId(String(list[0].id));
+    }
+  }, [filteredSubmissions, selectedSubmissionId]);
+
+  useEffect(() => {
+    if (selectedSubmission?.latest_review) {
+      setReviewForm({
+        status: selectedSubmission.latest_review.status || "approved",
+        comment: selectedSubmission.latest_review.comment || "",
+        grade: selectedSubmission.latest_review.grade == null ? "" : String(selectedSubmission.latest_review.grade),
+      });
+      return;
+    }
+    setReviewForm({ status: "approved", comment: "", grade: "" });
+  }, [selectedSubmissionId, selectedSubmission]);
+
+  const formatDateTime = (value?: string | null) => {
+    if (!value) return "—";
+    const normalized = /(?:z|[+-]\d{2}:\d{2})$/i.test(value) ? value : `${value}Z`;
+    const parsed = new Date(normalized);
+    if (Number.isNaN(parsed.getTime())) return value;
+    return parsed.toLocaleString(language === "ru" ? "ru-RU" : "en-US");
+  };
+
+  const learnerFallback = (userId: number) => t.homeworkReviewLearnerFallback.replace("{id}", String(userId));
+  const learnerLabel = (userId: number) => userById.get(userId)?.full_name || learnerFallback(userId);
+  const learnerEmail = (userId: number) => userById.get(userId)?.email || "—";
+
+  async function reviewSubmission(event: FormEvent) {
+    event.preventDefault();
+    if (!selectedSubmissionId) {
+      return;
+    }
+    setError("");
+    setStatus("");
+    try {
+      await apiPost(`/submissions/${selectedSubmissionId}/review`, session, {
+        status: reviewForm.status,
+        comment: reviewForm.comment,
+        grade: reviewForm.grade.trim() === "" ? null : Number(reviewForm.grade),
+      });
+      setSubmissionsRefreshKey((value) => value + 1);
+      setStatus(language === "ru" ? "Проверка сохранена" : "Submission review saved");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : language === "ru"
+            ? "Не удалось сохранить проверку"
+            : "Failed to save review",
+      );
+    }
+  }
+
+  const selectedAssignment = activeAssignments.find((item) => String(item.id) === selectedAssignmentId);
+  const assignmentLessons = useRemote<LessonInfo[]>(
+    selectedAssignment?.course_id ? `/lessons?course_id=${selectedAssignment.course_id}` : null,
+    session,
+  );
+  const selectedAssignmentPracticePageId = useMemo(() => {
+    if (!selectedAssignment) {
+      return null;
+    }
+    const linkedLesson = findLinkedLessonForAssignment(selectedAssignment, assignmentLessons.data ?? []);
+    if (!linkedLesson) {
+      return null;
+    }
+    const preferredPageId = (selectedAssignment.page_id || "").trim() || null;
+    return resolvePracticePageId(linkedLesson, preferredPageId);
+  }, [assignmentLessons.data, selectedAssignment?.lesson_id, selectedAssignment?.page_id]);
+  async function openSelectedAssignment() {
+    if (!selectedAssignment) {
+      navigate("/lessons");
+      return;
+    }
+    setOpeningAssignment(true);
+    setError("");
+    try {
+      let linkedLesson = findLinkedLessonForAssignment(selectedAssignment, assignmentLessons.data ?? []);
+      let practicePageId = selectedAssignmentPracticePageId;
+      if ((!practicePageId || !linkedLesson) && selectedAssignment.course_id) {
+        const lessons = (await apiRequest(
+          `/lessons?course_id=${selectedAssignment.course_id}`,
+          session,
+        )) as LessonInfo[];
+        linkedLesson = findLinkedLessonForAssignment(selectedAssignment, lessons);
+        const preferredPageId = (selectedAssignment.page_id || "").trim() || null;
+        practicePageId = linkedLesson ? resolvePracticePageId(linkedLesson, preferredPageId) : null;
+      }
+      const targetLessonId = selectedAssignment.lesson_id ?? linkedLesson?.id ?? null;
+      if (!targetLessonId || !practicePageId) {
+        throw new Error(
+          language === "ru"
+            ? "Не удалось определить страницу практики для задания"
+            : "Failed to resolve assignment practice page",
+        );
+      }
+      const params = new URLSearchParams();
+      params.set("courseId", String(selectedAssignment.course_id));
+      params.set("openPractice", "1");
+      params.set("assignmentId", String(selectedAssignment.id));
+      if (selectedAssignment.title.trim()) {
+        params.set("assignmentTitle", selectedAssignment.title.trim());
+      }
+      if (targetLessonId) {
+        params.set("lessonId", String(targetLessonId));
+      }
+      if (practicePageId) {
+        params.set("pageId", practicePageId);
+      }
+      navigate(`/lessons?${params.toString()}`);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : language === "ru"
+            ? "Не удалось открыть задание"
+            : "Failed to open assignment",
+      );
+    } finally {
+      setOpeningAssignment(false);
+    }
+  }
+  const filteredAssignments = useMemo(() => {
+    const normalizedQuery = assignmentSearch.trim().toLowerCase();
+    const source = activeAssignments;
+    if (!normalizedQuery) return source;
+    return source.filter((item) =>
+      `${item.title} ${item.description} ${item.id}`.toLowerCase().includes(normalizedQuery),
+    );
+  }, [activeAssignments, assignmentSearch]);
+  const submissionStatusLabel = (rawStatus: string) => {
+    const value = (rawStatus || "").toLowerCase();
+    if (value === "submitted") return language === "ru" ? "Отправлено" : "Submitted";
+    if (value === "approved") return language === "ru" ? "Принято" : "Approved";
+    if (value === "rejected" || value === "needs_revision")
+      return language === "ru" ? "Нужна доработка" : "Needs revision";
+    if (value === "draft") return language === "ru" ? "Черновик" : "Draft";
+    if (value === "in_review") return language === "ru" ? "На проверке" : "In review";
+    return language === "ru" ? "Не начато" : "Not started";
+  };
+  const reviewStatusLabel = (rawStatus: string) => {
+    const value = (rawStatus || "").toLowerCase();
+    if (value === "in_review") return language === "ru" ? "На проверке" : "In review";
+    if (value === "approved") return language === "ru" ? "Принято" : "Approved";
+    if (value === "needs_revision") return language === "ru" ? "Нужна доработка" : "Needs revision";
+    if (value === "rejected") return language === "ru" ? "Отклонено" : "Rejected";
+    return rawStatus;
+  };
+
+  return (
+    <section className="page-stack">
+      <PageHeader
+        title={language === "ru" ? "Проверка домашних заданий" : "Homework review"}
+        subtitle={
+          language === "ru"
+            ? "Проверяйте отправленные практические работы учеников и возвращайте комментарии."
+            : "Review submitted practical assignments and send feedback to learners."
+        }
+      />
+      {status && <Notice text={status} />}
+      {error && <Notice text={error} tone="error" />}
+      <section className="homework-review-layout">
+        <article className="card homework-review-sidebar">
+          <span className="section-kicker">{language === "ru" ? "Задания" : "Assignments"}</span>
+          <h3>{language === "ru" ? "Выберите практику" : "Select practice"}</h3>
+          <label className="homework-review-search">
+            {language === "ru" ? "Поиск по практикам" : "Search practices"}
+            <input
+              type="search"
+              value={assignmentSearch}
+              onChange={(e) => setAssignmentSearch(e.target.value)}
+              placeholder={language === "ru" ? "Название или ID практики" : "Practice title or ID"}
+            />
+          </label>
+          <div className="assignment-list">
+            {filteredAssignments.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`list-button ${selectedAssignmentId === String(item.id) ? "active" : ""}`}
+                onClick={() => {
+                  setSelectedAssignmentId(String(item.id));
+                  setSelectedSubmissionId("");
+                  setStatusFilter("");
+                }}
+              >
+                <strong>{item.title}</strong>
+                <span>#{item.id}</span>
+              </button>
+            ))}
+            {assignments.loading && (
+              <EmptyState title={language === "ru" ? "Загружаем задания..." : "Loading assignments..."} />
+            )}
+            {assignments.error && <Notice text={assignments.error} tone="error" />}
+            {!assignments.loading && activeAssignments.length === 0 && (
+              <EmptyState
+                title={language === "ru" ? "Практических заданий пока нет" : "No practical assignments yet"}
+              />
+            )}
+            {!assignments.loading && activeAssignments.length > 0 && filteredAssignments.length === 0 && (
+              <EmptyState
+                title={language === "ru" ? "Поиск по практикам не дал результатов" : "No practices match your search"}
+              />
+            )}
+          </div>
+        </article>
+
+        <FormCard
+          title={language === "ru" ? "Проверить работу" : "Review submission"}
+          onSubmit={reviewSubmission}
+          className="homework-review-card"
+        >
+          {selectedAssignment && (
+            <article className="homework-review-panel">
+              <h4>{language === "ru" ? "Текущая практика" : "Current practice"}</h4>
+              <p>
+                <strong>{selectedAssignment.title}</strong>{" "}
+                <span className="form-helper">#{selectedAssignment.id}</span>
+              </p>
+              {selectedAssignment.description.trim() && <p className="form-helper">{selectedAssignment.description}</p>}
+              <div className="assignment-actions">
+                <button
+                  type="button"
+                  className="secondary homework-review-link-button"
+                  onClick={() => void openSelectedAssignment()}
+                  disabled={openingAssignment}
+                >
+                  {language === "ru" ? "Открыть задание" : "Open assignment"}
+                </button>
+              </div>
+            </article>
+          )}
+          {!selectedAssignment && (
+            <p className="form-helper form-helper-intro">
+              {language === "ru"
+                ? "Выберите задание слева, чтобы увидеть отправленные работы."
+                : "Select an assignment on the left to see submitted work."}
+            </p>
+          )}
+
+          <label>
+            {t.homeworkReviewAllStatuses}
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <option value="">{t.homeworkReviewAllStatuses}</option>
+              <option value="submitted">{submissionStatusLabel("submitted")}</option>
+              <option value="in_review">{submissionStatusLabel("in_review")}</option>
+              <option value="approved">{submissionStatusLabel("approved")}</option>
+              <option value="needs_revision">{submissionStatusLabel("needs_revision")}</option>
+              <option value="rejected">{submissionStatusLabel("rejected")}</option>
+            </select>
+          </label>
+
+          <article className="homework-review-panel">
+            <h4>{t.homeworkReviewLearnerSubmission}</h4>
+            <label className="homework-review-search">
+              {language === "ru" ? "Поиск по работам и ученикам" : "Search submissions and learners"}
+              <input
+                type="search"
+                value={submissionSearch}
+                onChange={(e) => setSubmissionSearch(e.target.value)}
+                placeholder={
+                  language === "ru" ? "ФИО, email, ID работы или ученика" : "Name, email, submission ID or learner ID"
+                }
+              />
+            </label>
+            <div className="assignment-list homework-review-submissions">
+              {filteredSubmissions.map((submission) => (
+                <button
+                  key={submission.id}
+                  type="button"
+                  className={`list-button ${selectedSubmissionId === String(submission.id) ? "active" : ""}`}
+                  onClick={() => setSelectedSubmissionId(String(submission.id))}
+                >
+                  <strong>{learnerLabel(submission.student_user_id)}</strong>
+                  <span>
+                    {learnerEmail(submission.student_user_id)} ·{" "}
+                    {formatDateTime(submission.submitted_at ?? submission.updated_at)}
+                  </span>
+                </button>
+              ))}
+            </div>
+            {practicalSubmissions.error && <Notice text={practicalSubmissions.error} tone="error" />}
+            {(practicalSubmissions.data ?? []).length === 0 && (
+              <EmptyState
+                title={
+                  language === "ru"
+                    ? "Нет отправленных работ по выбранному заданию"
+                    : "No submissions for the selected assignment"
+                }
+              />
+            )}
+            {(practicalSubmissions.data ?? []).length > 0 && filteredSubmissions.length === 0 && (
+              <EmptyState title={language === "ru" ? "Поиск не дал результатов" : "No submissions match your search"} />
+            )}
+          </article>
+
+          {selectedSubmission && (
+            <>
+              <article className="homework-review-panel">
+                <h4>{t.homeworkReviewLearnerSubmission}</h4>
+                <KeyValueList
+                  items={[
+                    [language === "ru" ? "ФИО" : "Full name", learnerLabel(selectedSubmission.student_user_id)],
+                    [t.email, learnerEmail(selectedSubmission.student_user_id)],
+                    [language === "ru" ? "Статус" : "Status", submissionStatusLabel(selectedSubmission.status)],
+                    [t.homeworkReviewSubmittedAt, formatDateTime(selectedSubmission.submitted_at)],
+                    [t.homeworkReviewUpdatedAt, formatDateTime(selectedSubmission.updated_at)],
+                  ]}
+                />
+                {selectedSubmission.text_answer.trim() ? (
+                  <div>
+                    <strong>{t.homeworkReviewTextAnswer}</strong>
+                    <pre className="homework-review-text">{selectedSubmission.text_answer}</pre>
+                  </div>
+                ) : null}
+                {selectedSubmission.link_answer ? (
+                  <p>
+                    <strong>{t.homeworkReviewLink}: </strong>
+                    <a href={selectedSubmission.link_answer} target="_blank" rel="noopener noreferrer">
+                      {selectedSubmission.link_answer}
+                    </a>
+                  </p>
+                ) : null}
+                {selectedSubmission.files.length > 0 ? (
+                  <div>
+                    <strong>{t.homeworkReviewFiles}</strong>
+                    <ul className="homework-review-files">
+                      {selectedSubmission.files.map((file) => (
+                        <li key={file.id}>
+                          <a href={resolveMediaUrl(file.file_url)} target="_blank" rel="noopener noreferrer" download>
+                            {file.file_name || file.file_url}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+                {!selectedSubmission.text_answer.trim() &&
+                  !selectedSubmission.link_answer &&
+                  selectedSubmission.files.length === 0 && <EmptyState title={t.homeworkReviewNoContent} />}
+              </article>
+
+              <article className="homework-review-panel">
+                <h4>{t.homeworkReviewPreviousReview}</h4>
+                {selectedSubmission.latest_review ? (
+                  <KeyValueList
+                    items={[
+                      [
+                        language === "ru" ? "Статус" : "Status",
+                        reviewStatusLabel(selectedSubmission.latest_review.status),
+                      ],
+                      [
+                        t.homeworkReviewGrade,
+                        selectedSubmission.latest_review.grade == null
+                          ? t.homeworkReviewGradeMissing
+                          : String(selectedSubmission.latest_review.grade),
+                      ],
+                      [language === "ru" ? "Комментарий" : "Comment", selectedSubmission.latest_review.comment || "—"],
+                      [
+                        language === "ru" ? "Проверено" : "Reviewed",
+                        formatDateTime(selectedSubmission.latest_review.created_at),
+                      ],
+                    ]}
+                  />
+                ) : (
+                  <p className="form-helper">{t.homeworkReviewNotReviewedYet}</p>
+                )}
+              </article>
+            </>
+          )}
+
+          <label>
+            {language === "ru" ? "Статус проверки" : "Review status"}
+            <select
+              value={reviewForm.status}
+              onChange={(e) => setReviewForm({ ...reviewForm, status: e.target.value })}
+            >
+              <option value="in_review">{reviewStatusLabel("in_review")}</option>
+              <option value="approved">{reviewStatusLabel("approved")}</option>
+              <option value="needs_revision">{reviewStatusLabel("needs_revision")}</option>
+              <option value="rejected">{reviewStatusLabel("rejected")}</option>
+            </select>
+          </label>
+          <label>
+            {t.homeworkReviewGrade}
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step={1}
+              value={reviewForm.grade}
+              onChange={(e) => setReviewForm({ ...reviewForm, grade: e.target.value })}
+              placeholder={language === "ru" ? "0-100" : "0-100"}
+            />
+          </label>
+          <label>
+            {language === "ru" ? "Комментарий куратора" : "Curator comment"}
+            <textarea
+              value={reviewForm.comment}
+              onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
+              rows={6}
+            />
+          </label>
+          <div className="assignment-actions">
+            <button type="submit" disabled={!selectedSubmissionId}>
+              {language === "ru" ? "Сохранить проверку" : "Save review"}
+            </button>
+          </div>
+        </FormCard>
+      </section>
+    </section>
+  );
+}
+
+function LearnerPicker({
+  users,
+  learnerId,
+  onSelect,
+  t,
+  language,
+}: {
+  users: UserInfo[];
+  learnerId: string;
+  onSelect: (id: string) => void;
+  t: UiMessages;
+  language: Language;
+}) {
+  const [search, setSearch] = useState("");
+  const [role, setRole] = useState<"all" | "learner" | "teacher">("all");
+  const filteredUsers = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return users.filter((user) => {
+      const roleMatch = role === "all" || user.role_name === role;
+      if (!roleMatch) return false;
+      if (!term) return true;
+      return user.full_name.toLowerCase().includes(term) || user.email.toLowerCase().includes(term);
+    });
+  }, [role, search, users]);
+  return (
+    <div className="learner-picker">
+      <input
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+        placeholder={t.analyticsLearnerSearchPlaceholder}
+      />
+      <div className="learner-role-chips">
+        <button
+          type="button"
+          aria-pressed={role === "all"}
+          className={role === "all" ? "active" : ""}
+          onClick={() => setRole("all")}
+        >
+          {t.analyticsRoleAll}
+        </button>
+        <button
+          type="button"
+          aria-pressed={role === "learner"}
+          className={role === "learner" ? "active" : ""}
+          onClick={() => setRole("learner")}
+        >
+          {t.analyticsRoleLearners}
+        </button>
+        <button
+          type="button"
+          aria-pressed={role === "teacher"}
+          className={role === "teacher" ? "active" : ""}
+          onClick={() => setRole("teacher")}
+        >
+          {t.analyticsRoleTeachers}
+        </button>
+      </div>
+      <div className="learner-picker-list">
+        {filteredUsers.map((user) => (
+          <button
+            type="button"
+            key={user.id}
+            className={`learner-picker-item ${learnerId === String(user.id) ? "active" : ""}`.trim()}
+            onClick={() => onSelect(String(user.id))}
+          >
+            <strong>{user.full_name}</strong>
+            <span>{user.email}</span>
+          </button>
+        ))}
+      </div>
+      <p className="form-helper">
+        {language === "ru" ? "Найдено" : "Found"}: {filteredUsers.length}
+      </p>
+    </div>
+  );
+}
+
+export function AnalyticsPage({ session }: { session: SessionState }) {
+  const { language, t } = useUi();
+  const pageSize = 4;
+  const [learnerId, setLearnerId] = useState("");
+  const [manualId, setManualId] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [activeTab, setActiveTab] = useState<"attempts" | "recommendations">("attempts");
+  const [selectedAttemptIndex, setSelectedAttemptIndex] = useState<number | null>(null);
+  const [attemptsPage, setAttemptsPage] = useState(1);
+  const [recommendationsPage, setRecommendationsPage] = useState(1);
+  const users = useRemote<UserInfo[]>("/users", session);
+  const dashboard = useRemote<Record<string, number>>("/analytics/dashboard", session);
+  const learner = useRemote<{
+    results: Array<{ score_percent: number; weak_topics: Array<{ topic_title: string; score: number }> }>;
+    recommendations: Array<{
+      text: string;
+      priority: number;
+      topic_title?: string | null;
+      lesson_title?: string | null;
+      course_title?: string | null;
+      reason?: string | null;
+      signal_level?: string | null;
+    }>;
+  }>(`/analytics/learners/${learnerId}`, session, learnerId ? refreshKey : -1);
+  const selectedUser = useMemo(
+    () => (users.data ?? []).find((item) => String(item.id) === learnerId),
+    [learnerId, users.data],
+  );
+  const attempts = learner.data?.results ?? [];
+  const recommendations = useMemo(
+    () => [...(learner.data?.recommendations ?? [])].sort((a, b) => b.priority - a.priority),
+    [learner.data?.recommendations],
+  );
+  const attemptsPageCount = Math.max(1, Math.ceil(attempts.length / pageSize));
+  const recommendationsPageCount = Math.max(1, Math.ceil(recommendations.length / pageSize));
+  const pagedAttempts = useMemo(() => {
+    const start = (attemptsPage - 1) * pageSize;
+    return attempts.slice(start, start + pageSize);
+  }, [attempts, attemptsPage, pageSize]);
+  const pagedRecommendations = useMemo(() => {
+    const start = (recommendationsPage - 1) * pageSize;
+    return recommendations.slice(start, start + pageSize);
+  }, [pageSize, recommendations, recommendationsPage]);
+  const avgScore = attempts.length ? attempts.reduce((sum, item) => sum + item.score_percent, 0) / attempts.length : 0;
+  const weakTopicMap = useMemo(() => {
+    const map = new Map<string, { total: number; count: number }>();
+    for (const result of attempts) {
+      for (const topic of result.weak_topics) {
+        const current = map.get(topic.topic_title) ?? { total: 0, count: 0 };
+        map.set(topic.topic_title, { total: current.total + topic.score, count: current.count + 1 });
+      }
+    }
+    return Array.from(map.entries()).map(([title, value]) => ({
+      title,
+      score: value.total / Math.max(1, value.count),
+    }));
+  }, [attempts]);
+  const selectedAttempt = selectedAttemptIndex == null ? null : (attempts[selectedAttemptIndex] ?? null);
+  const scoreLineSeries = useMemo(
+    () => [{ name: t.analyticsScoreTrendTitle, data: attempts.map((item) => item.score_percent), color: "#2563eb" }],
+    [attempts, t.analyticsScoreTrendTitle],
+  );
+
+  useEffect(() => {
+    setAttemptsPage(1);
+    setRecommendationsPage(1);
+    setSelectedAttemptIndex(null);
+  }, [learnerId]);
+
+  useEffect(() => {
+    setAttemptsPage((current) => Math.min(current, attemptsPageCount));
+  }, [attemptsPageCount]);
+
+  useEffect(() => {
+    setRecommendationsPage((current) => Math.min(current, recommendationsPageCount));
+  }, [recommendationsPageCount]);
+
+  return (
+    <section className="page-stack">
+      <PageHeader title={t.analyticsPageTitle} subtitle={t.analyticsPageSubtitle} />
+      <section className="analytics-mini-overview">
+        {["users", "active_attempts", "avg_progress", "recommendations", "courses"].map((key) => (
+          <article key={key} className="analytics-mini-tile">
+            <span>{formatDashboardMetricLabel(key, t)}</span>
+            <strong>{key === "avg_progress" ? `${dashboard.data?.[key] ?? 0}%` : (dashboard.data?.[key] ?? 0)}</strong>
+          </article>
+        ))}
+      </section>
+      <section className="analytics-split">
+        <article className="card analytics-left-panel">
+          <h3>{t.learnerDetail}</h3>
+          <LearnerPicker
+            users={users.data ?? []}
+            learnerId={learnerId}
+            onSelect={(id) => {
+              setLearnerId(id);
+              setRefreshKey((value) => value + 1);
+            }}
+            t={t}
+            language={language}
+          />
+          <details>
+            <summary>{t.analyticsManualIdToggle}</summary>
+            <div className="inline-form">
+              <input value={manualId} onChange={(event) => setManualId(event.target.value)} placeholder={t.learnerId} />
+              <button
+                onClick={() => {
+                  setLearnerId(manualId.trim());
+                  setRefreshKey((value) => value + 1);
+                }}
+              >
+                {t.load}
+              </button>
+            </div>
+          </details>
+        </article>
+        <article className="card analytics-right-panel">
+          {learner.error ? <Notice text={learner.error} tone="error" /> : null}
+          {!learnerId ? <EmptyState title={t.analyticsEmptyPickLearner} /> : null}
+          {learnerId && selectedUser ? (
+            <div className="learner-summary">
+              <div className="settings-avatar" aria-hidden="true">
+                {selectedUser.full_name
+                  .split(/\s+/)
+                  .slice(0, 2)
+                  .map((part) => part[0]?.toUpperCase() ?? "")
+                  .join("")}
+              </div>
+              <div className="stack-tight">
+                <strong>{selectedUser.full_name}</strong>
+                <span>{selectedUser.email}</span>
+                <span>
+                  {formatRoleLabel(selectedUser.role_name, t)} •{" "}
+                  {selectedUser.is_active ? t.userStatusActive : t.userStatusInactive}
+                </span>
+              </div>
+              <div className="learner-summary-kpis">
+                <span>
+                  {t.analyticsLearnerSummaryAttempts}: {attempts.length}
+                </span>
+                <span>
+                  {t.analyticsLearnerSummaryAvgScore}: {avgScore.toFixed(1)}%
+                </span>
+                <span>
+                  {t.analyticsLearnerSummaryWeakTopics}: {weakTopicMap.length}
+                </span>
+              </div>
+            </div>
+          ) : null}
+          {learnerId ? (
+            <article className="result-card learner-score-trend">
+              <h3>{t.analyticsScoreTrendTitle}</h3>
+              <LineChart width={760} height={200} ariaLabel={t.analyticsScoreTrendTitle} series={scoreLineSeries} />
+              <div className="attempt-points">
+                {attempts.map((attempt, index) => (
+                  <button
+                    key={`attempt-${index}`}
+                    type="button"
+                    className={selectedAttemptIndex === index ? "active" : ""}
+                    aria-pressed={selectedAttemptIndex === index}
+                    onClick={() => setSelectedAttemptIndex(index)}
+                  >
+                    {index + 1}: {attempt.score_percent}%
+                  </button>
+                ))}
+              </div>
+              {selectedAttempt ? (
+                <div className="attempt-drawer-inline">
+                  <strong>
+                    {language === "ru" ? "Попытка" : "Attempt"} #{(selectedAttemptIndex ?? 0) + 1}
+                  </strong>
+                  <span>
+                    {t.analyticsAttemptScore}: {selectedAttempt.score_percent}%
+                  </span>
+                  <span>
+                    {selectedAttempt.weak_topics.map((topic) => `${topic.topic_title}: ${topic.score}%`).join(", ") ||
+                      t.noWeakTopics}
+                  </span>
+                  <button type="button" className="button-ghost" onClick={() => setSelectedAttemptIndex(null)}>
+                    {t.attemptDrawerClose}
+                  </button>
+                </div>
+              ) : null}
+              <h4>{t.analyticsWeakTopicsTitle}</h4>
+              <div className="weak-topic-bars">
+                {weakTopicMap.map((topic) => (
+                  <div key={topic.title} className="weak-topic-row">
+                    <span>{topic.title}</span>
+                    <div className="dashboard-progress-track">
+                      <div
+                        className="dashboard-progress-value"
+                        style={{
+                          width: `${clampPercent(topic.score)}%`,
+                          background: topic.score < 50 ? "#ef4444" : topic.score < 75 ? "#f59e0b" : "#22c55e",
+                        }}
+                      />
+                    </div>
+                    <strong>{topic.score.toFixed(1)}%</strong>
+                  </div>
+                ))}
+              </div>
+            </article>
+          ) : null}
+          <div className="dashboard-inline-controls">
+            <button
+              type="button"
+              role="tab"
+              aria-pressed={activeTab === "attempts"}
+              className={activeTab === "attempts" ? "active" : ""}
+              onClick={() => setActiveTab("attempts")}
+            >
+              {t.analyticsTabAttempts}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-pressed={activeTab === "recommendations"}
+              className={activeTab === "recommendations" ? "active" : ""}
+              onClick={() => setActiveTab("recommendations")}
+            >
+              {t.analyticsTabRecommendations}
+            </button>
+          </div>
+          {activeTab === "attempts" ? (
+            attempts.length ? (
+              <>
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>{t.analyticsAttemptNumber}</th>
+                        <th>{t.analyticsAttemptScore}</th>
+                        <th>{t.analyticsAttemptWeak}</th>
+                        <th>{language === "ru" ? "Дата" : "Date"}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pagedAttempts.map((result, index) => {
+                        const rowNumber = (attemptsPage - 1) * pageSize + index + 1;
+                        return (
+                          <tr key={`result-${rowNumber}`}>
+                            <td>{rowNumber}</td>
+                            <td>{result.score_percent}%</td>
+                            <td>{result.weak_topics.map((topic) => topic.topic_title).join(", ") || t.noWeakTopics}</td>
+                            <td>{language === "ru" ? `Попытка ${rowNumber}` : `Attempt ${rowNumber}`}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                {attemptsPageCount > 1 ? (
+                  <div className="analytics-pagination">
+                    <button
+                      type="button"
+                      className="button-ghost"
+                      onClick={() => setAttemptsPage((p) => Math.max(1, p - 1))}
+                      disabled={attemptsPage <= 1}
+                    >
+                      {language === "ru" ? "Назад" : "Prev"}
+                    </button>
+                    <span>
+                      {language === "ru"
+                        ? `Страница ${attemptsPage} из ${attemptsPageCount}`
+                        : `Page ${attemptsPage} of ${attemptsPageCount}`}
+                    </span>
+                    <button
+                      type="button"
+                      className="button-ghost"
+                      onClick={() => setAttemptsPage((p) => Math.min(attemptsPageCount, p + 1))}
+                      disabled={attemptsPage >= attemptsPageCount}
+                    >
+                      {language === "ru" ? "Далее" : "Next"}
+                    </button>
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <EmptyState title={t.emptyAttempt} />
+            )
+          ) : recommendations.length ? (
+            <>
+              <div className="stack">
+                {pagedRecommendations.map((item, index) => (
+                  <RecommendationCard
+                    key={`${item.priority}-${item.text}-${index}`}
+                    item={item}
+                    language={language}
+                    t={t}
+                  />
+                ))}
+              </div>
+              {recommendationsPageCount > 1 ? (
+                <div className="analytics-pagination">
+                  <button
+                    type="button"
+                    className="button-ghost"
+                    onClick={() => setRecommendationsPage((p) => Math.max(1, p - 1))}
+                    disabled={recommendationsPage <= 1}
+                  >
+                    {language === "ru" ? "Назад" : "Prev"}
+                  </button>
+                  <span>
+                    {language === "ru"
+                      ? `Страница ${recommendationsPage} из ${recommendationsPageCount}`
+                      : `Page ${recommendationsPage} of ${recommendationsPageCount}`}
+                  </span>
+                  <button
+                    type="button"
+                    className="button-ghost"
+                    onClick={() => setRecommendationsPage((p) => Math.min(recommendationsPageCount, p + 1))}
+                    disabled={recommendationsPage >= recommendationsPageCount}
+                  >
+                    {language === "ru" ? "Далее" : "Next"}
+                  </button>
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <EmptyState title={language === "ru" ? "Рекомендаций пока нет" : "No recommendations yet"} />
+          )}
+        </article>
+      </section>
+    </section>
+  );
+}
+
+export function SettingsPage({ session }: { session: SessionState }) {
+  const { language, setLanguage, t } = useUi();
+  const profile = useRemote<UserProfileInfo>("/auth/me", session);
+  const profileData = profile.data;
+  const displayName = profileData?.full_name || profileData?.email || (language === "ru" ? "Пользователь" : "User");
+  const profileInitials =
+    displayName
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part.charAt(0).toUpperCase())
+      .join("") || "A";
+  const userRole = profileData?.tenant_role ?? null;
+  const permissions = getRolePermissions(userRole);
+  const roleLabel = profileData ? formatRoleLabel(profileData.tenant_role, t) : t.loadingProfile;
+  const languageCaption =
+    language === "ru"
+      ? "Изменение применяется сразу и сохраняется для этого браузера."
+      : "Changes apply immediately and are saved for this browser.";
+  const quickActions = permissions.canManageUsers
+    ? {
+        title: language === "ru" ? "Быстрые действия администратора" : "Admin quick actions",
+        caption:
+          language === "ru"
+            ? "Разделы для управления пользователями, контентом и прогрессом организации."
+            : "Sections for managing users, content, and organization progress.",
+        items: [
+          {
+            to: "/users",
+            title: t.users,
+            caption: language === "ru" ? "Роли, доступ и активность пользователей" : "Roles, access, and user status",
+          },
+          {
+            to: "/courses",
+            title: t.courses,
+            caption: language === "ru" ? "Настройки курсов и публикация" : "Course settings and publishing",
+          },
+          {
+            to: "/analytics",
+            title: t.analytics,
+            caption: language === "ru" ? "Прогресс и проблемные темы" : "Progress and priority topics",
+          },
+          {
+            to: "/assignments",
+            title: t.assignments,
+            caption: language === "ru" ? "Назначение курсов слушателям" : "Assign courses to learners",
+          },
+        ],
+      }
+    : permissions.canManageCourses
+      ? {
+          title: language === "ru" ? "Инструменты преподавателя" : "Teacher tools",
+          caption:
+            language === "ru"
+              ? "Разделы для подготовки материалов, тестов и проверки работ."
+              : "Sections for preparing materials, tests, and reviewing submissions.",
+          items: [
+            {
+              to: "/courses",
+              title: t.courses,
+              caption: language === "ru" ? "Содержание и параметры курсов" : "Course content and settings",
+            },
+            {
+              to: "/lessons",
+              title: t.lessons,
+              caption: language === "ru" ? "Редактор уроков и страниц" : "Lesson and page editor",
+            },
+            {
+              to: "/tests",
+              title: t.tests,
+              caption: language === "ru" ? "Адаптивные тесты и вопросы" : "Adaptive tests and questions",
+            },
+            {
+              to: "/homework-reviews",
+              title: language === "ru" ? "Проверка ДЗ" : "Homework review",
+              caption: language === "ru" ? "Очередь отправленных работ" : "Submitted work queue",
+            },
+          ],
+        }
+      : {
+          title: language === "ru" ? "Разделы слушателя" : "Learner sections",
+          caption:
+            language === "ru"
+              ? "Доступные разделы для просмотра назначений и прогресса."
+              : "Available sections for assignments and progress.",
+          items: [
+            {
+              to: "/",
+              title: t.dashboard,
+              caption: language === "ru" ? "Сводка по обучению" : "Learning summary",
+            },
+            {
+              to: "/assignments",
+              title: t.assignments,
+              caption: language === "ru" ? "Назначенные курсы" : "Assigned courses",
+            },
+          ],
+        };
+
+  return (
+    <section className="page-stack">
+      <PageHeader title={t.settingsPageTitle} subtitle={t.settingsPageSubtitle} />
+      <section className="settings-grid">
+        <article className="card settings-profile-card">
+          {profileData ? (
+            <>
+              <div className="settings-profile-hero">
+                <div className="settings-avatar" aria-hidden="true">
+                  {profileInitials}
+                </div>
+                <div className="settings-profile-main">
+                  <span className="section-kicker">{language === "ru" ? "Текущий аккаунт" : "Current account"}</span>
+                  <h3>{displayName}</h3>
+                  <p>{profileData.email}</p>
+                </div>
+                <span className="status-pill active">{language === "ru" ? "Активен" : "Active"}</span>
+              </div>
+              <div className="settings-summary-grid">
+                <div className="result-card">
+                  <strong>{t.currentRole}</strong>
+                  <span>{roleLabel}</span>
+                </div>
+                <div className="result-card">
+                  <strong>{t.tenantCode}</strong>
+                  <span>{session.tenantCode}</span>
+                </div>
+                <div className="result-card">
+                  <strong>{t.language}</strong>
+                  <span>{language === "ru" ? t.russian : t.english}</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <EmptyState title={t.loadingProfile} />
+          )}
+        </article>
+        <article className="card stack settings-language-card">
+          <div className="settings-language-row">
+            <div>
+              <h3>{t.language}</h3>
+              <p className="settings-language-caption">{languageCaption}</p>
+            </div>
+            <select
+              aria-label={t.language}
+              className="settings-language-select"
+              value={language}
+              onChange={(e) => setLanguage(e.target.value === "en" ? "en" : "ru")}
+            >
+              <option value="ru">{t.russian}</option>
+              <option value="en">{t.english}</option>
+            </select>
+          </div>
+          <div className="settings-option-grid">
+            <div className="settings-option">
+              <strong>{language === "ru" ? "Тема" : "Theme"}</strong>
+              <span>{language === "ru" ? "Светлая" : "Light"}</span>
+            </div>
+            <div className="settings-option">
+              <strong>{language === "ru" ? "Режим отображения" : "Display mode"}</strong>
+              <span>{language === "ru" ? "Стандартный" : "Standard"}</span>
+            </div>
+          </div>
+        </article>
+        <article className="card stack">
+          <div className="settings-card-head">
+            <div>
+              <h3>{language === "ru" ? "Безопасность и доступ" : "Security & Access"}</h3>
+              <p className="sidebar-text">
+                {language === "ru"
+                  ? "Доступ привязан к текущей организации и роли пользователя."
+                  : "Access is bound to the current tenant and user role."}
+              </p>
+            </div>
+            <span className="status-pill active">{language === "ru" ? "Сессия активна" : "Session active"}</span>
+          </div>
+          <div className="settings-option-grid">
+            <div className="settings-option">
+              <strong>{language === "ru" ? "Организация" : "Organization"}</strong>
+              <span>{session.tenantCode}</span>
+            </div>
+            <div className="settings-option">
+              <strong>{t.currentRole}</strong>
+              <span>{roleLabel}</span>
+            </div>
+          </div>
+        </article>
+        <article className="card stack settings-actions-card">
+          <div className="settings-card-head">
+            <div>
+              <h3>{quickActions.title}</h3>
+              <p className="sidebar-text">{quickActions.caption}</p>
+            </div>
+          </div>
+          <div className="settings-actions-grid">
+            {quickActions.items.map((action) => (
+              <Link className="settings-action-link" key={action.to} to={action.to}>
+                <strong>{action.title}</strong>
+                <span>{action.caption}</span>
+              </Link>
+            ))}
+          </div>
+        </article>
+      </section>
+    </section>
+  );
+}
+
+export function PageHeader({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <header className="page-header">
+      <h1>{title}</h1>
+      <p>{subtitle}</p>
+    </header>
+  );
+}
+
+export function FormCard({
+  title,
+  children,
+  onSubmit,
+  className = "",
+  formRef,
+}: {
+  title: string;
+  children: ReactNode;
+  onSubmit: (event: FormEvent) => void;
+  className?: string;
+  formRef?: Ref<HTMLFormElement>;
+}) {
+  return (
+    <form ref={formRef} className={`card form-card ${className}`.trim()} onSubmit={onSubmit}>
+      <h3>{title}</h3>
+      {children}
+    </form>
+  );
+}
+
+export function DataTable({
+  title,
+  columns,
+  rows,
+  loading,
+  error,
+}: {
+  title: string;
+  columns: string[];
+  rows: ReactNode[][];
+  loading?: boolean;
+  error?: string;
+}) {
+  const { t } = useUi();
+  return (
+    <article className="card">
+      <h3>{title}</h3>
+      {error && <Notice text={error} tone="error" />}
+      {loading ? (
+        <EmptyState title={t.loading} />
+      ) : rows.length ? (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                {columns.map((column) => (
+                  <th key={column}>{column}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, index) => (
+                <tr key={`${title}-${index}`}>
+                  {row.map((cell, cellIndex) => (
+                    <td key={`${title}-${index}-${cellIndex}`}>{cell}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <EmptyState title={t.noData} />
+      )}
+    </article>
+  );
+}
+
+export function KeyValueList({ items }: { items: Array<[string, string]> }) {
+  return (
+    <div className="stack">
+      {items.map(([key, value]) => (
+        <div className="list-row" key={key}>
+          <div>
+            <strong>{key}</strong>
+            <span>{value}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function Notice({ text, tone = "success" }: { text: string; tone?: "success" | "error" }) {
+  return <div className={`notice ${tone}`}>{text}</div>;
+}
+
+export function EmptyState({ title }: { title: string }) {
+  return <div className="empty-state">{title}</div>;
+}
+
+export function App() {
+  const [session, setSession] = useState<SessionState | null>(() => readStoredSession());
+  const [savedAccounts, setSavedAccounts] = useState<SavedAccount[]>(() => readSavedAccounts());
+  const [language, setLanguage] = useState<Language>(() => getInitialLanguage());
+  const applySession = useCallback((nextSession: SessionState | null) => {
+    if (!nextSession) {
+      setSession(null);
+      return;
+    }
+    setSession(normalizeSession(nextSession));
+  }, []);
+
+  const handleLogin = useCallback(
+    (nextSession: SessionState, options: { login: string; organizationCode: string }) => {
+      applySession(nextSession);
+      setSavedAccounts((current) =>
+        upsertSavedAccount(current, {
+          id: buildSavedAccountId(options.organizationCode, options.login),
+          organizationCode: options.organizationCode,
+          login: options.login,
+          lastUsedAt: new Date().toISOString(),
+        }),
+      );
+    },
+    [applySession],
+  );
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+    }
+  }, [language]);
+
+  useEffect(() => {
+    writeStoredSession(session);
+  }, [session]);
+
+  useEffect(() => {
+    writeSavedAccounts(savedAccounts);
+  }, [savedAccounts]);
+
+  useEffect(() => {
+    configureSessionLifecycle({
+      onSessionUpdate: (nextSession) => applySession(nextSession),
+      onSessionInvalid: () => applySession(null),
+    });
+    return () => {
+      configureSessionLifecycle({});
+    };
+  }, [applySession]);
+
+  const value = useMemo(() => ({ language, setLanguage, t: getMessages(language) }), [language]);
+
+  return (
+    <LanguageContext.Provider value={value}>
+      {session ? (
+        <Shell session={session} onLogout={() => applySession(null)} onSessionChange={applySession} />
+      ) : (
+        <LoginPage onLogin={handleLogin} />
+      )}
+    </LanguageContext.Provider>
+  );
+}

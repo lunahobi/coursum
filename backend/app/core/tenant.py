@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 import ipaddress
+from dataclasses import dataclass
 
 from fastapi import HTTPException, Request, status
 from sqlalchemy import select
@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.models.models import Tenant
-
 
 settings = get_settings()
 

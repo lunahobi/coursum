@@ -4,13 +4,13 @@ import { apiRequest, configureSessionLifecycle, SessionState } from "./api";
 const session: SessionState = {
   accessToken: "access-token",
   refreshToken: "refresh-token",
-  tenantCode: "tenant-a"
+  tenantCode: "tenant-a",
 };
 
 function jsonResponse(payload: unknown, status = 200) {
   return new Response(JSON.stringify(payload), {
     status,
-    headers: { "Content-Type": "application/json" }
+    headers: { "Content-Type": "application/json" },
   });
 }
 
@@ -34,8 +34,8 @@ describe("session refresh lifecycle", () => {
         jsonResponse({
           access_token: "next-access-token",
           refresh_token: "next-refresh-token",
-          token_type: "bearer"
-        })
+          token_type: "bearer",
+        }),
       )
       .mockResolvedValueOnce(jsonResponse({ ok: true }));
 
@@ -45,7 +45,7 @@ describe("session refresh lifecycle", () => {
     expect(onSessionUpdate).toHaveBeenCalledWith({
       ...session,
       accessToken: "next-access-token",
-      refreshToken: "next-refresh-token"
+      refreshToken: "next-refresh-token",
     });
   });
 

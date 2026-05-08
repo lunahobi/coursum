@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlparse
@@ -10,8 +9,8 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.clock import utcnow
 from app.models.models import Course, CourseSection, Enrollment, Lesson, LessonProgress, Membership, RoleName
-
 
 SAFE_VIDEO_SUFFIXES = (".mp4", ".webm")
 SAFE_IMAGE_SUFFIXES = (".png", ".jpg", ".jpeg", ".gif", ".webp")
@@ -561,7 +560,7 @@ def save_lesson_state(
         progress.last_video_position_seconds = max(0, last_video_position_seconds)
 
     progress.is_completed = bool(is_completed) or len(set(progress.completed_page_ids)) >= len(valid_page_ids)
-    progress.updated_at = datetime.utcnow()
+    progress.updated_at = utcnow()
     db.flush()
     enrollment = recalculate_enrollment_progress(db, membership.tenant_id, membership.user_id, lesson.course_id)
     db.commit()

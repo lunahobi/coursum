@@ -15,7 +15,6 @@ from app.services.recommendation_payloads import (
     serialize_recommendations,
 )
 
-
 router = APIRouter(prefix="/recommendations", tags=["recommendations"])
 
 

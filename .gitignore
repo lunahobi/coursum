@@ -78,6 +78,11 @@ backend/app/static/media/
 # --- Logs / runtime ---
 *.log
 logs/
+allure-results/
+allure-report/
+web/allure-results/
+web/allure-report/
+web/test-results/
 
 # --- Archives / temporary helper dirs ---
 *.zip

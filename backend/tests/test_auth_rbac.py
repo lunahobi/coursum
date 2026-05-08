@@ -1,7 +1,8 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import jwt
 
+from app.core.rate_limit import auth_rate_limiter
 from app.core.security import create_token
 
 from .conftest import auth_headers
@@ -121,8 +122,8 @@ def test_expired_access_token_returns_401(client):
         {
             "sub": "2",
             "type": "access",
-            "exp": datetime.now(timezone.utc) - timedelta(minutes=1),
-            "iat": datetime.now(timezone.utc) - timedelta(minutes=2),
+            "exp": datetime.now(UTC) - timedelta(minutes=1),
+            "iat": datetime.now(UTC) - timedelta(minutes=2),
             "jti": "expired-token-test",
         },
         "change-me-in-production",
@@ -159,3 +160,49 @@ def test_deactivated_user_cannot_login(client):
     )
     assert login_response.status_code == 401
     assert login_response.json()["detail"] == "User is deactivated"
+
+
+def test_login_rate_limit_returns_429(client):
+    old_limit = auth_rate_limiter.limit
+    old_window = auth_rate_limiter.window_seconds
+    auth_rate_limiter.limit = 2
+    auth_rate_limiter.window_seconds = 60
+
+    try:
+        first = client.post("/api/v1/auth/login", json={"email": "teacher-a@example.com", "password": "Password123!"})
+        second = client.post("/api/v1/auth/login", json={"email": "teacher-a@example.com", "password": "Password123!"})
+        third = client.post("/api/v1/auth/login", json={"email": "teacher-a@example.com", "password": "Password123!"})
+
+        assert first.status_code == 200
+        assert second.status_code == 200
+        assert third.status_code == 429
+    finally:
+        auth_rate_limiter.limit = old_limit
+        auth_rate_limiter.window_seconds = old_window
+
+
+def test_db_health_endpoint(client):
+    response = client.get("/health/db")
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
+
+
+def test_analytics_timeline_endpoint_returns_series(client):
+    response = client.get(
+        "/api/v1/analytics/timeline?period=7d",
+        headers=auth_headers(client, "teacher-a@example.com", "tenant-a"),
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert set(payload.keys()) == {"labels", "attempts", "completions"}
+    assert len(payload["labels"]) == 7
+    assert len(payload["attempts"]) == 7
+    assert len(payload["completions"]) == 7
+
+
+def test_analytics_timeline_rejects_invalid_period(client):
+    response = client.get(
+        "/api/v1/analytics/timeline?period=bad",
+        headers=auth_headers(client, "teacher-a@example.com", "tenant-a"),
+    )
+    assert response.status_code == 422

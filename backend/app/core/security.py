@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
@@ -6,7 +6,6 @@ import jwt
 from passlib.context import CryptContext
 
 from app.core.config import get_settings
-
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 settings = get_settings()
@@ -24,8 +23,8 @@ def create_token(subject: str, token_type: str, expires_minutes: int, extra: dic
     payload: dict[str, Any] = {
         "sub": subject,
         "type": token_type,
-        "exp": datetime.now(timezone.utc) + timedelta(minutes=expires_minutes),
-        "iat": datetime.now(timezone.utc),
+        "exp": datetime.now(UTC) + timedelta(minutes=expires_minutes),
+        "iat": datetime.now(UTC),
         "jti": uuid4().hex,
     }
     if extra:

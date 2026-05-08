@@ -7,13 +7,29 @@ from fastapi.testclient import TestClient
 os.environ["LMS_DATABASE_URL"] = "sqlite:///./test.db"
 
 from app.core.db import Base, SessionLocal, engine  # noqa: E402
+from app.core.rate_limit import auth_rate_limiter  # noqa: E402
 from app.core.security import hash_password  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models.models import AnswerOption, Course, Enrollment, Lesson, Membership, Question, QuestionTopic, Role, RoleName, Tenant, Test, Topic, User  # noqa: E402
+from app.models.models import (  # noqa: E402
+    AnswerOption,
+    Course,
+    Enrollment,
+    Lesson,
+    Membership,
+    Question,
+    QuestionTopic,
+    Role,
+    RoleName,
+    Tenant,
+    Test,
+    Topic,
+    User,
+)
 
 
 @pytest.fixture(autouse=True)
 def setup_db():
+    auth_rate_limiter.reset()
     if engine.url.get_backend_name() == "sqlite":
         engine.dispose()
         db_path = Path("test.db")

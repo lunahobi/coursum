@@ -25,186 +25,6 @@ function getApiOrigin() {
   }
 }
 
-const CP1251_EXTRA: Record<string, number> = {
-  "\u0402": 0x80,
-  "\u0403": 0x81,
-  "\u201a": 0x82,
-  "\u0453": 0x83,
-  "\u201e": 0x84,
-  "\u2026": 0x85,
-  "\u2020": 0x86,
-  "\u2021": 0x87,
-  "\u20ac": 0x88,
-  "\u2030": 0x89,
-  "\u0409": 0x8a,
-  "\u2039": 0x8b,
-  "\u040a": 0x8c,
-  "\u040c": 0x8d,
-  "\u040b": 0x8e,
-  "\u040f": 0x8f,
-  "\u0452": 0x90,
-  "\u2018": 0x91,
-  "\u2019": 0x92,
-  "\u201c": 0x93,
-  "\u201d": 0x94,
-  "\u2022": 0x95,
-  "\u2013": 0x96,
-  "\u2014": 0x97,
-  "\u2122": 0x99,
-  "\u0459": 0x9a,
-  "\u203a": 0x9b,
-  "\u045a": 0x9c,
-  "\u045c": 0x9d,
-  "\u045b": 0x9e,
-  "\u045f": 0x9f,
-  "\u00a0": 0xa0,
-  "\u040e": 0xa1,
-  "\u045e": 0xa2,
-  "\u0408": 0xa3,
-  "\u00a4": 0xa4,
-  "\u0490": 0xa5,
-  "\u00a6": 0xa6,
-  "\u00a7": 0xa7,
-  "\u0401": 0xa8,
-  "\u00a9": 0xa9,
-  "\u0404": 0xaa,
-  "\u00ab": 0xab,
-  "\u00ac": 0xac,
-  "\u00ad": 0xad,
-  "\u00ae": 0xae,
-  "\u0407": 0xaf,
-  "\u00b0": 0xb0,
-  "\u00b1": 0xb1,
-  "\u0406": 0xb2,
-  "\u0456": 0xb3,
-  "\u0491": 0xb4,
-  "\u00b5": 0xb5,
-  "\u00b6": 0xb6,
-  "\u00b7": 0xb7,
-  "\u0451": 0xb8,
-  "\u2116": 0xb9,
-  "\u0454": 0xba,
-  "\u00bb": 0xbb,
-  "\u0458": 0xbc,
-  "\u0405": 0xbd,
-  "\u0455": 0xbe,
-  "\u0457": 0xbf
-};
-
-const WINDOWS_1252_ALIAS: Record<string, number> = {
-  "\u20ac": 0x80,
-  "\u0081": 0x81,
-  "\u201a": 0x82,
-  "\u0192": 0x83,
-  "\u201e": 0x84,
-  "\u2026": 0x85,
-  "\u2020": 0x86,
-  "\u2021": 0x87,
-  "\u02c6": 0x88,
-  "\u2030": 0x89,
-  "\u0160": 0x8a,
-  "\u2039": 0x8b,
-  "\u0152": 0x8c,
-  "\u008d": 0x8d,
-  "\u017d": 0x8e,
-  "\u008f": 0x8f,
-  "\u0090": 0x90,
-  "\u2018": 0x91,
-  "\u2019": 0x92,
-  "\u201c": 0x93,
-  "\u201d": 0x94,
-  "\u2022": 0x95,
-  "\u2013": 0x96,
-  "\u2014": 0x97,
-  "\u02dc": 0x98,
-  "\u2122": 0x99,
-  "\u0161": 0x9a,
-  "\u203a": 0x9b,
-  "\u0153": 0x9c,
-  "\u009d": 0x9d,
-  "\u017e": 0x9e,
-  "\u0178": 0x9f
-};
-
-function encodeCp1251(value: string) {
-  const bytes: number[] = [];
-  for (const char of value) {
-    const code = char.charCodeAt(0);
-    if (code <= 0x7f) {
-      bytes.push(code);
-      continue;
-    }
-    if (code >= 0x80 && code <= 0x9f) {
-      bytes.push(code);
-      continue;
-    }
-    if (char === "\u0401") {
-      bytes.push(0xa8);
-      continue;
-    }
-    if (char === "\u0451") {
-      bytes.push(0xb8);
-      continue;
-    }
-    if (code >= 0x0410 && code <= 0x042f) {
-      bytes.push(code - 0x0410 + 0xc0);
-      continue;
-    }
-    if (code >= 0x0430 && code <= 0x044f) {
-      bytes.push(code - 0x0430 + 0xe0);
-      continue;
-    }
-    if (char in CP1251_EXTRA) {
-      bytes.push(CP1251_EXTRA[char]);
-      continue;
-    }
-    if (char in WINDOWS_1252_ALIAS) {
-      bytes.push(WINDOWS_1252_ALIAS[char]);
-      continue;
-    }
-    return null;
-  }
-  return new Uint8Array(bytes);
-}
-
-function repairMojibakeText(value: string) {
-  if (!value) {
-    return value;
-  }
-  let repaired = value;
-  for (let step = 0; step < 2; step += 1) {
-    const bytes = encodeCp1251(repaired);
-    if (!bytes) {
-      return repaired;
-    }
-    try {
-      const next = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-      if (next === repaired) {
-        break;
-      }
-      repaired = next;
-    } catch {
-      return repaired;
-    }
-  }
-  return repaired;
-}
-
-function repairPayload<T>(value: T): T {
-  if (typeof value === "string") {
-    return repairMojibakeText(value) as T;
-  }
-  if (Array.isArray(value)) {
-    return value.map((item) => repairPayload(item)) as T;
-  }
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, item]) => [key, repairPayload(item)])
-    ) as T;
-  }
-  return value;
-}
-
 function extractApiErrorMessage(payload: unknown) {
   if (payload && typeof payload === "object" && "detail" in payload) {
     const detail = (payload as { detail?: unknown }).detail;
@@ -252,9 +72,9 @@ async function parseResponsePayload(response: Response) {
     return {};
   }
   try {
-    return repairPayload(JSON.parse(text));
+    return JSON.parse(text);
   } catch {
-    return repairPayload(text);
+    return text;
   }
 }
 
@@ -267,7 +87,7 @@ async function requestRefreshToken(refreshToken: string): Promise<TokenPair> {
     const request = fetch(`${API_BASE}/auth/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: key })
+      body: JSON.stringify({ refresh_token: key }),
     })
       .then(async (response) => {
         const payload = await parseResponsePayload(response);
@@ -301,10 +121,7 @@ async function requestWithSessionRetry(
 
   const isAuthTokenEndpoint = path === "/auth/login" || path === "/auth/refresh";
   const canAttemptRefresh = Boolean(
-    !authRetryDone &&
-    session?.refreshToken &&
-    response.status === 401 &&
-    !isAuthTokenEndpoint,
+    !authRetryDone && session?.refreshToken && response.status === 401 && !isAuthTokenEndpoint,
   );
 
   if (canAttemptRefresh) {
@@ -343,31 +160,36 @@ export async function apiRequest(path: string, session?: SessionState, init?: Re
 export async function login(email: string, password: string) {
   return apiRequest("/auth/login", undefined, {
     method: "POST",
-    body: JSON.stringify({ email, password })
+    body: JSON.stringify({ email, password }),
   });
 }
 
 export async function apiPost(path: string, session: SessionState, payload: unknown) {
   return apiRequest(path, session, {
     method: "POST",
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
 }
 
 export async function apiPatch(path: string, session: SessionState, payload: unknown) {
   return apiRequest(path, session, {
     method: "PATCH",
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
 }
 
 export async function apiDelete(path: string, session: SessionState) {
   return apiRequest(path, session, {
-    method: "DELETE"
+    method: "DELETE",
   });
 }
 
-export async function apiUpload(path: string, session: SessionState, payload: FormData, onProgress?: (progress: number) => void) {
+export async function apiUpload(
+  path: string,
+  session: SessionState,
+  payload: FormData,
+  onProgress?: (progress: number) => void,
+) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `${API_BASE}${path}`);
@@ -389,9 +211,9 @@ export async function apiUpload(path: string, session: SessionState, payload: Fo
       let payloadValue: unknown = {};
       if (xhr.responseText) {
         try {
-          payloadValue = repairPayload(JSON.parse(xhr.responseText));
+          payloadValue = JSON.parse(xhr.responseText);
         } catch {
-          payloadValue = repairPayload(xhr.responseText);
+          payloadValue = xhr.responseText;
         }
       }
       if (xhr.status >= 200 && xhr.status < 300) {

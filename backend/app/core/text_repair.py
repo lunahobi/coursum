@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import fields, is_dataclass
 from typing import Any
 
-
 CP1251_EXTRA: dict[str, int] = {
     "\u0402": 0x80,
     "\u0403": 0x81,

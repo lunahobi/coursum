@@ -6,6 +6,7 @@ from enum import Enum
 from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.core.clock import naive_utcnow
 from app.core.db import Base
 
 
@@ -148,7 +149,7 @@ class LessonProgress(Base):
     completed_page_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
     is_completed: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     last_video_position_seconds: Mapped[int] = mapped_column(Integer, default=0)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=naive_utcnow, index=True)
 
 
 class Enrollment(Base):
@@ -172,7 +173,7 @@ class CourseAssignment(Base):
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     group_id: Mapped[int | None] = mapped_column(ForeignKey("groups.id"), nullable=True)
     assigned_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=naive_utcnow, index=True)
 
 
 class CourseStaffAssignment(Base):
@@ -241,7 +242,7 @@ class Attempt(Base):
     status: Mapped[str] = mapped_column(String(32), default="in_progress", index=True)
     asked_question_ids: Mapped[list[int]] = mapped_column(JSON, default=list)
     difficulty_path: Mapped[list[int]] = mapped_column(JSON, default=list)
-    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=naive_utcnow)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
@@ -317,7 +318,7 @@ class Assignment(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     due_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=naive_utcnow, index=True)
 
 
 class AssignmentSubmission(Base):
@@ -332,7 +333,7 @@ class AssignmentSubmission(Base):
     text_answer: Mapped[str] = mapped_column(Text, default="")
     link_answer: Mapped[str | None] = mapped_column(String(500), nullable=True)
     submitted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=naive_utcnow, index=True)
 
 
 class AssignmentSubmissionFile(Base):
@@ -343,7 +344,7 @@ class AssignmentSubmissionFile(Base):
     submission_id: Mapped[int] = mapped_column(ForeignKey("assignment_submissions.id"), index=True)
     file_url: Mapped[str] = mapped_column(String(500))
     file_name: Mapped[str] = mapped_column(String(255), default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=naive_utcnow, index=True)
 
 
 class SubmissionReview(Base):
@@ -356,7 +357,7 @@ class SubmissionReview(Base):
     status: Mapped[str] = mapped_column(String(32), index=True)
     comment: Mapped[str] = mapped_column(Text, default="")
     grade: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=naive_utcnow, index=True)
 
 
 class RefreshToken(Base):
@@ -379,7 +380,7 @@ class AuditLog(Base):
     entity_type: Mapped[str] = mapped_column(String(120))
     entity_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     details: Mapped[str] = mapped_column(Text, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=naive_utcnow, index=True)
 
 
 class NotificationDelivery(Base):

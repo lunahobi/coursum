@@ -2,7 +2,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AnalyticsPage, AppTestProviders } from "./App";
+import { AppTestProviders } from "./App";
+import AnalyticsPage from "./pages/AnalyticsPage";
 
 const { apiRequestMock } = vi.hoisted(() => ({
   apiRequestMock: vi.fn(),

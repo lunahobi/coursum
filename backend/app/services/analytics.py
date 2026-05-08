@@ -1,6 +1,9 @@
+from datetime import timedelta
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.clock import naive_utcnow
 from app.models.models import Attempt, Course, Enrollment, Lesson, Membership, Recommendation, Result, Test, Topic
 from app.services.recommendation_payloads import (
     latest_unique_recommendations,
@@ -124,4 +127,51 @@ def learner_report(db: Session, tenant_id: int, user_id: int, tenant_locale: str
             latest_unique_recommendations(recommendations),
             tenant_locale,
         ),
+    }
+
+
+def activity_timeline(db: Session, tenant_id: int, period: str, course_ids: list[int] | None = None) -> dict:
+    selected_course_ids = [int(course_id) for course_id in (course_ids or [])]
+    now = naive_utcnow()
+
+    if period == "7d":
+        points = 7
+        step = timedelta(days=1)
+        date_format = "%d %b"
+    elif period == "30d":
+        points = 30
+        step = timedelta(days=1)
+        date_format = "%d %b"
+    elif period == "quarter":
+        points = 12
+        step = timedelta(days=7)
+        date_format = "%d %b"
+    else:
+        points = 24
+        step = timedelta(days=30)
+        date_format = "%b %Y"
+
+    start = now - step * (points - 1)
+    labels = [(start + step * i).strftime(date_format) for i in range(points)]
+    attempts = [0 for _ in range(points)]
+    completions = [0 for _ in range(points)]
+
+    attempt_query = select(Attempt.started_at, Attempt.finished_at).join(Test, Test.id == Attempt.test_id).where(Attempt.tenant_id == tenant_id, Attempt.started_at >= start)
+    if selected_course_ids:
+        attempt_query = attempt_query.where(Test.course_id.in_(selected_course_ids))
+
+    for started_at, finished_at in db.execute(attempt_query).all():
+        if started_at is not None:
+            start_idx = int((started_at - start).total_seconds() // step.total_seconds())
+            if 0 <= start_idx < points:
+                attempts[start_idx] += 1
+        if finished_at is not None:
+            finish_idx = int((finished_at - start).total_seconds() // step.total_seconds())
+            if 0 <= finish_idx < points:
+                completions[finish_idx] += 1
+
+    return {
+        "labels": labels,
+        "attempts": attempts,
+        "completions": completions,
     }

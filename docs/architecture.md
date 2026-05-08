@@ -1,43 +1,43 @@
-# Architecture Notes
+# Заметки по архитектуре
 
-## System context
+## Контекст системы
 
-The project is a monorepo containing:
-- FastAPI backend as the source of truth
-- React web panel for admins and teachers
-- Flutter mobile client for learners
+Проект организован как монорепозиторий, в который входят:
+- backend на FastAPI как источник бизнес-логики и данных
+- web-панель на React для администраторов и преподавателей
+- mobile-клиент на Flutter для слушателей
 
-All clients communicate with the backend over REST API and rely on the same RBAC and tenant context rules.
+Все клиенты работают с backend через REST API и используют единые правила RBAC и tenant-контекста.
 
-## Backend subsystems
+## Подсистемы backend
 
-- `auth`: JWT login, refresh tokens, password hashing
-- `tenants`: tenant resolution, current tenant lookup, tenant-safe membership checks
-- `users`: tenant user management and role assignment through memberships
-- `courses` and `lessons`: content management and progress tracking
-- `tests`: adaptive attempt lifecycle
-- `adaptive`: next-question selection and difficulty changes
-- `recommendations`: weak-topic remediation output
-- `analytics`: dashboard, course progress, learner detail
-- `audit`: security and business event logging
-- `notifications`: mockable external integration
+- `auth`: JWT-авторизация, refresh-токены, хеширование паролей
+- `tenants`: определение текущего tenant, получение текущей организации, проверки memberships
+- `users`: управление пользователями tenant и ролями через memberships
+- `courses` и `lessons`: управление контентом и прогрессом
+- `tests`: жизненный цикл адаптивной попытки
+- `adaptive`: выбор следующего вопроса и изменение сложности
+- `recommendations`: формирование рекомендаций по слабым темам
+- `analytics`: дашборд, прогресс курсов, детальная аналитика слушателя
+- `audit`: журналирование событий безопасности и бизнес-действий
+- `notifications`: интеграция с внешними уведомлениями (mock/расширяемый слой)
 
-## Multi-tenant isolation
+## Multi-tenant изоляция
 
-Tenant isolation is enforced in three layers:
+Изоляция tenant реализована в трех слоях:
 
-1. Request layer: tenant resolved from subdomain or `X-Tenant-Code` in demo mode.
-2. Authorization layer: user must have active membership in the resolved tenant.
-3. Data layer: all tenant-bound queries filter by `tenant_id`.
+1. Слой запроса: tenant определяется по поддомену или через `X-Tenant-Code` в demo/dev режиме.
+2. Слой авторизации: пользователь должен иметь активный membership в текущем tenant.
+3. Слой данных: все tenant-bound запросы фильтруются по `tenant_id`.
 
-This combination is simple enough for thesis defense and strong enough to demonstrate practical SaaS isolation.
+Такой подход достаточно прозрачен для защиты ВКР и при этом демонстрирует практическую SaaS-изоляцию.
 
-## Adaptive testing algorithm
+## Алгоритм адаптивного тестирования
 
-- Every question has a discrete difficulty from `1` to `5`.
-- Attempt starts from test baseline difficulty.
-- Correct answer moves target difficulty up by one.
-- Incorrect answer moves target difficulty down by one.
-- Next question is chosen among unasked questions closest to current target difficulty.
-- Weak topics accumulate penalties from wrong and slow answers.
-- Final result stores score, weak topics, and generated recommendations.
+- Каждый вопрос имеет дискретную сложность от `1` до `5`.
+- Попытка стартует с базовой сложности теста.
+- Верный ответ повышает целевую сложность на 1.
+- Неверный ответ понижает целевую сложность на 1.
+- Следующий вопрос выбирается из неиспользованных, ближайших к текущей целевой сложности.
+- Слабые темы накапливают штрафы за ошибки и медленные ответы.
+- Итог попытки сохраняет балл, слабые темы и сформированные рекомендации.

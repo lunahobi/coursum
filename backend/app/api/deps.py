@@ -1,6 +1,6 @@
+import jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-import jwt
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -8,7 +8,6 @@ from app.core.db import get_db
 from app.core.security import decode_token
 from app.core.tenant import get_current_tenant
 from app.models.models import Membership, RoleName, Tenant, User
-
 
 bearer = HTTPBearer(auto_error=False)
 

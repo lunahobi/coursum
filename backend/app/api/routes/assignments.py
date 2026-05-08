@@ -1,4 +1,3 @@
-from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 
@@ -8,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import active_membership, require_roles, tenant_context
 from app.core.audit import write_audit_log
+from app.core.clock import utcnow
 from app.core.db import get_db
 from app.models.models import (
     Assignment,
@@ -33,7 +33,6 @@ from app.schemas.assignment import (
     SubmissionUpsert,
 )
 from app.services.notifications import send_mock_notification
-
 
 router = APIRouter(tags=["assignments"])
 STAFF_ROLES = (RoleName.org_admin, RoleName.teacher, RoleName.system_admin)
@@ -343,9 +342,9 @@ def upsert_submission(
     submission.text_answer = payload.text_answer
     submission.link_answer = payload.link_answer
     submission.status = status
-    submission.updated_at = datetime.utcnow()
+    submission.updated_at = utcnow()
     if status == "submitted":
-        submission.submitted_at = datetime.utcnow()
+        submission.submitted_at = utcnow()
 
     db.add(submission)
     db.flush()
@@ -443,7 +442,7 @@ def review_submission(
     _ensure_course_and_lesson_in_tenant(db, tenant.id, assignment.course_id, assignment.lesson_id)
 
     submission.status = review_status
-    submission.updated_at = datetime.utcnow()
+    submission.updated_at = utcnow()
     review = SubmissionReview(
         tenant_id=tenant.id,
         submission_id=submission.id,

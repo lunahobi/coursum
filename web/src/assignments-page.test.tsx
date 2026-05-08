@@ -2,7 +2,8 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AppTestProviders, AssignmentsPage } from "./App";
+import { AppTestProviders } from "./App";
+import AssignmentsPage from "./pages/AssignmentsPage";
 
 const { apiRequestMock, apiPostMock, apiDeleteMock } = vi.hoisted(() => ({
   apiRequestMock: vi.fn(),
@@ -43,8 +44,22 @@ describe("AssignmentsPage", () => {
     apiRequestMock.mockImplementation(async (path: string) => {
       if (path === "/courses") {
         return [
-          { id: 1, title: "Alpha course", description: "alpha", is_published: true, status: "published", image_url: null },
-          { id: 2, title: "Beta archive", description: "legacy", is_published: false, status: "archived", image_url: null },
+          {
+            id: 1,
+            title: "Alpha course",
+            description: "alpha",
+            is_published: true,
+            status: "published",
+            image_url: null,
+          },
+          {
+            id: 2,
+            title: "Beta archive",
+            description: "legacy",
+            is_published: false,
+            status: "archived",
+            image_url: null,
+          },
         ];
       }
       if (path === "/users") {
@@ -117,7 +132,9 @@ describe("AssignmentsPage", () => {
     await user.click(await screen.findByRole("button", { name: /Alpha course/i }));
     await user.click(screen.getByRole("tab", { name: "Назначить" }));
     const row = await screen.findByText("Learner Seven");
-    const assignButton = within(row.closest(".assignment-row") as HTMLElement).getByRole("button", { name: "Назначить" });
+    const assignButton = within(row.closest(".assignment-row") as HTMLElement).getByRole("button", {
+      name: "Назначить",
+    });
     await user.click(assignButton);
 
     await waitFor(() => {

@@ -11,7 +11,6 @@ from app.api.deps import require_roles, tenant_context
 from app.models.models import Membership, RoleName, Tenant
 from app.schemas.media import MediaAssetRead
 
-
 router = APIRouter(tags=["media"])
 
 MEDIA_SUFFIXES = {

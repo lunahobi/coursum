@@ -7,10 +7,23 @@ from sqlalchemy.orm import Session
 from app.api.deps import active_membership, require_roles, tenant_context
 from app.core.audit import write_audit_log
 from app.core.db import get_db
-from app.models.models import AnswerOption, Attempt, AttemptAnswer, Course, Lesson, Membership, Question, QuestionTopic, Result, RoleName, Tenant, Test, Topic
+from app.models.models import (
+    AnswerOption,
+    Attempt,
+    AttemptAnswer,
+    Course,
+    Lesson,
+    Membership,
+    Question,
+    QuestionTopic,
+    Result,
+    RoleName,
+    Tenant,
+    Test,
+    Topic,
+)
 from app.schemas.testing import QuestionCreate, QuestionOptionRead, QuestionRead, SubmitAnswerRequest, TestCreate, TestUpdate
 from app.services.adaptive import attempt_total_questions, evaluate_answer, finalize_attempt, question_topic_titles, select_next_question
-
 
 router = APIRouter(tags=["tests"])
 
@@ -28,7 +41,7 @@ def _ordered_options(
     ordered = sorted(
         options,
         key=lambda option: hashlib.sha256(
-            f"{attempt.id}:{question.id}:{option.id}".encode("utf-8")
+            f"{attempt.id}:{question.id}:{option.id}".encode()
         ).hexdigest(),
     )
     if ordered[0].is_correct:

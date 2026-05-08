@@ -50,9 +50,7 @@ describe("login saved accounts", () => {
 
     renderApp();
 
-    expect(
-      screen.queryByRole("button", { name: /teacher@example\.com \(tenant-a\)/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /teacher@example\.com \(tenant-a\)/i })).not.toBeInTheDocument();
   });
 
   it("keeps existing saved accounts and appends newly logged account", async () => {

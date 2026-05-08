@@ -2,7 +2,8 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AppTestProviders, DashboardPage } from "./App";
+import { AppTestProviders } from "./App";
+import DashboardPage from "./pages/DashboardPage";
 
 const { apiRequestMock } = vi.hoisted(() => ({
   apiRequestMock: vi.fn(),
@@ -20,12 +21,23 @@ describe("DashboardPage", () => {
     apiRequestMock.mockReset();
     apiRequestMock.mockImplementation(async (path: string) => {
       if (path === "/analytics/dashboard") {
-        return { users: 24, active_attempts: 17, avg_progress: 71, recommendations: 9, courses: 4, tests: 8, enrollments: 43 };
+        return {
+          users: 24,
+          active_attempts: 17,
+          avg_progress: 71,
+          recommendations: 9,
+          courses: 4,
+          tests: 8,
+          enrollments: 43,
+        };
+      }
+      if (path === "/analytics/timeline?period=30d") {
+        return { labels: ["01 May", "02 May"], attempts: [4, 7], completions: [2, 5] };
       }
       if (path === "/analytics/course-progress") {
         return [
-          { course_title: "A course", avg_progress: 45, learners: 32 },
-          { course_title: "B course", avg_progress: 82, learners: 10 },
+          { course_id: 1, course_title: "A course", avg_progress: 45, learners: 32 },
+          { course_id: 2, course_title: "B course", avg_progress: 82, learners: 10 },
         ];
       }
       if (path === "/analytics/problem-topics") {
@@ -68,7 +80,9 @@ describe("DashboardPage", () => {
     await screen.findByRole("link", { name: /B course/i });
     const select = screen.getByDisplayValue("By progress ↓");
     await user.selectOptions(select, "progress_asc");
-    const cards = screen.getAllByRole("link").filter((node) => node.getAttribute("href")?.startsWith("/courses?focus="));
+    const cards = screen
+      .getAllByRole("link")
+      .filter((node) => node.getAttribute("href")?.startsWith("/courses?focus="));
     expect(within(cards[0]).getByText("A course")).toBeInTheDocument();
   });
 
@@ -78,5 +92,12 @@ describe("DashboardPage", () => {
     const chip30 = await screen.findByRole("button", { name: "30 days" });
     await user.click(chip30);
     expect(chip30).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("renders activity summary with conversion metric", async () => {
+    renderPage();
+    expect(await screen.findByText(/Started:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Completed:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Conversion:/i)).toBeInTheDocument();
   });
 });

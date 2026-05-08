@@ -2,13 +2,14 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AppTestProviders, CoursesPage } from "./App";
+import { AppTestProviders } from "./App";
+import CoursesPage from "./pages/CoursesPage";
 
 const { apiDeleteMock, apiRequestMock, apiPostMock, apiPatchMock } = vi.hoisted(() => ({
   apiDeleteMock: vi.fn(),
   apiRequestMock: vi.fn(),
   apiPostMock: vi.fn(),
-  apiPatchMock: vi.fn()
+  apiPatchMock: vi.fn(),
 }));
 
 vi.mock("./api", async () => {
@@ -19,7 +20,7 @@ vi.mock("./api", async () => {
     apiRequest: apiRequestMock,
     apiPost: apiPostMock,
     apiPatch: apiPatchMock,
-    apiUpload: vi.fn()
+    apiUpload: vi.fn(),
   };
 });
 
@@ -30,7 +31,7 @@ const course = {
   title: "Customer service essentials",
   description: "Keep the course builder focused and easy to manage.",
   is_published: true,
-  image_url: "/media/customer-service-cover.png"
+  image_url: "/media/customer-service-cover.png",
 };
 
 const secondCourse = {
@@ -38,7 +39,7 @@ const secondCourse = {
   title: "Leadership basics",
   description: "Build the confidence to run team rituals well.",
   is_published: true,
-  image_url: "/media/leadership-cover.png"
+  image_url: "/media/leadership-cover.png",
 };
 
 const mediaAssets = [
@@ -48,15 +49,15 @@ const mediaAssets = [
     kind: "image",
     size_bytes: 2048,
     filename: "customer-service-cover.png",
-    mime_type: "image/png"
-  }
+    mime_type: "image/png",
+  },
 ];
 
 function makePreview(payloadCourse: typeof course | typeof secondCourse) {
   return {
     course: payloadCourse,
     sections: [],
-    lessons: []
+    lessons: [],
   };
 }
 
@@ -66,7 +67,7 @@ function renderCoursesPage(initialEntries = ["/courses"]) {
       <AppTestProviders language="en">
         <CoursesPage session={session} />
       </AppTestProviders>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 
@@ -106,7 +107,7 @@ describe("CoursesPage", () => {
           id: 42,
           email: "learner@acme.example.com",
           full_name: "Learner",
-          tenant_role: "learner"
+          tenant_role: "learner",
         };
       }
       throw new Error(`Unexpected apiRequest path: ${path}`);
@@ -116,7 +117,9 @@ describe("CoursesPage", () => {
 
     expect(await screen.findByText("Course editor unavailable")).toBeInTheDocument();
     expect(
-      screen.getByText("This account is a learner. Only teachers, organization admins, and system admins can create or edit courses.")
+      screen.getByText(
+        "This account is a learner. Only teachers, organization admins, and system admins can create or edit courses.",
+      ),
     ).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole("button", { name: "New course" })).toBeDisabled());
     expect(screen.queryByRole("button", { name: "Create course" })).not.toBeInTheDocument();
@@ -153,7 +156,7 @@ describe("CoursesPage", () => {
           id: 7,
           email: "teacher@acme.example.com",
           full_name: "Teacher",
-          tenant_role: "teacher"
+          tenant_role: "teacher",
         };
       }
       throw new Error(`Unexpected apiRequest path: ${path}`);
@@ -178,7 +181,7 @@ describe("CoursesPage", () => {
       title: "New course from test",
       description: "Created in test",
       is_published: true,
-      image_url: null
+      image_url: null,
     });
     apiRequestMock.mockImplementation(async (path: string) => {
       if (path === "/courses") {
@@ -207,7 +210,7 @@ describe("CoursesPage", () => {
           id: 7,
           email: "teacher@acme.example.com",
           full_name: "Teacher",
-          tenant_role: "teacher"
+          tenant_role: "teacher",
         };
       }
       throw new Error(`Unexpected apiRequest path: ${path}`);
@@ -234,10 +237,10 @@ describe("CoursesPage", () => {
       category: null,
       access_settings: {
         self_enrollment: false,
-        language: "en"
+        language: "en",
       },
       available_from: null,
-      available_to: null
+      available_to: null,
     });
     await waitFor(() => expect(screen.getByText("Course created")).toBeInTheDocument());
   });
@@ -249,7 +252,7 @@ describe("CoursesPage", () => {
       title: "New course from test",
       description: "Created in test",
       is_published: true,
-      image_url: "/media/customer-service-cover.png"
+      image_url: "/media/customer-service-cover.png",
     });
     apiRequestMock.mockImplementation(async (path: string) => {
       if (path === "/courses") {
@@ -278,7 +281,7 @@ describe("CoursesPage", () => {
           id: 7,
           email: "teacher@acme.example.com",
           full_name: "Teacher",
-          tenant_role: "teacher"
+          tenant_role: "teacher",
         };
       }
       throw new Error(`Unexpected apiRequest path: ${path}`);
@@ -305,10 +308,10 @@ describe("CoursesPage", () => {
       category: null,
       access_settings: {
         self_enrollment: false,
-        language: "en"
+        language: "en",
       },
       available_from: null,
-      available_to: null
+      available_to: null,
     });
   });
 
@@ -347,7 +350,7 @@ describe("CoursesPage", () => {
           id: 7,
           email: "teacher@acme.example.com",
           full_name: "Teacher",
-          tenant_role: "teacher"
+          tenant_role: "teacher",
         };
       }
       throw new Error(`Unexpected apiRequest path: ${path}`);

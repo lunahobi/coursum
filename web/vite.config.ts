@@ -9,6 +9,8 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
-    setupFiles: [fileURLToPath(new URL("./src/test/setup.ts", import.meta.url))]
+    setupFiles: [fileURLToPath(new URL("./src/test/setup.ts", import.meta.url))],
+    include: ["src/**/*.{test,spec}.{ts,tsx,js,jsx}"],
+    exclude: ["e2e/**", "node_modules/**", "dist/**"]
   }
 });

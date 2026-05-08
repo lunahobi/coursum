@@ -4,8 +4,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import require_roles, tenant_context
 from app.core.db import get_db
 from app.models.models import Membership, RoleName, Tenant
-from app.services.analytics import course_progress, dashboard_stats, learner_report, problem_topics
-
+from app.services.analytics import activity_timeline, course_progress, dashboard_stats, learner_report, problem_topics
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -38,6 +37,17 @@ def analytics_problem_topics(
     db: Session = Depends(get_db),
 ) -> list[dict]:
     return problem_topics(db, tenant.id, course_id)
+
+
+@router.get("/timeline")
+def analytics_timeline(
+    period: str = Query(default="30d", pattern="^(7d|30d|quarter|all)$"),
+    course_id: list[int] | None = Query(default=None),
+    _: Membership = Depends(require_roles(RoleName.org_admin, RoleName.teacher, RoleName.system_admin)),
+    tenant: Tenant = Depends(tenant_context),
+    db: Session = Depends(get_db),
+) -> dict:
+    return activity_timeline(db, tenant.id, period, course_id)
 
 
 @router.get("/learners/{user_id}")

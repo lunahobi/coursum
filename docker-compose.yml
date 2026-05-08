@@ -6,7 +6,8 @@ services:
     environment:
       POSTGRES_DB: lms
       POSTGRES_USER: lms
-      POSTGRES_PASSWORD: lms
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lms}
+      POSTGRES_INITDB_ARGS: "--locale=C.UTF-8 --encoding=UTF8"
     ports:
       - "127.0.0.1:5433:5432"
     volumes:
@@ -23,9 +24,10 @@ services:
     container_name: corporate-lms-backend
     restart: unless-stopped
     environment:
-      LMS_DATABASE_URL: postgresql+psycopg://lms:lms@db:5432/lms
-      LMS_SECRET_KEY: docker-dev-secret-key
-      LMS_ALLOW_TENANT_HEADER_FALLBACK: "true"
+      LMS_DATABASE_URL: postgresql+psycopg://lms:${POSTGRES_PASSWORD:-lms}@db:5432/lms?client_encoding=utf8
+      LMS_SECRET_KEY: ${LMS_SECRET_KEY:-docker-dev-secret-key}
+      LMS_ENVIRONMENT: ${LMS_ENVIRONMENT:-dev}
+      LMS_ALLOW_TENANT_HEADER_FALLBACK: ${LMS_ALLOW_TENANT_HEADER_FALLBACK:-true}
       LMS_CORS_ORIGINS: '["https://coursum.online","https://www.coursum.online"]'
     depends_on:
       db:
@@ -53,8 +55,9 @@ services:
     restart: "no"
     profiles: ["tools"]
     environment:
-      LMS_DATABASE_URL: postgresql+psycopg://lms:lms@db:5432/lms
-      LMS_SECRET_KEY: docker-dev-secret-key
+      LMS_DATABASE_URL: postgresql+psycopg://lms:${POSTGRES_PASSWORD:-lms}@db:5432/lms?client_encoding=utf8
+      LMS_SECRET_KEY: ${LMS_SECRET_KEY:-docker-dev-secret-key}
+      LMS_ENVIRONMENT: ${LMS_ENVIRONMENT:-dev}
     depends_on:
       db:
         condition: service_healthy

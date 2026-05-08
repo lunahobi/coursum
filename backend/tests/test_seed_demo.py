@@ -1,7 +1,6 @@
+import sys
 from dataclasses import fields, is_dataclass
 from pathlib import Path
-import sys
-
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 if str(BACKEND_ROOT) not in sys.path:

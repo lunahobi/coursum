@@ -2,11 +2,12 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AppTestProviders, HomeworkReviewsPage } from "./App";
+import { AppTestProviders } from "./App";
+import HomeworkReviewsPage from "./pages/HomeworkReviewsPage";
 
 const { apiRequestMock, apiPostMock } = vi.hoisted(() => ({
   apiRequestMock: vi.fn(),
-  apiPostMock: vi.fn()
+  apiPostMock: vi.fn(),
 }));
 
 vi.mock("./api", async () => {
@@ -14,7 +15,7 @@ vi.mock("./api", async () => {
   return {
     ...actual,
     apiRequest: apiRequestMock,
-    apiPost: apiPostMock
+    apiPost: apiPostMock,
   };
 });
 
@@ -26,7 +27,7 @@ function renderPage() {
       <AppTestProviders language="ru">
         <HomeworkReviewsPage session={session} />
       </AppTestProviders>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 
@@ -42,7 +43,7 @@ function renderPageWithLocationProbe() {
         <HomeworkReviewsPage session={session} />
         <LocationProbe />
       </AppTestProviders>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 
@@ -62,8 +63,8 @@ describe("HomeworkReviewsPage", () => {
             title: "Деловые коммуникации",
             description: "Практическое задание",
             is_active: true,
-            created_at: "2026-05-01T12:00:00Z"
-          }
+            created_at: "2026-05-01T12:00:00Z",
+          },
         ];
       }
       if (path === "/lessons?course_id=1") {
@@ -76,9 +77,9 @@ describe("HomeworkReviewsPage", () => {
             content_pages: [
               { page_id: "theory-page-1", page_title: "Теория", is_practice: false },
               { page_id: "practice-page-42", page_title: "Практика по заданию", is_practice: false },
-              { page_id: "practice-page-1", page_title: "Практика", is_practice: true }
-            ]
-          }
+              { page_id: "practice-page-1", page_title: "Практика", is_practice: true },
+            ],
+          },
         ];
       }
       if (path === "/users") {
@@ -95,16 +96,23 @@ describe("HomeworkReviewsPage", () => {
             link_answer: "https://example.com/work",
             submitted_at: "2026-05-01T10:00:00Z",
             updated_at: "2026-05-01T10:05:00Z",
-            files: [{ id: 7, file_url: "/media/acme/file-1.txt", file_name: "Файл решения.txt", created_at: "2026-05-01T10:05:00Z" }],
+            files: [
+              {
+                id: 7,
+                file_url: "/media/acme/file-1.txt",
+                file_name: "Файл решения.txt",
+                created_at: "2026-05-01T10:05:00Z",
+              },
+            ],
             latest_review: {
               id: 12,
               reviewer_user_id: 2,
               status: "in_review",
               comment: "Проверяю",
               grade: null,
-              created_at: "2026-05-01T10:10:00Z"
-            }
-          }
+              created_at: "2026-05-01T10:10:00Z",
+            },
+          },
         ];
       }
       throw new Error(`Unexpected apiRequest path: ${path}`);
@@ -140,8 +148,8 @@ describe("HomeworkReviewsPage", () => {
       expect(apiPostMock).toHaveBeenCalledWith("/submissions/42/review", session, {
         status: "approved",
         comment: "Отлично",
-        grade: 85
-      })
+        grade: 85,
+      }),
     );
   });
 
@@ -159,8 +167,8 @@ describe("HomeworkReviewsPage", () => {
       expect(apiPostMock).toHaveBeenCalledWith("/submissions/42/review", session, {
         status: "in_review",
         comment: "Без оценки",
-        grade: null
-      })
+        grade: null,
+      }),
     );
   });
 

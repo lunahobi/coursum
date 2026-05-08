@@ -3,7 +3,6 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.models.models import NotificationDelivery
 
-
 settings = get_settings()
 
 

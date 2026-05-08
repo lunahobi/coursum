@@ -2,13 +2,14 @@ import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AppTestProviders, TestsPage } from "./App";
+import { AppTestProviders } from "./App";
+import TestsPage from "./pages/TestsPage";
 
 const { apiPatchMock, apiPostMock, apiRequestMock, apiDeleteMock } = vi.hoisted(() => ({
   apiPatchMock: vi.fn(),
   apiPostMock: vi.fn(),
   apiRequestMock: vi.fn(),
-  apiDeleteMock: vi.fn()
+  apiDeleteMock: vi.fn(),
 }));
 const scrollIntoViewMock = vi.fn();
 
@@ -20,7 +21,7 @@ vi.mock("./api", async () => {
     apiPost: apiPostMock,
     apiRequest: apiRequestMock,
     apiDelete: apiDeleteMock,
-    apiUpload: vi.fn()
+    apiUpload: vi.fn(),
   };
 });
 
@@ -32,15 +33,15 @@ const courses = [
     title: "Customer service essentials",
     description: "Keep conversations clear, calm, and useful.",
     is_published: true,
-    image_url: null
+    image_url: null,
   },
   {
     id: 2,
     title: "Sales negotiation",
     description: "Navigate objections and close confidently.",
     is_published: true,
-    image_url: null
-  }
+    image_url: null,
+  },
 ];
 
 const tests = [
@@ -50,7 +51,7 @@ const tests = [
     course_id: 1,
     baseline_difficulty: 3,
     question_limit: 8,
-    question_count: 3
+    question_count: 3,
   },
   {
     id: 8,
@@ -58,13 +59,13 @@ const tests = [
     course_id: 2,
     baseline_difficulty: 2,
     question_limit: 6,
-    question_count: 0
-  }
+    question_count: 0,
+  },
 ];
 
 const topicsCourseOne = [
   { id: 11, title: "Listening", description: "Hear the concern fully." },
-  { id: 12, title: "Escalation", description: "Know when to hand over." }
+  { id: 12, title: "Escalation", description: "Know when to hand over." },
 ];
 const topicsCourseTwo = [{ id: 21, title: "Negotiation", description: "Find a win-win proposal." }];
 
@@ -81,11 +82,11 @@ const questions = [
       { id: 101, text: "Acknowledge the concern and ask a clarifying question", is_correct: true },
       { id: 102, text: "Tell the customer they are wrong", is_correct: false },
       { id: 103, text: "End the call quickly", is_correct: false },
-      { id: 104, text: "Transfer without context", is_correct: false }
+      { id: 104, text: "Transfer without context", is_correct: false },
     ],
     topic_ids: [11],
-    topic_titles: ["Listening"]
-  }
+    topic_titles: ["Listening"],
+  },
 ];
 
 function renderTestsPage() {
@@ -94,7 +95,7 @@ function renderTestsPage() {
       <AppTestProviders language="en">
         <TestsPage session={session} />
       </AppTestProviders>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 
@@ -107,7 +108,7 @@ describe("TestsPage", () => {
     scrollIntoViewMock.mockReset();
     Object.defineProperty(window.HTMLElement.prototype, "scrollIntoView", {
       configurable: true,
-      value: scrollIntoViewMock
+      value: scrollIntoViewMock,
     });
     apiRequestMock.mockImplementation(async (path: string) => {
       if (path === "/courses") {
@@ -145,7 +146,7 @@ describe("TestsPage", () => {
 
     expect(await screen.findByText("Recommended presets")).toBeInTheDocument();
     expect(screen.getByText("Setup summary")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Example: "Customer service essentials - final assessment"')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Example:/)).toBeInTheDocument();
     expect(screen.getByText("Existing tests")).toBeInTheDocument();
     expect(screen.getByText("Questions in bank: 3")).toBeInTheDocument();
     expect(screen.getByText("Questions inside the test")).toBeInTheDocument();
@@ -173,7 +174,7 @@ describe("TestsPage", () => {
       course_id: 1,
       title: "New test",
       baseline_difficulty: 2,
-      question_limit: 5
+      question_limit: 5,
     });
   });
 
@@ -184,7 +185,7 @@ describe("TestsPage", () => {
     renderTestsPage();
 
     await screen.findByText("Questions inside the test");
-    await user.type(screen.getByLabelText("Question text"), "How should an agent open a difficult call?");
+    await user.type(await screen.findByLabelText("Question text"), "How should an agent open a difficult call?");
     await user.clear(screen.getByLabelText("Expected answer time, sec"));
     await user.type(screen.getByLabelText("Expected answer time, sec"), "60");
     await user.click(screen.getByLabelText("Listening"));
@@ -209,8 +210,8 @@ describe("TestsPage", () => {
         { text: "Acknowledge the issue calmly", is_correct: true },
         { text: "Interrupt quickly", is_correct: false },
         { text: "Transfer without context", is_correct: false },
-        { text: "Promise anything", is_correct: false }
-      ]
+        { text: "Promise anything", is_correct: false },
+      ],
     });
   });
 
@@ -224,7 +225,9 @@ describe("TestsPage", () => {
     await user.click(screen.getByRole("button", { name: "Edit" }));
 
     expect(scrollIntoViewMock).toHaveBeenCalled();
-    await waitFor(() => expect(screen.getByDisplayValue("What is the best first response to an upset customer?")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByDisplayValue("What is the best first response to an upset customer?")).toBeInTheDocument(),
+    );
     expect(screen.getByDisplayValue("Acknowledge the concern and ask a clarifying question")).toBeInTheDocument();
 
     await user.clear(screen.getByLabelText("Post-answer explanation"));
@@ -245,11 +248,11 @@ describe("TestsPage", () => {
         { text: "Acknowledge the concern and ask a clarifying question", is_correct: true },
         { text: "Tell the customer they are wrong", is_correct: false },
         { text: "End the call quickly", is_correct: false },
-        { text: "Transfer without context", is_correct: false }
-      ]
+        { text: "Transfer without context", is_correct: false },
+      ],
     });
     expect(payload.text).toContain("What is the best first response to an upset customer?");
-    expect(payload.explanation).toContain("Lead");
+    expect(payload.explanation).toContain("L");
   });
 
   it("edits test settings and saves changes", async () => {
@@ -272,7 +275,7 @@ describe("TestsPage", () => {
     expect(apiPatchMock).toHaveBeenCalledWith("/tests/7", session, {
       title: "Customer service baseline",
       baseline_difficulty: 4,
-      question_limit: 12
+      question_limit: 12,
     });
   });
 

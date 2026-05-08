@@ -1,27 +1,47 @@
 # Corporate LMS MVP
 
-Multi-tenant client-server corporate learning system for a bachelor thesis: backend REST API, React admin panel, and Flutter learner app with adaptive testing.
+Многотенантная клиент-серверная система корпоративного обучения для ВКР: backend API, web-панель на React и mobile-клиент на Flutter с адаптивным тестированием.
 
-## Monorepo layout
+[![CI](https://github.com/your-org/your-repo/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/your-repo/actions/workflows/ci.yml)
 
-- `backend` FastAPI + SQLAlchemy + Alembic + PostgreSQL-ready data model
-- `web` React + TypeScript admin/teacher panel
-- `mobile` Flutter learner app
-- `docs` thesis-friendly architecture notes
+## Структура монорепозитория
 
-## Key features
+- `backend` — FastAPI + SQLAlchemy + Alembic, модель данных (PostgreSQL/SQLite)
+- `web` — панель администратора/преподавателя (React + TypeScript)
+- `mobile` — приложение слушателя (Flutter)
+- `docs` — архитектура, runbook, стратегия тестирования, ADR
 
-- multi-tenant isolation via `tenant_id` and request-scoped tenant resolution
-- roles: learner, teacher, organization admin, system admin
-- course, lesson, test and question management
-- course assignment to users and groups
-- adaptive testing with difficulty changes from `1..5`
-- weak-topic recommendations after attempt completion
-- analytics dashboard and learner reports
-- password hashing, JWT auth with refresh, audit logs
-- optional mock notification integration
+## Архитектура верхнего уровня
 
-## Backend setup
+```mermaid
+flowchart LR
+  Web[Web-панель React] --> API[Backend API FastAPI]
+  Mobile[Mobile-клиент Flutter] --> API
+  API --> DB[(PostgreSQL / SQLite)]
+  API --> Media[(Хранилище медиа)]
+```
+
+## Ключевые возможности
+
+- tenant-изоляция через `tenant_id` и tenant-контекст запроса
+- роли: learner, teacher, org_admin, system_admin
+- управление курсами, уроками, тестами и вопросами
+- назначение курсов пользователям и группам
+- адаптивное тестирование со сложностью `1..5`
+- рекомендации по слабым темам после завершения попытки
+- аналитика по курсам и слушателям
+- JWT auth + refresh, аудит, mock-уведомления
+
+## Индекс документации
+
+- `docs/architecture.md` — обзор подсистем и tenant-модели
+- `docs/deployment-runbook.md` — порядок деплоя и health-check
+- `docs/testing-strategy.md` — слои API/UI/E2E тестирования
+- `docs/adr/0001-runtime-schema-and-startup.md` — решение по миграциям и startup
+- `CONTRIBUTING.md` — правила внесения изменений
+- `CHANGELOG.md` — история изменений
+
+## Запуск backend локально
 
 ```bash
 cd backend
@@ -33,40 +53,38 @@ python -m scripts.seed_demo
 uvicorn app.main:app --reload
 ```
 
-Default API base: `http://localhost:8000/api/v1`
+API base по умолчанию: `http://localhost:8000/api/v1`
 
-## Docker setup
-
-Run the full local stack:
+## Запуск через Docker
 
 ```bash
 docker compose up --build
 ```
 
-Services:
+Сервисы:
 - backend: `http://localhost:8000`
-- web: `http://localhost:8080`
+- web: `http://localhost:8081`
 - postgres: `localhost:5432`
 
-Load demo data into PostgreSQL:
+Загрузка demo-данных в PostgreSQL:
 
 ```bash
 docker compose run --rm --profile tools seed
 ```
 
-Stop the stack:
+Остановка:
 
 ```bash
 docker compose down
 ```
 
-Reset database volume completely:
+Полный сброс volume БД:
 
 ```bash
 docker compose down -v
 ```
 
-## Web setup
+## Запуск web локально
 
 ```bash
 cd web
@@ -74,9 +92,9 @@ npm install
 npm run dev
 ```
 
-Default web URL: `http://localhost:5173`
+Web URL по умолчанию: `http://localhost:5173`
 
-## Mobile setup
+## Запуск mobile локально
 
 ```bash
 cd mobile
@@ -84,34 +102,33 @@ flutter pub get
 flutter run
 ```
 
-Mobile app is not containerized; it connects to the backend started locally or via Docker.
+Mobile-клиент не контейнеризован и подключается к локальному backend.
 
-Default mobile API base:
+Базовый API для mobile:
 - Android emulator: `http://10.0.2.2:8000/api/v1`
-- other local targets: `http://localhost:8000/api/v1`
+- другие локальные цели: `http://localhost:8000/api/v1`
 
-Override the mobile API base when needed:
+Переопределение API:
 
 ```bash
 flutter run --dart-define=API_BASE=http://<your-host-ip>:8000/api/v1
 ```
 
-## Tenant model
+## Tenant-модель
 
-- production-oriented mode: tenant resolved from subdomain
-- local/test fallback: header `X-Tenant-Code`
-- every tenant-bound table stores `tenant_id`
-- protected routes require both JWT and active membership for current tenant
+- production: tenant определяется по поддомену
+- local/dev fallback: заголовок `X-Tenant-Code`
+- все tenant-bound таблицы хранят `tenant_id`
+- защищенные маршруты требуют JWT и активный membership в текущем tenant
 
-## Demo credentials
+## Demo-аккаунты
 
 - system admin: `sysadmin@example.com` / `Password123!`
 - tenant admin: `admin@acme.example.com` / `Password123!`
 - teacher: `teacher@acme.example.com` / `Password123!`
 - learner: `learner1@acme.example.com` / `Password123!`
-- second tenant examples follow `@beta.example.com`
 
-## Important API routes
+## Важные API-маршруты
 
 - auth: `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`, `GET /auth/me`
 - tenants: `GET /tenants`, `GET /tenants/current`, `POST /tenants/select`
@@ -122,45 +139,11 @@ flutter run --dart-define=API_BASE=http://<your-host-ip>:8000/api/v1
 - recommendations: `GET /recommendations/me`
 - analytics: `GET /analytics/dashboard`, `GET /analytics/course-progress`, `GET /analytics/problem-topics`, `GET /analytics/learners/{id}`
 
-## Database schema overview
-
-Core tables:
-- tenants
-- roles
-- users
-- memberships
-- groups
-- group_members
-- courses
-- lessons
-- enrollments
-- course_assignments
-- topics
-- tests
-- questions
-- answer_options
-- question_topics
-- attempts
-- attempt_answers
-- results
-- recommendations
-- refresh_tokens
-- audit_logs
-- notification_deliveries
-
-## Seed data
-
-`backend/scripts/seed_demo.py` creates:
-- 2 tenants
-- 4 roles
-- 20+ users
-- 500+ total records across content, enrollments, questions, attempts, results, and recommendations
-
-## Tests
+## Тесты
 
 ```bash
 cd backend
-pytest
+python -m pytest
 
 cd ../web
 npm test
@@ -169,11 +152,75 @@ cd ../mobile
 flutter test
 ```
 
-Backend tests cover tenant isolation, role access, adaptive difficulty bounds, recommendations, learner completion flow, and admin analytics access.
+## Проверки качества кода
 
-### Production smoke check for assignments endpoint
+Backend:
 
-Before shipping a backend release, verify that assignment routes are reachable in the deployed environment:
+```bash
+cd backend
+python -m ruff check app tests
+python -m mypy app/core app/models
+python -m pytest -q
+```
+
+Web:
+
+```bash
+cd web
+npm run lint
+npm run format:check
+npm test
+npm run build
+```
+
+## E2E UI-тесты (Playwright)
+
+```bash
+cd web
+npm run test:e2e:install
+npm run test:e2e
+```
+
+Покрытие E2E включает:
+- рендер auth-страницы и login flow
+- activity summary и легенду на dashboard
+- smoke-навигацию по основным страницам teacher/admin UI
+
+## Allure-отчеты (API + UI)
+
+UI (Playwright) пишет результаты в `allure-results/ui`.
+
+API:
+
+```bash
+cd backend
+python -m pytest --alluredir ../allure-results/api -q
+```
+
+Сборка/открытие UI-отчета:
+
+```bash
+cd ../web
+npm run allure:ui:generate
+npm run allure:ui:open
+```
+
+Сборка/открытие общего API+UI отчета:
+
+```bash
+cd web
+npm run allure:all:generate
+npm run allure:all:open
+```
+
+## CI
+
+Workflow: `.github/workflows/ci.yml`
+
+- backend: install deps + Ruff + scoped Mypy + Pytest
+- web: install deps + ESLint + Prettier check + tests + build
+
+## Smoke-проверка assignments перед релизом
 
 ```bash
 python backend/scripts/smoke_assignments_endpoint.py \
@@ -182,12 +229,12 @@ python backend/scripts/smoke_assignments_endpoint.py \
   --tenant-code <tenant-code>
 ```
 
-The command must print `OK` and return exit code `0`. Fail the release if it returns non-zero.
+Команда должна вывести `OK` и завершиться с кодом `0`.
 
-## Thesis-ready notes
+## Пояснения к защите ВКР
 
-- Adaptive algorithm starts at baseline difficulty `3`.
-- Correct answer raises target difficulty by `+1`, incorrect lowers by `-1`.
-- Weak-topic scoring grows from incorrect and slow answers.
-- Recommendations map weak topics to revision advice.
-- Architecture remains monolithic for explainability, but clearly modularized by subsystem.
+- Адаптивный алгоритм стартует со сложности `3`.
+- Верный ответ повышает сложность (`+1`), неверный — понижает (`-1`).
+- Слабые темы усиливаются ошибками и медленными ответами.
+- Рекомендации формируются на основе слабых тем.
+- Архитектура остается монолитной для объяснимости на защите, но разделена на модули.

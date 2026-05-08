@@ -6,10 +6,10 @@ from html import escape
 
 from sqlalchemy import select, text
 
+from app.core.config import get_settings
 from app.core.content_localization import follow_up_recommendation, is_russian, review_topic_recommendation
 from app.core.db import Base, SessionLocal, engine
 from app.core.security import hash_password
-from app.core.text_repair import repair_mojibake_text, repair_text_payload
 from app.models.models import (
     AnswerOption,
     Attempt,
@@ -996,14 +996,6 @@ def lesson_seed(
     checklist: list[str],
     reflection: str,
 ) -> LessonSeed:
-    topic_key = repair_mojibake_text(topic_key)
-    title = repair_mojibake_text(title)
-    summary = repair_mojibake_text(summary)
-    why_it_matters = repair_mojibake_text(why_it_matters)
-    scenario = repair_mojibake_text(scenario)
-    reflection = repair_mojibake_text(reflection)
-    practice = [repair_mojibake_text(item) for item in practice]
-    checklist = [repair_mojibake_text(item) for item in checklist]
     image_url = lesson_image(image_key, locale)
     video_url = lesson_video(image_key, locale)
     return LessonSeed(
@@ -1042,7 +1034,7 @@ def lesson_seed(
 
 def localized_cover_path(course_title: str, locale: str) -> str:
     suffix = "ru" if is_russian(locale) else "en"
-    normalized = repair_mojibake_text(course_title).lower()
+    normalized = course_title.lower()
     if "онбординг" in normalized or "onboarding" in normalized:
         return f"/media/onboarding-cover-{suffix}.png"
     if "безопас" in normalized or "security" in normalized:
@@ -1689,11 +1681,11 @@ def build_course_catalog_en() -> list[CourseSeed]:
 
 
 def build_course_catalog_ru() -> list[CourseSeed]:
-    catalog = repair_text_payload([
+    catalog = [
         _ru_onboarding_course(),
         _ru_security_course(),
         _ru_service_course(),
-    ])
+    ]
     return enrich_question_banks(catalog, locale="ru")
 
 
@@ -2361,6 +2353,10 @@ def build_attempt_history(db, *, tenant: Tenant, learners: list[User], tests: li
 
 
 def run() -> None:
+    settings = get_settings()
+    if settings.environment.lower() in {"prod", "production"}:
+        raise RuntimeError("Demo seed is blocked in production environment.")
+
     reset_database()
     db = SessionLocal()
 

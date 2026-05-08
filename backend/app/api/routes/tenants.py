@@ -9,7 +9,6 @@ from app.models.models import Membership, RoleName, Tenant, User
 from app.schemas.tenant import TenantCreate, TenantRead, TenantSelectRequest, TenantUpdate
 from app.schemas.user import UserRead
 
-
 router = APIRouter(prefix="/tenants", tags=["tenants"])
 
 

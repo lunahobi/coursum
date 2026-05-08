@@ -1,14 +1,14 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.audit import write_audit_log
+from app.core.clock import utcnow
 from app.core.config import get_settings
 from app.core.security import create_token, hash_password, verify_password
 from app.models.models import RefreshToken, User
-
 
 settings = get_settings()
 
@@ -39,7 +39,7 @@ def issue_tokens(db: Session, user: User) -> tuple[str, str]:
         RefreshToken(
             user_id=user.id,
             token=refresh,
-            expires_at=datetime.utcnow() + timedelta(minutes=settings.refresh_token_minutes),
+            expires_at=utcnow() + timedelta(minutes=settings.refresh_token_minutes),
             revoked=False,
         )
     )
@@ -48,7 +48,7 @@ def issue_tokens(db: Session, user: User) -> tuple[str, str]:
 
 def rotate_refresh_token(db: Session, refresh_token: str) -> tuple[str, str]:
     record = db.scalar(select(RefreshToken).where(RefreshToken.token == refresh_token, RefreshToken.revoked.is_(False)))
-    if record is None or record.expires_at < datetime.utcnow():
+    if record is None or record.expires_at < utcnow():
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token invalid")
     record.revoked = True
     user = db.get(User, record.user_id)
