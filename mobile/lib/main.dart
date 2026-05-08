@@ -491,17 +491,20 @@ class TestInfo {
     required this.id,
     required this.courseId,
     required this.title,
+    required this.isActive,
   });
 
   final int id;
   final int courseId;
   final String title;
+  final bool isActive;
 
   factory TestInfo.fromJson(Map<String, dynamic> json) => TestInfo(
         id: json['id'] as int,
         courseId: json['course_id'] as int,
         title:
             json['title'] as String? ?? AppLanguageRuntime.strings.adaptiveTest,
+        isActive: json['is_active'] as bool? ?? false,
       );
 }
 
@@ -2675,10 +2678,14 @@ class _CourseOverviewScreenState extends State<CourseOverviewScreen> {
     if (tests.isEmpty) {
       return;
     }
+    final selectedTest = tests.firstWhere(
+      (item) => item.isActive,
+      orElse: () => tests.first,
+    );
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => TestFlowScreen(
-            api: widget.api, session: widget.session, testId: tests.first.id),
+            api: widget.api, session: widget.session, testId: selectedTest.id),
       ),
     );
     if (mounted) {

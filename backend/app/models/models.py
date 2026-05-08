@@ -194,6 +194,7 @@ class Test(Base):
     title: Mapped[str] = mapped_column(String(255))
     baseline_difficulty: Mapped[int] = mapped_column(Integer, default=3)
     question_limit: Mapped[int] = mapped_column(Integer, default=10)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
 
 
 class Question(Base):
@@ -206,6 +207,7 @@ class Question(Base):
     explanation: Mapped[str] = mapped_column(Text, default="")
     difficulty: Mapped[int] = mapped_column(Integer, default=3, index=True)
     estimated_seconds: Mapped[int] = mapped_column(Integer, default=30)
+    shuffle_options: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class AnswerOption(Base):

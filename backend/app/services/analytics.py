@@ -1,7 +1,7 @@
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models.models import Attempt, Course, Enrollment, Membership, Recommendation, Result, Test, Topic
+from app.models.models import Attempt, Course, Enrollment, Lesson, Membership, Recommendation, Result, Test, Topic
 from app.services.recommendation_payloads import (
     latest_unique_recommendations,
     serialize_recommendations,
@@ -35,13 +35,42 @@ def course_progress(db: Session, tenant_id: int) -> list[dict]:
 
 def problem_topics(db: Session, tenant_id: int) -> list[dict]:
     rows = db.execute(
-        select(Topic.title, func.count(Recommendation.id))
-        .join(Recommendation, Recommendation.topic_id == Topic.id)
-        .where(Topic.tenant_id == tenant_id, Recommendation.tenant_id == tenant_id)
-        .group_by(Topic.id, Topic.title)
-        .order_by(func.count(Recommendation.id).desc(), Topic.title.asc())
+        select(Recommendation.topic_id, func.count(Recommendation.id))
+        .where(Recommendation.tenant_id == tenant_id, Recommendation.topic_id.is_not(None))
+        .group_by(Recommendation.topic_id)
     ).all()
-    return [{"topic_title": title, "recommendations": count} for title, count in rows]
+    if not rows:
+        return []
+    topic_counts = {int(topic_id): count for topic_id, count in rows if topic_id is not None}
+    topic_ids = list(topic_counts.keys())
+    lesson_title_by_topic = {
+        topic_id: title
+        for topic_id, title in db.execute(
+            select(Lesson.topic_id, Lesson.title)
+            .where(
+                Lesson.tenant_id == tenant_id,
+                Lesson.topic_id.in_(topic_ids),
+            )
+            .order_by(Lesson.sort_order, Lesson.id)
+        ).all()
+        if topic_id is not None
+    }
+    topic_title_by_id = {
+        topic_id: title
+        for topic_id, title in db.execute(
+            select(Topic.id, Topic.title).where(Topic.tenant_id == tenant_id, Topic.id.in_(topic_ids))
+        ).all()
+    }
+    payload = []
+    for topic_id, count in topic_counts.items():
+        payload.append(
+            {
+                "topic_title": lesson_title_by_topic.get(topic_id) or topic_title_by_id.get(topic_id, str(topic_id)),
+                "recommendations": count,
+            }
+        )
+    payload.sort(key=lambda item: (-item["recommendations"], item["topic_title"]))
+    return payload
 
 
 def learner_report(db: Session, tenant_id: int, user_id: int, tenant_locale: str | None) -> dict:

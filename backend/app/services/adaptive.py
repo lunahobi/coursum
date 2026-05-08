@@ -26,14 +26,32 @@ def attempt_total_questions(db: Session, attempt: Attempt) -> int:
 
 
 def question_topic_titles(db: Session, question_id: int) -> list[str]:
-    return list(
-        db.scalars(
-            select(Topic.title)
-            .join(QuestionTopic, QuestionTopic.topic_id == Topic.id)
-            .where(QuestionTopic.question_id == question_id)
-            .order_by(Topic.title)
+    topic_rows = db.execute(
+        select(Topic.id, Topic.title)
+        .join(QuestionTopic, QuestionTopic.topic_id == Topic.id)
+        .where(QuestionTopic.question_id == question_id)
+        .order_by(Topic.title)
+    ).all()
+    topic_ids = [topic_id for topic_id, _ in topic_rows]
+    if not topic_ids:
+        return []
+    question = db.get(Question, question_id)
+    test = db.get(Test, question.test_id) if question else None
+    if test is not None:
+        lesson_titles = list(
+            db.scalars(
+                select(Lesson.title)
+                .where(
+                    Lesson.tenant_id == test.tenant_id,
+                    Lesson.course_id == test.course_id,
+                    Lesson.topic_id.in_(topic_ids),
+                )
+                .order_by(Lesson.sort_order, Lesson.id)
+            )
         )
-    )
+        if lesson_titles:
+            return lesson_titles
+    return [title for _, title in topic_rows]
 
 
 def select_next_question(db: Session, attempt: Attempt) -> Question | None:
@@ -185,6 +203,18 @@ def finalize_attempt(db: Session, attempt: Attempt) -> dict:
     )
     tenant_locale = db.scalar(select(Tenant.locale).where(Tenant.id == attempt.tenant_id))
     test = db.get(Test, attempt.test_id)
+    lesson_topic_titles: dict[int, str] = {}
+    if test is not None:
+        lesson_topic_titles = {
+            topic_id: title
+            for topic_id, title in db.execute(
+                select(Lesson.topic_id, Lesson.title).where(
+                    Lesson.tenant_id == attempt.tenant_id,
+                    Lesson.course_id == test.course_id,
+                    Lesson.topic_id.is_not(None),
+                )
+            ).all()
+        }
     weak_topic_scores: Counter[int] = Counter()
     db.add(result)
     db.flush()
@@ -227,10 +257,11 @@ def finalize_attempt(db: Session, attempt: Attempt) -> dict:
         if score <= 0:
             continue
         topic = db.get(Topic, topic_id)
+        display_topic_title = lesson_topic_titles.get(topic_id) or (topic.title if topic else "Unknown")
         weak_topics.append(
             {
                 "topic_id": topic_id,
-                "topic_title": topic.title if topic else "Unknown",
+                "topic_title": display_topic_title,
                 "score": score,
             }
         )
@@ -250,7 +281,7 @@ def finalize_attempt(db: Session, attempt: Attempt) -> dict:
                 else None,
                 priority=priority,
                 text=review_topic_recommendation(
-                    tenant_locale, topic.title if topic else str(topic_id)
+                    tenant_locale, display_topic_title
                 ),
             )
         )

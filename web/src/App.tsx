@@ -232,6 +232,8 @@ const MESSAGES = {
     baselineDifficultyLevel4: "4 - уверенный уровень для опытной аудитории",
     baselineDifficultyLevel5: "5 - высокий порог для итоговой оценки",
     questionLimitHint: "Лимит определяет, сколько вопросов максимум попадёт в одну попытку. Для короткой диагностики держите 5-7, для итоговой проверки - 10-15.",
+    shuffleOptions: "Перемешивать варианты в этом вопросе",
+    shuffleOptionsHint: "Оставьте выключенным, если порядок вариантов важен, например для ответа «все варианты верны».",
     selectedCourseOverview: "Сводка по настройке",
     selectedCourseDescription: "Выбранный курс",
     selectedCourseTestsCount: "Уже создано тестов",
@@ -248,14 +250,15 @@ const MESSAGES = {
     testsAdaptiveBehavior: "Как это сработает",
     testsAdaptiveBehaviorHint: "Слушатель начнёт с уровня {difficulty}. Система покажет до {limit} вопросов и будет повышать или понижать сложность по ходу попытки.",
     questionEditorTitle: "Вопросы внутри теста",
-    questionEditorHint: "После создания теста добавьте сами вопросы, варианты ответов и связанные темы. Один правильный вариант обязателен.",
+    questionEditorHint: "После создания теста добавьте сами вопросы и варианты ответов. Один правильный вариант обязателен.",
     selectTestForQuestions: "Тест для наполнения",
     selectTestFirst: "Сначала создайте или выберите тест для выбранного курса.",
     questionText: "Текст вопроса",
     questionExplanation: "Пояснение после ответа",
     questionDifficulty: "Сложность вопроса",
     questionEstimatedSeconds: "Ожидаемое время ответа, сек",
-    questionTopics: "Темы вопроса",
+    questionTopics: "Темы курса",
+    questionTopicsHint: "Темы формируются из уроков выбранного курса.",
     questionOptions: "Варианты ответа",
     questionCorrectOption: "Правильный вариант",
     addAnswerOption: "Добавить вариант",
@@ -265,6 +268,9 @@ const MESSAGES = {
     editQuestionAction: "Редактировать",
     cancelQuestionEditing: "Сбросить правки",
     questionsInTest: "Вопросы теста",
+    activeTestLabel: "Активный тест",
+    setActiveTestAction: "Сделать активным",
+    activeTestState: "Активный",
     optionCount: "Вариантов",
     noTopicsAvailable: "Темы пока не заведены. Вопрос можно сохранить и без привязки темы.",
     noQuestionsInTest: "В этом тесте пока нет вопросов.",
@@ -273,6 +279,12 @@ const MESSAGES = {
     failedSaveQuestion: "Не удалось сохранить вопрос",
     editingQuestionLabel: "Редактирование вопроса #{id}",
     answerOptionLabel: "Вариант {number}",
+    questionSearch: "Поиск по вопросам",
+    questionSearchPlaceholder: "Текст вопроса, пояснение, тема или ID",
+    questionPageLabel: "Страница {page} из {total}",
+    previousPage: "Назад",
+    nextPage: "Далее",
+    noQuestionsMatchSearch: "По вашему запросу вопросы не найдены.",
     assignmentsPageTitle: "Назначения",
     assignmentsPageSubtitle: "Назначайте курс конкретному слушателю.",
     assignCourse: "Назначить курс",
@@ -576,6 +588,8 @@ const MESSAGES = {
     baselineDifficultyLevel4: "4 - confident level for experienced learners",
     baselineDifficultyLevel5: "5 - high bar for final evaluation",
     questionLimitHint: "This caps how many questions can appear in one attempt. Keep it around 5-7 for diagnostics and 10-15 for a fuller assessment.",
+    shuffleOptions: "Shuffle options in this question",
+    shuffleOptionsHint: "Keep this off when option order matters, for example with an \"all answers are correct\" option.",
     selectedCourseOverview: "Setup summary",
     selectedCourseDescription: "Selected course",
     selectedCourseTestsCount: "Existing tests",
@@ -592,14 +606,15 @@ const MESSAGES = {
     testsAdaptiveBehavior: "How this behaves",
     testsAdaptiveBehaviorHint: "The learner will start at level {difficulty}. The system will ask up to {limit} questions and move the difficulty up or down as the attempt progresses.",
     questionEditorTitle: "Questions inside the test",
-    questionEditorHint: "Once the test shell exists, add the actual questions, answer options, and topic links here. One correct answer is required.",
+    questionEditorHint: "Once the test shell exists, add the actual questions and answer options here. One correct answer is required.",
     selectTestForQuestions: "Test to populate",
     selectTestFirst: "Create or choose a test for the selected course first.",
     questionText: "Question text",
     questionExplanation: "Post-answer explanation",
     questionDifficulty: "Question difficulty",
     questionEstimatedSeconds: "Expected answer time, sec",
-    questionTopics: "Question topics",
+    questionTopics: "Course topics",
+    questionTopicsHint: "Topics are generated from lessons of the selected course.",
     questionOptions: "Answer options",
     questionCorrectOption: "Correct option",
     addAnswerOption: "Add option",
@@ -609,6 +624,9 @@ const MESSAGES = {
     editQuestionAction: "Edit",
     cancelQuestionEditing: "Reset edits",
     questionsInTest: "Questions in test",
+    activeTestLabel: "Active test",
+    setActiveTestAction: "Set active",
+    activeTestState: "Active",
     optionCount: "Options",
     noTopicsAvailable: "No topics available yet. You can still save the question without topic links.",
     noQuestionsInTest: "No questions in this test yet.",
@@ -617,6 +635,12 @@ const MESSAGES = {
     failedSaveQuestion: "Failed to save question",
     editingQuestionLabel: "Editing question #{id}",
     answerOptionLabel: "Option {number}",
+    questionSearch: "Search questions",
+    questionSearchPlaceholder: "Question text, explanation, topic, or ID",
+    questionPageLabel: "Page {page} of {total}",
+    previousPage: "Previous",
+    nextPage: "Next",
+    noQuestionsMatchSearch: "No questions match your search.",
     assignmentsPageTitle: "Assignments",
     assignmentsPageSubtitle: "Assign a course to an individual learner.",
     assignCourse: "Assign course",
@@ -965,7 +989,7 @@ type EditorRecommendationInfo = {
   is_active: boolean;
   sort_order: number;
 };
-type TestInfo = { id: number; title: string; course_id: number; baseline_difficulty?: number; question_limit: number; question_count?: number };
+type TestInfo = { id: number; title: string; course_id: number; baseline_difficulty?: number; question_limit: number; question_count?: number; is_active?: boolean };
 type TopicInfo = { id: number; title: string; description?: string };
 type TestQuestionOptionInfo = { id?: number; text: string; is_correct: boolean };
 type TestQuestionInfo = {
@@ -975,10 +999,17 @@ type TestQuestionInfo = {
   explanation: string;
   difficulty: number;
   estimated_seconds: number;
+  shuffle_options?: boolean;
   option_count: number;
   options?: TestQuestionOptionInfo[];
   topic_ids?: number[];
   topic_titles: string[];
+};
+type PaginatedResponse<T> = {
+  items: T[];
+  page: number;
+  page_size: number;
+  total: number;
 };
 type AssignmentInfo = {
   id: number;
@@ -4702,47 +4733,6 @@ export function LessonsPage({ session }: { session: SessionState }) {
                 </div>
               </section>
 
-              <section className="card studio-panel">
-                <details className="advanced-panel">
-                  <summary>{t.sharedLessonSettings}</summary>
-                  <p className="sidebar-text">{t.lessonAdvancedHint}</p>
-                  <div className="media-attachment-grid">
-                    <MediaAttachmentCard
-                      scope="lesson"
-                      kind="image"
-                      url={form.imageUrl}
-                      onAttach={() => openMediaDialog({ scope: "lesson", kind: "image" })}
-                      onRemove={() => setForm((current) => ({ ...current, imageUrl: "" }))}
-                    />
-                    <MediaAttachmentCard
-                      scope="lesson"
-                      kind="video"
-                      url={form.videoUrl}
-                      onAttach={() => openMediaDialog({ scope: "lesson", kind: "video" })}
-                      onRemove={() => setForm((current) => ({ ...current, videoUrl: "" }))}
-                    />
-                  </div>
-                  <div className="page-editor-grid">
-                    <label>
-                      {t.lessonHeroImage}
-                      <input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} placeholder={t.imageUrl} />
-                    </label>
-                    <label>
-                      {t.lessonHeroVideo}
-                      <input value={form.videoUrl} onChange={(e) => setForm({ ...form, videoUrl: e.target.value })} placeholder={t.videoUrl} />
-                    </label>
-                  </div>
-                  <label className="studio-form-span">
-                    {t.legacyFallbackContent}
-                    <textarea
-                      value={form.content}
-                      onChange={(e) => setForm({ ...form, content: e.target.value })}
-                      placeholder={t.legacyFallbackPlaceholder}
-                      rows={8}
-                    />
-                  </label>
-                </details>
-              </section>
             </div>
           </section>
         </form>
@@ -4764,6 +4754,7 @@ const TEST_PRESETS = [
   { id: "standard", baselineDifficulty: 3, questionLimit: 10 },
   { id: "exam", baselineDifficulty: 4, questionLimit: 15 }
 ] as const;
+const QUESTIONS_PAGE_SIZE = 10;
 
 function createQuestionDraft(difficulty = 3) {
   return {
@@ -4771,6 +4762,7 @@ function createQuestionDraft(difficulty = 3) {
     explanation: "",
     difficulty,
     estimatedSeconds: 30,
+    shuffleOptions: false,
     topicIds: [] as string[],
     options: ["", "", "", ""],
     correctIndex: 0
@@ -4778,17 +4770,21 @@ function createQuestionDraft(difficulty = 3) {
 }
 
 export function TestsPage({ session }: { session: SessionState }) {
-  const { t } = useUi();
+  const { language, t } = useUi();
   const courses = useRemote<CourseInfo[]>("/courses", session);
   const tests = useRemote<TestInfo[]>("/tests", session);
-  const topics = useRemote<TopicInfo[]>("/topics", session);
   const [refreshKey, setRefreshKey] = useState(0);
   const testsRefresh = useRemote<TestInfo[]>("/tests", session, refreshKey);
   const [form, setForm] = useState({ courseId: "", title: "", baselineDifficulty: 3, questionLimit: 10 });
+  const topics = useRemote<TopicInfo[]>(form.courseId ? `/topics?course_id=${form.courseId}` : null, session);
   const [selectedTestId, setSelectedTestId] = useState("");
+  const [editingTestId, setEditingTestId] = useState<number | null>(null);
   const [questionRefreshKey, setQuestionRefreshKey] = useState(0);
   const [questionStatus, setQuestionStatus] = useState("");
   const [questionError, setQuestionError] = useState("");
+  const [questionSearch, setQuestionSearch] = useState("");
+  const [questionPage, setQuestionPage] = useState(1);
+  const [testError, setTestError] = useState("");
   const [editingQuestionId, setEditingQuestionId] = useState<number | null>(null);
   const [questionForm, setQuestionForm] = useState(createQuestionDraft());
   const questionEditorRef = useRef<HTMLFormElement | null>(null);
@@ -4800,19 +4796,41 @@ export function TestsPage({ session }: { session: SessionState }) {
     }
   }, [courses.data, form.courseId]);
 
+  useEffect(() => {
+    setQuestionForm((current) => (current.topicIds.length ? { ...current, topicIds: [] } : current));
+  }, [form.courseId]);
+
   async function submit(event: FormEvent) {
     event.preventDefault();
-    const created = (await apiPost("/tests", session, {
-      course_id: Number(form.courseId),
-      title: form.title,
-      baseline_difficulty: form.baselineDifficulty,
-      question_limit: form.questionLimit
-    })) as { id?: number };
-    setForm((current) => ({ ...current, title: "", baselineDifficulty: 3, questionLimit: 10 }));
-    if (created.id) {
-      setSelectedTestId(String(created.id));
+    setTestError("");
+    try {
+      if (editingTestId) {
+        await apiPatch(`/tests/${editingTestId}`, session, {
+          title: form.title,
+          baseline_difficulty: form.baselineDifficulty,
+          question_limit: form.questionLimit
+        });
+        setEditingTestId(null);
+        setForm((current) => ({ ...current, title: "", baselineDifficulty: 3, questionLimit: 10 }));
+        setSelectedTestId(String(editingTestId));
+        setRefreshKey((value) => value + 1);
+        return;
+      }
+
+      const created = (await apiPost("/tests", session, {
+        course_id: Number(form.courseId),
+        title: form.title,
+        baseline_difficulty: form.baselineDifficulty,
+        question_limit: form.questionLimit
+      })) as { id?: number };
+      setForm((current) => ({ ...current, title: "", baselineDifficulty: 3, questionLimit: 10 }));
+      if (created.id) {
+        setSelectedTestId(String(created.id));
+      }
+      setRefreshKey((value) => value + 1);
+    } catch (err) {
+      setTestError(err instanceof Error ? err.message : language === "ru" ? "Не удалось сохранить тест" : "Failed to save test");
     }
-    setRefreshKey((value) => value + 1);
   }
 
   const effectiveTests = testsRefresh.data ?? tests.data ?? [];
@@ -4833,9 +4851,55 @@ export function TestsPage({ session }: { session: SessionState }) {
   const suggestedTitle = t.testsRecommendedTitle.replace("{course}", selectedCourse?.title ?? t.courseLabel);
   const courseQuestionBankCount = testsForCourse.reduce((total, item) => total + (item.question_count ?? 0), 0);
   const activeTestId = selectedTestId || String(testsForCourse[0]?.id ?? "");
-  const questions = useRemote<TestQuestionInfo[]>(activeTestId ? `/questions?test_id=${activeTestId}` : null, session, questionRefreshKey);
+  const questionSearchQuery = questionSearch.trim();
+  const questionsPath = activeTestId
+    ? questionSearchQuery
+      ? `/questions?test_id=${activeTestId}`
+      : `/questions?test_id=${activeTestId}&page=${questionPage}&page_size=${QUESTIONS_PAGE_SIZE}`
+    : null;
+  const questions = useRemote<TestQuestionInfo[] | PaginatedResponse<TestQuestionInfo>>(questionsPath, session, questionRefreshKey);
+  const questionItems = useMemo(() => {
+    if (!questions.data) {
+      return [] as TestQuestionInfo[];
+    }
+    return Array.isArray(questions.data) ? questions.data : questions.data.items ?? [];
+  }, [questions.data]);
+  const questionTotal = useMemo(() => {
+    if (!questions.data) {
+      return 0;
+    }
+    return Array.isArray(questions.data) ? questions.data.length : questions.data.total ?? 0;
+  }, [questions.data]);
+  const totalQuestionPages = Math.max(1, Math.ceil(questionTotal / QUESTIONS_PAGE_SIZE));
+  const filteredQuestions = useMemo(() => {
+    const source = questionItems;
+    const query = questionSearchQuery.toLowerCase();
+    if (!query) {
+      return source;
+    }
+    return source.filter((item) => {
+      const haystack = [
+        String(item.id),
+        item.text,
+        item.explanation,
+        ...(item.topic_titles ?? [])
+      ]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [questionItems, questionSearchQuery]);
   const selectedTest = testsForCourse.find((item) => String(item.id) === activeTestId);
   const defaultQuestionDifficulty = selectedTest?.baseline_difficulty ?? form.baselineDifficulty;
+
+  useEffect(() => {
+    if (questionSearchQuery) {
+      return;
+    }
+    if (questionPage > totalQuestionPages) {
+      setQuestionPage(totalQuestionPages);
+    }
+  }, [questionPage, questionSearchQuery, totalQuestionPages]);
 
   useEffect(() => {
     if (!testsForCourse.length) {
@@ -4851,6 +4915,8 @@ export function TestsPage({ session }: { session: SessionState }) {
     setEditingQuestionId(null);
     setQuestionStatus("");
     setQuestionError("");
+    setQuestionSearch("");
+    setQuestionPage(1);
     setQuestionForm(createQuestionDraft(defaultQuestionDifficulty));
   }, [activeTestId, defaultQuestionDifficulty]);
 
@@ -4875,6 +4941,73 @@ export function TestsPage({ session }: { session: SessionState }) {
       baselineDifficulty: preset.baselineDifficulty,
       questionLimit: preset.questionLimit
     }));
+  }
+
+  function startTestEditing(item: TestInfo) {
+    setEditingTestId(item.id);
+    setTestError("");
+    setSelectedTestId(String(item.id));
+    setForm({
+      courseId: String(item.course_id),
+      title: item.title,
+      baselineDifficulty: item.baseline_difficulty ?? 3,
+      questionLimit: item.question_limit
+    });
+  }
+
+  function cancelTestEditing() {
+    setEditingTestId(null);
+    setTestError("");
+    setForm((current) => ({ ...current, title: "", baselineDifficulty: 3, questionLimit: 10 }));
+  }
+
+  async function deleteTest(testId: number) {
+    setTestError("");
+    try {
+      await apiDelete(`/tests/${testId}`, session);
+      if (selectedTestId === String(testId)) {
+        setSelectedTestId("");
+      }
+      if (editingTestId === testId) {
+        setEditingTestId(null);
+      }
+      setEditingQuestionId(null);
+      setQuestionStatus("");
+      setQuestionError("");
+      setQuestionRefreshKey((value) => value + 1);
+      setRefreshKey((value) => value + 1);
+      setForm((current) => ({ ...current, title: "", baselineDifficulty: 3, questionLimit: 10 }));
+    } catch (err) {
+      setTestError(err instanceof Error ? err.message : language === "ru" ? "Не удалось удалить тест" : "Failed to delete test");
+    }
+  }
+
+  async function deleteQuestion(questionId: number) {
+    setQuestionError("");
+    if (editingQuestionId === questionId) {
+      setEditingQuestionId(null);
+      setQuestionStatus("");
+      setQuestionError("");
+      setQuestionForm(createQuestionDraft(defaultQuestionDifficulty));
+    }
+    try {
+      await apiDelete(`/questions/${questionId}`, session);
+      setQuestionRefreshKey((value) => value + 1);
+      setRefreshKey((value) => value + 1);
+    } catch (err) {
+      setQuestionError(err instanceof Error ? err.message : language === "ru" ? "Не удалось удалить вопрос" : "Failed to delete question");
+    }
+  }
+
+  async function activateTest(testId: number) {
+    setTestError("");
+    try {
+      await apiPost(`/tests/${testId}/activate`, session, {});
+      setSelectedTestId(String(testId));
+      setRefreshKey((value) => value + 1);
+    } catch (err) {
+      setTestError(err instanceof Error ? err.message : language === "ru" ? "Не удалось активировать тест" : "Failed to activate test");
+    }
   }
 
   function updateQuestionOption(index: number, value: string) {
@@ -4934,6 +5067,7 @@ export function TestsPage({ session }: { session: SessionState }) {
       explanation: question.explanation,
       difficulty: question.difficulty,
       estimatedSeconds: question.estimated_seconds,
+      shuffleOptions: Boolean(question.shuffle_options),
       topicIds: (question.topic_ids ?? []).map((item) => String(item)),
       options: optionTexts,
       correctIndex: Math.max(0, (question.options ?? []).findIndex((item) => item.is_correct))
@@ -4944,11 +5078,16 @@ export function TestsPage({ session }: { session: SessionState }) {
     <section className="page-stack">
       <PageHeader title={t.testsPageTitle} subtitle={t.testsPageSubtitle} />
       <section className="grid tests-layout">
-        <FormCard title={t.createTest} onSubmit={submit}>
+        <FormCard title={editingTestId ? (language === "ru" ? "Редактирование теста" : "Edit test") : t.createTest} onSubmit={submit}>
           <p className="form-helper">{t.testsSetupHint}</p>
+          {testError ? <Notice text={testError} tone="error" /> : null}
           <label>
             {t.courseLabel}
-            <select value={form.courseId} onChange={(e) => setForm({ ...form, courseId: e.target.value })}>
+            <select
+              value={form.courseId}
+              onChange={(e) => setForm({ ...form, courseId: e.target.value })}
+              disabled={Boolean(editingTestId)}
+            >
               {(courses.data ?? []).map((course) => (
                 <option key={course.id} value={course.id}>
                   {course.title}
@@ -5000,13 +5139,11 @@ export function TestsPage({ session }: { session: SessionState }) {
           <section className="test-config-panel summary" aria-label={t.selectedCourseOverview}>
             <div className="test-config-head">
               <strong>{t.selectedCourseOverview}</strong>
-              <span>{t.testsAdaptiveBehavior}</span>
             </div>
             <div className="test-summary-grid">
               <article>
                 <strong>{t.selectedCourseDescription}</strong>
                 <span>{selectedCourse?.title ?? t.loading}</span>
-                <p>{selectedCourse?.description || t.selectedCourseEmptyDescription}</p>
               </article>
               <article>
                 <strong>{t.selectedCourseTestsCount}</strong>
@@ -5026,27 +5163,59 @@ export function TestsPage({ session }: { session: SessionState }) {
                 <p>{questionPlanLabel}</p>
               </article>
             </div>
-            <div className="test-summary-note">
-              <strong>{t.selectedCourseTitleSuggestion}</strong>
-              <span>{suggestedTitle}</span>
-            </div>
-            <p className="form-helper">
-              {t.testsAdaptiveBehaviorHint.replace("{difficulty}", String(form.baselineDifficulty)).replace("{limit}", String(form.questionLimit))}
-            </p>
           </section>
-          <button type="submit">{t.createTestAction}</button>
+          <button type="submit">
+            {editingTestId ? (language === "ru" ? "Сохранить тест" : "Save test") : t.createTestAction}
+          </button>
+          {editingTestId ? (
+            <button type="button" className="secondary" onClick={cancelTestEditing}>
+              {language === "ru" ? "Отменить" : "Cancel"}
+            </button>
+          ) : null}
         </FormCard>
         <section className="stack">
           <DataTable
             title={t.testsLabel}
-            columns={[t.id, t.title, t.courseLabel, t.baselineDifficulty, t.questionLimit, t.questionBankLabel]}
-            rows={effectiveTests.map((item) => [
+            columns={[t.id, t.title, t.courseLabel, t.baselineDifficulty, t.questionLimit, t.questionBankLabel, t.activeTestLabel, language === "ru" ? "Действия" : "Actions"]}
+            rows={testsForCourse.map((item) => [
               String(item.id),
               item.title,
               courseTitles.get(item.course_id) ?? String(item.course_id),
               String(item.baseline_difficulty ?? "-"),
               String(item.question_limit),
-              item.question_count ? String(item.question_count) : t.testsBankEmpty
+              item.question_count ? String(item.question_count) : t.testsBankEmpty,
+              item.is_active ? t.activeTestState : "—"
+              ,
+              <div className="question-list-actions" key={`actions-${item.id}`}>
+                <button
+                  type="button"
+                  className="secondary icon-action-button"
+                  aria-label={t.setActiveTestAction}
+                  title={t.setActiveTestAction}
+                  onClick={() => void activateTest(item.id)}
+                  disabled={Boolean(item.is_active)}
+                >
+                  ★
+                </button>
+                <button
+                  type="button"
+                  className="secondary icon-action-button"
+                  aria-label={language === "ru" ? "Редактировать тест" : "Edit test"}
+                  title={language === "ru" ? "Редактировать тест" : "Edit test"}
+                  onClick={() => startTestEditing(item)}
+                >
+                  ✎
+                </button>
+                <button
+                  type="button"
+                  className="secondary icon-action-button danger"
+                  aria-label={language === "ru" ? "Удалить тест" : "Remove test"}
+                  title={language === "ru" ? "Удалить тест" : "Remove test"}
+                  onClick={() => void deleteTest(item.id)}
+                >
+                  🗑
+                </button>
+              </div>
             ])}
             loading={tests.loading && testsRefresh.loading}
             error={tests.error || testsRefresh.error}
@@ -5068,6 +5237,7 @@ export function TestsPage({ session }: { session: SessionState }) {
                 difficulty: questionForm.difficulty,
                 estimated_seconds: questionForm.estimatedSeconds,
                 topic_ids: questionForm.topicIds.map((item) => Number(item)),
+                shuffle_options: questionForm.shuffleOptions,
                 options
               };
               setQuestionError("");
@@ -5168,7 +5338,7 @@ export function TestsPage({ session }: { session: SessionState }) {
                 <section className="test-config-panel">
                   <div className="test-config-head">
                     <strong>{t.questionTopics}</strong>
-                    <span>{topics.data?.length ? "" : t.noTopicsAvailable}</span>
+                    <span>{t.questionTopicsHint}</span>
                   </div>
                   {topics.data?.length ? (
                     <div className="question-topics-grid">
@@ -5188,6 +5358,17 @@ export function TestsPage({ session }: { session: SessionState }) {
                     <strong>{t.questionOptions}</strong>
                     <span>{t.questionCorrectOption}</span>
                   </div>
+                  <label className="course-access-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={questionForm.shuffleOptions}
+                      onChange={(e) => setQuestionForm((current) => ({ ...current, shuffleOptions: e.target.checked }))}
+                    />
+                    <span>
+                      {t.shuffleOptions}
+                      <small className="form-helper">{t.shuffleOptionsHint}</small>
+                    </span>
+                  </label>
                   <div className="question-options-list">
                     {questionForm.options.map((option, index) => (
                       <div key={`option-${index}`} className="question-option-row">
@@ -5227,11 +5408,39 @@ export function TestsPage({ session }: { session: SessionState }) {
                 <article className="test-config-panel question-list-card">
                   <h3>{t.questionsInTest}</h3>
                   {questions.error ? <Notice text={questions.error} tone="error" /> : null}
+                  <label>
+                    {t.questionSearch}
+                    <input
+                      type="search"
+                      value={questionSearch}
+                      onChange={(e) => {
+                        setQuestionPage(1);
+                        setQuestionSearch(e.target.value);
+                      }}
+                      placeholder={t.questionSearchPlaceholder}
+                    />
+                  </label>
+                  {!questionSearchQuery && questionTotal > QUESTIONS_PAGE_SIZE ? (
+                    <div className="question-pagination">
+                      <button type="button" className="secondary" onClick={() => setQuestionPage((value) => Math.max(1, value - 1))} disabled={questionPage <= 1}>
+                        {t.previousPage}
+                      </button>
+                      <span>{t.questionPageLabel.replace("{page}", String(questionPage)).replace("{total}", String(totalQuestionPages))}</span>
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => setQuestionPage((value) => Math.min(totalQuestionPages, value + 1))}
+                        disabled={questionPage >= totalQuestionPages}
+                      >
+                        {t.nextPage}
+                      </button>
+                    </div>
+                  ) : null}
                   {questions.loading ? (
                     <EmptyState title={t.loading} />
-                  ) : questions.data?.length ? (
+                  ) : filteredQuestions.length ? (
                     <div className="question-list">
-                      {questions.data.map((item) => (
+                      {filteredQuestions.map((item) => (
                         <article key={item.id} className="question-list-item">
                           <div className="question-list-head">
                             <strong>{item.text}</strong>
@@ -5248,16 +5457,33 @@ export function TestsPage({ session }: { session: SessionState }) {
                               {t.optionCount}: {item.option_count}
                             </span>
                           </div>
-                          <div className="question-list-actions">
-                            <button type="button" className="secondary" onClick={() => startQuestionEditing(item)}>
-                              {t.editQuestionAction}
-                            </button>
-                          </div>
-                          {item.topic_titles.length ? <span>{item.topic_titles.join(", ")}</span> : null}
+                  <div className="question-list-actions">
+                    <button
+                      type="button"
+                      className="secondary icon-action-button"
+                      aria-label={t.editQuestionAction}
+                      title={t.editQuestionAction}
+                      onClick={() => startQuestionEditing(item)}
+                    >
+                      ✎
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary icon-action-button danger"
+                      aria-label={language === "ru" ? "Удалить вопрос" : "Remove question"}
+                      title={language === "ru" ? "Удалить вопрос" : "Remove question"}
+                      onClick={() => void deleteQuestion(item.id)}
+                    >
+                      🗑
+                    </button>
+                  </div>
+                  {item.topic_titles.length ? <span>{item.topic_titles.join(", ")}</span> : null}
                           {item.explanation ? <p>{item.explanation}</p> : null}
                         </article>
                       ))}
                     </div>
+                  ) : questionItems.length > 0 ? (
+                    <EmptyState title={t.noQuestionsMatchSearch} />
                   ) : (
                     <EmptyState title={t.noQuestionsInTest} />
                   )}
@@ -5836,37 +6062,192 @@ function AnalyticsPage({ session }: { session: SessionState }) {
 function SettingsPage({ session }: { session: SessionState }) {
   const { language, setLanguage, t } = useUi();
   const profile = useRemote<UserProfileInfo>("/auth/me", session);
+  const profileData = profile.data;
+  const displayName = profileData?.full_name || profileData?.email || (language === "ru" ? "Пользователь" : "User");
+  const profileInitials = displayName
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("") || "A";
+  const userRole = profileData?.tenant_role ?? null;
+  const permissions = getRolePermissions(userRole);
+  const roleLabel = profileData ? formatRoleLabel(profileData.tenant_role, t) : t.loadingProfile;
+  const languageCaption = language === "ru"
+    ? "Изменение применяется сразу и сохраняется для этого браузера."
+    : "Changes apply immediately and are saved for this browser.";
+  const quickActions = permissions.canManageUsers
+    ? {
+        title: language === "ru" ? "Быстрые действия администратора" : "Admin quick actions",
+        caption: language === "ru"
+          ? "Разделы для управления пользователями, контентом и прогрессом организации."
+          : "Sections for managing users, content, and organization progress.",
+        items: [
+          {
+            to: "/users",
+            title: t.users,
+            caption: language === "ru" ? "Роли, доступ и активность пользователей" : "Roles, access, and user status",
+          },
+          {
+            to: "/courses",
+            title: t.courses,
+            caption: language === "ru" ? "Настройки курсов и публикация" : "Course settings and publishing",
+          },
+          {
+            to: "/analytics",
+            title: t.analytics,
+            caption: language === "ru" ? "Прогресс и проблемные темы" : "Progress and priority topics",
+          },
+          {
+            to: "/assignments",
+            title: t.assignments,
+            caption: language === "ru" ? "Назначение курсов слушателям" : "Assign courses to learners",
+          },
+        ],
+      }
+    : permissions.canManageCourses
+      ? {
+          title: language === "ru" ? "Инструменты преподавателя" : "Teacher tools",
+          caption: language === "ru"
+            ? "Разделы для подготовки материалов, тестов и проверки работ."
+            : "Sections for preparing materials, tests, and reviewing submissions.",
+          items: [
+            {
+              to: "/courses",
+              title: t.courses,
+              caption: language === "ru" ? "Содержание и параметры курсов" : "Course content and settings",
+            },
+            {
+              to: "/lessons",
+              title: t.lessons,
+              caption: language === "ru" ? "Редактор уроков и страниц" : "Lesson and page editor",
+            },
+            {
+              to: "/tests",
+              title: t.tests,
+              caption: language === "ru" ? "Адаптивные тесты и вопросы" : "Adaptive tests and questions",
+            },
+            {
+              to: "/homework-reviews",
+              title: language === "ru" ? "Проверка ДЗ" : "Homework review",
+              caption: language === "ru" ? "Очередь отправленных работ" : "Submitted work queue",
+            },
+          ],
+        }
+      : {
+          title: language === "ru" ? "Разделы слушателя" : "Learner sections",
+          caption: language === "ru"
+            ? "Доступные разделы для просмотра назначений и прогресса."
+            : "Available sections for assignments and progress.",
+          items: [
+            {
+              to: "/",
+              title: t.dashboard,
+              caption: language === "ru" ? "Сводка по обучению" : "Learning summary",
+            },
+            {
+              to: "/assignments",
+              title: t.assignments,
+              caption: language === "ru" ? "Назначенные курсы" : "Assigned courses",
+            },
+          ],
+        };
 
   return (
     <section className="page-stack">
       <PageHeader title={t.settingsPageTitle} subtitle={t.settingsPageSubtitle} />
-      <section className="grid two-columns">
-        <article className="card stack">
-          <h3>{t.language}</h3>
-          <select value={language} onChange={(e) => setLanguage(e.target.value === "en" ? "en" : "ru")}>
-            <option value="ru">{t.russian}</option>
-            <option value="en">{t.english}</option>
-          </select>
-          <p className="sidebar-text">
-            {language === "ru"
-              ? "Русский включен по умолчанию. Переключение применяется сразу и сохраняется в этом браузере."
-              : "Russian is the default. Changing the language applies immediately and is saved in this browser."}
-          </p>
-        </article>
-        <article className="card stack">
-          <h3>{t.profile}</h3>
-          {profile.data ? (
-            <KeyValueList
-              items={[
-                [t.name, profile.data.full_name],
-                [t.email, profile.data.email],
-                [t.currentRole, formatRoleLabel(profile.data.tenant_role, t)],
-                [t.tenantCode, session.tenantCode]
-              ]}
-            />
+      <section className="settings-grid">
+        <article className="card settings-profile-card">
+          {profileData ? (
+            <>
+              <div className="settings-profile-hero">
+                <div className="settings-avatar" aria-hidden="true">{profileInitials}</div>
+                <div className="settings-profile-main">
+                  <span className="section-kicker">{language === "ru" ? "Текущий аккаунт" : "Current account"}</span>
+                  <h3>{displayName}</h3>
+                  <p>{profileData.email}</p>
+                </div>
+                <span className="status-pill active">{language === "ru" ? "Активен" : "Active"}</span>
+              </div>
+              <div className="settings-summary-grid">
+                <div className="result-card">
+                  <strong>{t.currentRole}</strong>
+                  <span>{roleLabel}</span>
+                </div>
+                <div className="result-card">
+                  <strong>{t.tenantCode}</strong>
+                  <span>{session.tenantCode}</span>
+                </div>
+                <div className="result-card">
+                  <strong>{t.language}</strong>
+                  <span>{language === "ru" ? t.russian : t.english}</span>
+                </div>
+              </div>
+            </>
           ) : (
             <EmptyState title={t.loadingProfile} />
           )}
+        </article>
+        <article className="card stack settings-language-card">
+          <div className="settings-language-row">
+            <div>
+              <h3>{t.language}</h3>
+              <p className="settings-language-caption">{languageCaption}</p>
+            </div>
+            <select aria-label={t.language} className="settings-language-select" value={language} onChange={(e) => setLanguage(e.target.value === "en" ? "en" : "ru")}>
+              <option value="ru">{t.russian}</option>
+              <option value="en">{t.english}</option>
+            </select>
+          </div>
+          <div className="settings-option-grid">
+            <div className="settings-option">
+              <strong>{language === "ru" ? "Тема" : "Theme"}</strong>
+              <span>{language === "ru" ? "Светлая" : "Light"}</span>
+            </div>
+            <div className="settings-option">
+              <strong>{language === "ru" ? "Режим отображения" : "Display mode"}</strong>
+              <span>{language === "ru" ? "Стандартный" : "Standard"}</span>
+            </div>
+          </div>
+        </article>
+        <article className="card stack">
+          <div className="settings-card-head">
+            <div>
+              <h3>{language === "ru" ? "Безопасность и доступ" : "Security & Access"}</h3>
+              <p className="sidebar-text">
+                {language === "ru"
+                  ? "Доступ привязан к текущей организации и роли пользователя."
+                  : "Access is bound to the current tenant and user role."}
+              </p>
+            </div>
+            <span className="status-pill active">{language === "ru" ? "Сессия активна" : "Session active"}</span>
+          </div>
+          <div className="settings-option-grid">
+            <div className="settings-option">
+              <strong>{language === "ru" ? "Организация" : "Organization"}</strong>
+              <span>{session.tenantCode}</span>
+            </div>
+            <div className="settings-option">
+              <strong>{t.currentRole}</strong>
+              <span>{roleLabel}</span>
+            </div>
+          </div>
+        </article>
+        <article className="card stack settings-actions-card">
+          <div className="settings-card-head">
+            <div>
+              <h3>{quickActions.title}</h3>
+              <p className="sidebar-text">{quickActions.caption}</p>
+            </div>
+          </div>
+          <div className="settings-actions-grid">
+            {quickActions.items.map((action) => (
+              <Link className="settings-action-link" key={action.to} to={action.to}>
+                <strong>{action.title}</strong>
+                <span>{action.caption}</span>
+              </Link>
+            ))}
+          </div>
         </article>
       </section>
     </section>

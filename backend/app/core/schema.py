@@ -6,6 +6,12 @@ RUNTIME_COLUMN_DEFINITIONS_SQLITE = {
     "assignments": {
         "page_id": "VARCHAR(120)",
     },
+    "questions": {
+        "shuffle_options": "BOOLEAN NOT NULL DEFAULT 0",
+    },
+    "tests": {
+        "is_active": "BOOLEAN NOT NULL DEFAULT 0",
+    },
     "courses": {
         "image_url": "VARCHAR(500)",
         "status": "VARCHAR(24) NOT NULL DEFAULT 'draft'",
@@ -30,6 +36,12 @@ RUNTIME_COLUMN_DEFINITIONS_SQLITE = {
 RUNTIME_COLUMN_DEFINITIONS_POSTGRES = {
     "assignments": {
         "page_id": "VARCHAR(120)",
+    },
+    "questions": {
+        "shuffle_options": "BOOLEAN NOT NULL DEFAULT FALSE",
+    },
+    "tests": {
+        "is_active": "BOOLEAN NOT NULL DEFAULT FALSE",
     },
     "courses": {
         "image_url": "VARCHAR(500)",

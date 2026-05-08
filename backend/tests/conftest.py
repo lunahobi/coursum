@@ -104,10 +104,17 @@ def setup_db():
             ),
         ]
     )
-    test = Test(tenant_id=tenant_a.id, course_id=course.id, title="Password Test", baseline_difficulty=3, question_limit=2)
+    test = Test(
+        tenant_id=tenant_a.id,
+        course_id=course.id,
+        title="Password Test",
+        baseline_difficulty=3,
+        question_limit=2,
+        is_active=True,
+    )
     db.add(test)
     db.flush()
-    question1 = Question(tenant_id=tenant_a.id, test_id=test.id, text="Use a password manager?", difficulty=3, estimated_seconds=30)
+    question1 = Question(tenant_id=tenant_a.id, test_id=test.id, text="Use a password manager?", difficulty=3, estimated_seconds=30, shuffle_options=True)
     question2 = Question(tenant_id=tenant_a.id, test_id=test.id, text="Rotate passwords monthly?", difficulty=4, estimated_seconds=20)
     db.add_all([question1, question2])
     db.flush()

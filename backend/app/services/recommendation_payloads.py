@@ -46,7 +46,7 @@ def serialize_recommendation(
     topic, lesson, course = _resolve_context(db, recommendation)
     signal_score = _weak_topic_score(result, recommendation.topic_id)
     signal_level = "high" if signal_score >= 4 else "medium" if signal_score >= 2 else "low"
-    topic_title = topic.title if topic else None
+    topic_title = lesson.title if lesson else (topic.title if topic else None)
 
     return {
         "id": recommendation.id,

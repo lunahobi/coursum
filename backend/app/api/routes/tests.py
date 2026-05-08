@@ -1,14 +1,14 @@
 import hashlib
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import case, delete, func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import active_membership, require_roles, tenant_context
 from app.core.audit import write_audit_log
 from app.core.db import get_db
-from app.models.models import AnswerOption, Attempt, AttemptAnswer, Course, Membership, Question, QuestionTopic, Result, RoleName, Tenant, Test, Topic
-from app.schemas.testing import QuestionCreate, QuestionOptionRead, QuestionRead, SubmitAnswerRequest, TestCreate
+from app.models.models import AnswerOption, Attempt, AttemptAnswer, Course, Lesson, Membership, Question, QuestionTopic, Result, RoleName, Tenant, Test, Topic
+from app.schemas.testing import QuestionCreate, QuestionOptionRead, QuestionRead, SubmitAnswerRequest, TestCreate, TestUpdate
 from app.services.adaptive import attempt_total_questions, evaluate_answer, finalize_attempt, question_topic_titles, select_next_question
 
 
@@ -18,8 +18,12 @@ router = APIRouter(tags=["tests"])
 def _ordered_options(
     attempt: Attempt, question: Question, options: list[AnswerOption]
 ) -> list[AnswerOption]:
+    ordered_by_id = sorted(options, key=lambda option: option.id)
     if len(options) < 2:
-        return options
+        return ordered_by_id
+
+    if not question.shuffle_options:
+        return ordered_by_id
 
     ordered = sorted(
         options,
@@ -40,6 +44,25 @@ def _serialize_question(db: Session, tenant_id: int, question: Question) -> dict
         .where(QuestionTopic.tenant_id == tenant_id, QuestionTopic.question_id == question.id)
         .order_by(Topic.title.asc(), Topic.id.asc())
     ).all()
+    topic_ids = [topic_id for topic_id, _ in topic_rows]
+    test = db.scalar(select(Test).where(Test.id == question.test_id, Test.tenant_id == tenant_id))
+    lesson_rows: list[tuple[int, str]] = []
+    if test is not None and topic_ids:
+        lesson_rows = db.execute(
+            select(Lesson.id, Lesson.title)
+            .where(
+                Lesson.tenant_id == tenant_id,
+                Lesson.course_id == test.course_id,
+                Lesson.topic_id.in_(topic_ids),
+            )
+            .order_by(Lesson.sort_order.asc(), Lesson.id.asc())
+        ).all()
+    if lesson_rows:
+        resolved_topic_ids = [lesson_id for lesson_id, _ in lesson_rows]
+        resolved_topic_titles = [title for _, title in lesson_rows]
+    else:
+        resolved_topic_ids = topic_ids
+        resolved_topic_titles = [title for _, title in topic_rows]
     return {
         "id": question.id,
         "test_id": question.test_id,
@@ -47,10 +70,11 @@ def _serialize_question(db: Session, tenant_id: int, question: Question) -> dict
         "explanation": question.explanation,
         "difficulty": question.difficulty,
         "estimated_seconds": question.estimated_seconds,
+        "shuffle_options": question.shuffle_options,
         "option_count": len(options),
         "options": [{"id": item.id, "text": item.text, "is_correct": item.is_correct} for item in options],
-        "topic_ids": [topic_id for topic_id, _ in topic_rows],
-        "topic_titles": [title for _, title in topic_rows],
+        "topic_ids": resolved_topic_ids,
+        "topic_titles": resolved_topic_titles,
     }
 
 
@@ -60,18 +84,48 @@ def _sync_question(question: Question, payload: QuestionCreate, tenant: Tenant, 
     question.explanation = payload.explanation
     question.difficulty = payload.difficulty
     question.estimated_seconds = payload.estimated_seconds
+    question.shuffle_options = payload.shuffle_options
+    test = db.scalar(select(Test).where(Test.id == question.test_id, Test.tenant_id == tenant.id))
+    if test is None:
+        raise HTTPException(status_code=404, detail="Test not found")
     db.execute(delete(AnswerOption).where(AnswerOption.question_id == question.id))
     db.execute(delete(QuestionTopic).where(QuestionTopic.tenant_id == tenant.id, QuestionTopic.question_id == question.id))
     db.flush()
     for option in payload.options:
         db.add(AnswerOption(question_id=question.id, text=option["text"], is_correct=option.get("is_correct", False)))
-    for topic_id in payload.topic_ids:
+    resolved_topic_ids: list[int] = []
+    for lesson_id in payload.topic_ids:
+        lesson = db.scalar(select(Lesson).where(Lesson.id == lesson_id, Lesson.tenant_id == tenant.id))
+        if lesson is None:
+            raise HTTPException(status_code=404, detail="Lesson not found")
+        if lesson.course_id != test.course_id:
+            raise HTTPException(status_code=422, detail="Lesson does not belong to test course")
+        if lesson.topic_id is None:
+            topic = Topic(
+                tenant_id=tenant.id,
+                title=lesson.title,
+                description=lesson.summary or "",
+            )
+            db.add(topic)
+            db.flush()
+            lesson.topic_id = topic.id
+        else:
+            topic = db.get(Topic, lesson.topic_id)
+            if topic is not None and topic.tenant_id == tenant.id:
+                topic.title = lesson.title
+                topic.description = lesson.summary or ""
+        resolved_topic_ids.append(lesson.topic_id)
+    for topic_id in dict.fromkeys(resolved_topic_ids):
         db.add(QuestionTopic(tenant_id=tenant.id, question_id=question.id, topic_id=topic_id))
 
 
 @router.get("/tests")
 def list_tests(_: Membership = Depends(active_membership), tenant: Tenant = Depends(tenant_context), db: Session = Depends(get_db)) -> list[dict]:
-    tests = db.scalars(select(Test).where(Test.tenant_id == tenant.id)).all()
+    tests = db.scalars(
+        select(Test)
+        .where(Test.tenant_id == tenant.id)
+        .order_by(Test.course_id.asc(), Test.is_active.desc(), Test.id.asc())
+    ).all()
     return [
         {
             "id": item.id,
@@ -79,6 +133,7 @@ def list_tests(_: Membership = Depends(active_membership), tenant: Tenant = Depe
             "course_id": item.course_id,
             "baseline_difficulty": item.baseline_difficulty,
             "question_limit": item.question_limit,
+            "is_active": item.is_active,
             "question_count": db.scalar(
                 select(func.count(Question.id)).where(
                     Question.test_id == item.id,
@@ -91,7 +146,22 @@ def list_tests(_: Membership = Depends(active_membership), tenant: Tenant = Depe
 
 
 @router.get("/topics")
-def list_topics(_: Membership = Depends(active_membership), tenant: Tenant = Depends(tenant_context), db: Session = Depends(get_db)) -> list[dict]:
+def list_topics(
+    course_id: int | None = None,
+    _: Membership = Depends(active_membership),
+    tenant: Tenant = Depends(tenant_context),
+    db: Session = Depends(get_db),
+) -> list[dict]:
+    if course_id is not None:
+        course = db.scalar(select(Course.id).where(Course.id == course_id, Course.tenant_id == tenant.id))
+        if course is None:
+            raise HTTPException(status_code=404, detail="Course not found")
+        lessons = db.scalars(
+            select(Lesson)
+            .where(Lesson.tenant_id == tenant.id, Lesson.course_id == course_id)
+            .order_by(Lesson.sort_order.asc(), Lesson.id.asc())
+        ).all()
+        return [{"id": item.id, "title": item.title, "description": item.summary or ""} for item in lessons]
     topics = db.scalars(select(Topic).where(Topic.tenant_id == tenant.id).order_by(Topic.title.asc())).all()
     return [{"id": item.id, "title": item.title, "description": item.description} for item in topics]
 
@@ -99,16 +169,37 @@ def list_topics(_: Membership = Depends(active_membership), tenant: Tenant = Dep
 @router.get("/questions")
 def list_questions(
     test_id: int,
+    page: int | None = Query(default=None, ge=1),
+    page_size: int | None = Query(default=None, ge=1, le=100),
     _: Membership = Depends(active_membership),
     tenant: Tenant = Depends(tenant_context),
     db: Session = Depends(get_db),
-) -> list[dict]:
+) -> list[dict] | dict:
+    base_query = select(Question).where(Question.tenant_id == tenant.id, Question.test_id == test_id)
+    if page is None and page_size is None:
+        questions = db.scalars(base_query.order_by(Question.id.asc())).all()
+        return [_serialize_question(db, tenant.id, item) for item in questions]
+
+    resolved_page = page or 1
+    resolved_page_size = page_size or 20
+    total = db.scalar(
+        select(func.count(Question.id)).where(
+            Question.tenant_id == tenant.id,
+            Question.test_id == test_id,
+        )
+    ) or 0
     questions = db.scalars(
-        select(Question)
-        .where(Question.tenant_id == tenant.id, Question.test_id == test_id)
+        base_query
         .order_by(Question.id.asc())
+        .offset((resolved_page - 1) * resolved_page_size)
+        .limit(resolved_page_size)
     ).all()
-    return [_serialize_question(db, tenant.id, item) for item in questions]
+    return {
+        "items": [_serialize_question(db, tenant.id, item) for item in questions],
+        "page": resolved_page,
+        "page_size": resolved_page_size,
+        "total": total,
+    }
 
 
 @router.post("/tests")
@@ -121,11 +212,116 @@ def create_test(
     course = db.scalar(select(Course.id).where(Course.id == payload.course_id, Course.tenant_id == tenant.id))
     if course is None:
         raise HTTPException(status_code=404, detail="Course not found")
-    test = Test(tenant_id=tenant.id, course_id=payload.course_id, title=payload.title, baseline_difficulty=payload.baseline_difficulty, question_limit=payload.question_limit)
+    has_active_for_course = db.scalar(
+        select(func.count(Test.id)).where(
+            Test.tenant_id == tenant.id,
+            Test.course_id == payload.course_id,
+            Test.is_active.is_(True),
+        )
+    ) or 0
+    test = Test(
+        tenant_id=tenant.id,
+        course_id=payload.course_id,
+        title=payload.title,
+        baseline_difficulty=payload.baseline_difficulty,
+        question_limit=payload.question_limit,
+        is_active=has_active_for_course == 0,
+    )
     db.add(test)
     db.commit()
     db.refresh(test)
     return {"id": test.id, "title": test.title}
+
+
+@router.patch("/tests/{test_id}")
+def update_test(
+    test_id: int,
+    payload: TestUpdate,
+    membership: Membership = Depends(require_roles(RoleName.org_admin, RoleName.teacher, RoleName.system_admin)),
+    tenant: Tenant = Depends(tenant_context),
+    db: Session = Depends(get_db),
+) -> dict:
+    test = db.scalar(select(Test).where(Test.id == test_id, Test.tenant_id == tenant.id))
+    if test is None:
+        raise HTTPException(status_code=404, detail="Test not found")
+
+    test.title = payload.title
+    test.baseline_difficulty = payload.baseline_difficulty
+    test.question_limit = payload.question_limit
+
+    write_audit_log(db, action="tests.update", actor_user_id=membership.user_id, tenant_id=tenant.id, entity_type="test", entity_id=test.id)
+    db.commit()
+    db.refresh(test)
+    return {
+        "id": test.id,
+        "title": test.title,
+        "baseline_difficulty": test.baseline_difficulty,
+        "question_limit": test.question_limit,
+        "is_active": test.is_active,
+    }
+
+
+@router.post("/tests/{test_id}/activate")
+def activate_test(
+    test_id: int,
+    membership: Membership = Depends(require_roles(RoleName.org_admin, RoleName.teacher, RoleName.system_admin)),
+    tenant: Tenant = Depends(tenant_context),
+    db: Session = Depends(get_db),
+) -> dict:
+    test = db.scalar(select(Test).where(Test.id == test_id, Test.tenant_id == tenant.id))
+    if test is None:
+        raise HTTPException(status_code=404, detail="Test not found")
+
+    sibling_tests = db.scalars(
+        select(Test).where(
+            Test.tenant_id == tenant.id,
+            Test.course_id == test.course_id,
+        )
+    ).all()
+    for sibling in sibling_tests:
+        sibling.is_active = sibling.id == test.id
+
+    write_audit_log(db, action="tests.activate", actor_user_id=membership.user_id, tenant_id=tenant.id, entity_type="test", entity_id=test.id)
+    db.commit()
+    return {"id": test.id, "is_active": True}
+
+
+@router.delete("/tests/{test_id}")
+def delete_test(
+    test_id: int,
+    membership: Membership = Depends(require_roles(RoleName.org_admin, RoleName.teacher, RoleName.system_admin)),
+    tenant: Tenant = Depends(tenant_context),
+    db: Session = Depends(get_db),
+) -> dict:
+    test = db.scalar(select(Test).where(Test.id == test_id, Test.tenant_id == tenant.id))
+    if test is None:
+        raise HTTPException(status_code=404, detail="Test not found")
+
+    attempts_count = db.scalar(select(func.count(Attempt.id)).where(Attempt.test_id == test.id, Attempt.tenant_id == tenant.id)) or 0
+    if attempts_count > 0:
+        raise HTTPException(status_code=409, detail="Test has attempts")
+
+    question_ids = db.scalars(select(Question.id).where(Question.test_id == test.id, Question.tenant_id == tenant.id)).all()
+    if question_ids:
+        db.execute(delete(AnswerOption).where(AnswerOption.question_id.in_(question_ids)))
+        db.execute(delete(QuestionTopic).where(QuestionTopic.tenant_id == tenant.id, QuestionTopic.question_id.in_(question_ids)))
+        db.execute(delete(Question).where(Question.id.in_(question_ids)))
+
+    was_active = bool(test.is_active)
+    course_id = test.course_id
+    db.delete(test)
+    write_audit_log(db, action="tests.delete", actor_user_id=membership.user_id, tenant_id=tenant.id, entity_type="test", entity_id=test.id)
+    db.flush()
+    if was_active:
+        fallback = db.scalar(
+            select(Test)
+            .where(Test.tenant_id == tenant.id, Test.course_id == course_id)
+            .order_by(Test.id.asc())
+        )
+        if fallback is not None:
+            fallback.is_active = True
+    db.commit()
+    return {"deleted": True}
 
 
 @router.post("/questions")
@@ -138,7 +334,7 @@ def create_question(
     test = db.scalar(select(Test.id).where(Test.id == payload.test_id, Test.tenant_id == tenant.id))
     if test is None:
         raise HTTPException(status_code=404, detail="Test not found")
-    question = Question(tenant_id=tenant.id, test_id=payload.test_id, text=payload.text, explanation=payload.explanation, difficulty=payload.difficulty, estimated_seconds=payload.estimated_seconds)
+    question = Question(tenant_id=tenant.id, test_id=payload.test_id, text=payload.text, explanation=payload.explanation, difficulty=payload.difficulty, estimated_seconds=payload.estimated_seconds, shuffle_options=payload.shuffle_options)
     db.add(question)
     db.flush()
     _sync_question(question, payload, tenant, db)
@@ -166,6 +362,32 @@ def update_question(
     db.commit()
     db.refresh(question)
     return _serialize_question(db, tenant.id, question)
+
+
+@router.delete("/questions/{question_id}")
+def delete_question(
+    question_id: int,
+    membership: Membership = Depends(require_roles(RoleName.org_admin, RoleName.teacher, RoleName.system_admin)),
+    tenant: Tenant = Depends(tenant_context),
+    db: Session = Depends(get_db),
+) -> dict:
+    question = db.scalar(select(Question).where(Question.id == question_id, Question.tenant_id == tenant.id))
+    if question is None:
+        raise HTTPException(status_code=404, detail="Question not found")
+
+    attempts_count = db.scalar(
+        select(func.count(AttemptAnswer.id)).where(AttemptAnswer.question_id == question.id, AttemptAnswer.tenant_id == tenant.id)
+    ) or 0
+    if attempts_count > 0:
+        raise HTTPException(status_code=409, detail="Question is used in attempts")
+
+    db.execute(delete(AnswerOption).where(AnswerOption.question_id == question.id))
+    db.execute(delete(QuestionTopic).where(QuestionTopic.tenant_id == tenant.id, QuestionTopic.question_id == question.id))
+    db.execute(delete(Question).where(Question.id == question.id, Question.tenant_id == tenant.id))
+
+    write_audit_log(db, action="questions.delete", actor_user_id=membership.user_id, tenant_id=tenant.id, entity_type="question", entity_id=question.id)
+    db.commit()
+    return {"deleted": True}
 
 
 @router.post("/tests/{test_id}/start")
@@ -455,7 +677,10 @@ def next_question(
         question_number=answered_questions + 1,
         total_questions=total_questions,
         remaining_questions=max(total_questions - answered_questions - 1, 0),
-        target_difficulty=attempt.current_difficulty,
+        # Show the effective level actually used to pick this question.
+        # If an exact target level is unavailable in the remaining pool,
+        # the selected question can be from the nearest level instead.
+        target_difficulty=question.difficulty,
         topic_titles=question_topic_titles(db, question.id),
         options=[QuestionOptionRead(id=opt.id, text=opt.text) for opt in ordered_options],
     )
