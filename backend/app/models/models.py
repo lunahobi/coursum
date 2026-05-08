@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -10,7 +10,7 @@ from app.core.clock import naive_utcnow
 from app.core.db import Base
 
 
-class RoleName(str, Enum):
+class RoleName(StrEnum):
     learner = "learner"
     teacher = "teacher"
     org_admin = "org_admin"
