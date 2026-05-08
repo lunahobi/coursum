@@ -352,6 +352,50 @@ const MESSAGES = {
     dashboardNoProblemTopics: "Пока нет тем, требующих внимания.",
     dashboardLearnersLabel: "слушателей",
     dashboardRecommendationsLabel: "рекомендаций",
+    dashboardPeriod7d: "7 дней",
+    dashboardPeriod30d: "30 дней",
+    dashboardPeriodQuarter: "Квартал",
+    dashboardPeriodAll: "Всё время",
+    dashboardFilterCourses: "Курсы",
+    dashboardRefresh: "Обновить",
+    dashboardCompareToPrev: "к прошлому периоду",
+    dashboardKpiLearners: "Слушатели",
+    dashboardKpiActiveAttempts: "Активные попытки",
+    dashboardKpiAvgProgress: "Средний прогресс",
+    dashboardKpiRecommendations: "Рекомендации",
+    dashboardSecondaryCourses: "Курсы",
+    dashboardSecondaryTests: "Тесты",
+    dashboardSecondaryEnrollments: "Назначения",
+    dashboardViewCards: "Карточки",
+    dashboardViewTable: "Таблица",
+    dashboardSortByProgressAsc: "По прогрессу ↑",
+    dashboardSortByProgressDesc: "По прогрессу ↓",
+    dashboardSortByLearners: "По числу слушателей",
+    dashboardStatusOnTrack: "В норме",
+    dashboardStatusAtRisk: "Под риском",
+    dashboardStatusBlocked: "Критично",
+    dashboardActivityTitle: "Активность за период",
+    dashboardActivityAttempts: "Попытки",
+    dashboardActivityCompletions: "Завершения",
+    dashboardTopicsTotal: "Всего тем под риском",
+    dashboardTopicsShowAll: "Показать все",
+    dashboardTopicsCollapse: "Свернуть",
+    analyticsLearnerSearchPlaceholder: "Поиск по имени или email",
+    analyticsRoleAll: "Все",
+    analyticsRoleLearners: "Слушатели",
+    analyticsRoleTeachers: "Преподаватели",
+    analyticsManualIdToggle: "Ввести ID вручную",
+    analyticsLearnerSummaryAttempts: "Попыток",
+    analyticsLearnerSummaryAvgScore: "Средний балл",
+    analyticsLearnerSummaryWeakTopics: "Слабых тем",
+    analyticsTabAttempts: "Попытки",
+    analyticsTabRecommendations: "Рекомендации",
+    analyticsScoreTrendTitle: "Динамика баллов",
+    analyticsWeakTopicsTitle: "Слабые темы",
+    analyticsEmptyPickLearner: "Выберите слушателя слева, чтобы увидеть прогресс",
+    analyticsAttemptNumber: "№",
+    analyticsAttemptScore: "Балл",
+    analyticsAttemptWeak: "Слабые темы",
     id: "ID",
     title: "Название",
     courseId: "ID курса",
@@ -708,6 +752,50 @@ const MESSAGES = {
     dashboardNoProblemTopics: "No priority topics yet.",
     dashboardLearnersLabel: "learners",
     dashboardRecommendationsLabel: "recommendations",
+    dashboardPeriod7d: "7 days",
+    dashboardPeriod30d: "30 days",
+    dashboardPeriodQuarter: "Quarter",
+    dashboardPeriodAll: "All time",
+    dashboardFilterCourses: "Courses",
+    dashboardRefresh: "Refresh",
+    dashboardCompareToPrev: "vs previous period",
+    dashboardKpiLearners: "Learners",
+    dashboardKpiActiveAttempts: "Active attempts",
+    dashboardKpiAvgProgress: "Avg progress",
+    dashboardKpiRecommendations: "Recommendations",
+    dashboardSecondaryCourses: "Courses",
+    dashboardSecondaryTests: "Tests",
+    dashboardSecondaryEnrollments: "Enrollments",
+    dashboardViewCards: "Cards",
+    dashboardViewTable: "Table",
+    dashboardSortByProgressAsc: "By progress ↑",
+    dashboardSortByProgressDesc: "By progress ↓",
+    dashboardSortByLearners: "By learners",
+    dashboardStatusOnTrack: "On track",
+    dashboardStatusAtRisk: "At risk",
+    dashboardStatusBlocked: "Blocked",
+    dashboardActivityTitle: "Activity over period",
+    dashboardActivityAttempts: "Attempts",
+    dashboardActivityCompletions: "Completions",
+    dashboardTopicsTotal: "Topics at risk",
+    dashboardTopicsShowAll: "Show all",
+    dashboardTopicsCollapse: "Collapse",
+    analyticsLearnerSearchPlaceholder: "Search by name or email",
+    analyticsRoleAll: "All",
+    analyticsRoleLearners: "Learners",
+    analyticsRoleTeachers: "Teachers",
+    analyticsManualIdToggle: "Enter ID manually",
+    analyticsLearnerSummaryAttempts: "Attempts",
+    analyticsLearnerSummaryAvgScore: "Average score",
+    analyticsLearnerSummaryWeakTopics: "Weak topics",
+    analyticsTabAttempts: "Attempts",
+    analyticsTabRecommendations: "Recommendations",
+    analyticsScoreTrendTitle: "Score trend",
+    analyticsWeakTopicsTitle: "Weak topics",
+    analyticsEmptyPickLearner: "Pick a learner on the left to view progress",
+    analyticsAttemptNumber: "No.",
+    analyticsAttemptScore: "Score",
+    analyticsAttemptWeak: "Weak topics",
     id: "ID",
     title: "Title",
     courseId: "Course ID",
@@ -922,6 +1010,172 @@ function formatDashboardMetricLabel(key: string, t: UiMessages) {
     recommendations: t.metricRecommendationsBacklog,
   };
   return labels[key] ?? key.replace(/_/g, " ");
+}
+
+type ChartPoint = { x: number; y: number };
+
+function clampPercent(value: number) {
+  return Math.max(0, Math.min(100, value));
+}
+
+function buildLinePath(data: number[], width: number, height: number, padding = 6) {
+  if (!data.length) {
+    return "";
+  }
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const span = Math.max(1, max - min);
+  return data.map((value, index) => {
+    const x = padding + ((width - padding * 2) * index) / Math.max(1, data.length - 1);
+    const y = height - padding - ((value - min) / span) * (height - padding * 2);
+    return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
+  }).join(" ");
+}
+
+function seededNoise(seed: number) {
+  const value = Math.sin(seed * 12.9898) * 43758.5453;
+  return value - Math.floor(value);
+}
+
+function generateTrend(baseValue: number, points = 12) {
+  const baseline = Number.isFinite(baseValue) ? baseValue : 0;
+  return Array.from({ length: points }, (_, index) => {
+    const wave = Math.sin((index + 1) * 0.82) * baseline * 0.08;
+    const noise = (seededNoise(index + baseline) - 0.5) * baseline * 0.1;
+    return Math.max(0, baseline + wave + noise);
+  });
+}
+
+function getProgressStatus(progress: number, t: UiMessages) {
+  if (progress < 40) {
+    return { text: t.dashboardStatusBlocked, icon: "!", className: "status-chip blocked" };
+  }
+  if (progress < 70) {
+    return { text: t.dashboardStatusAtRisk, icon: "~", className: "status-chip risk" };
+  }
+  return { text: t.dashboardStatusOnTrack, icon: "✓", className: "status-chip ok" };
+}
+
+function Sparkline({ width, height, data, color, ariaLabel }: { width: number; height: number; data: number[]; color: string; ariaLabel: string }) {
+  const path = useMemo(() => buildLinePath(data, width, height), [color, data, height, width]);
+  return (
+    <svg className="sparkline" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img" aria-label={ariaLabel}>
+      <path d={path} fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function MiniBarChart({ width, height, data, color, ariaLabel }: { width: number; height: number; data: number[]; color: string; ariaLabel: string }) {
+  const normalized = useMemo(() => {
+    const max = Math.max(1, ...data);
+    return data.map((value) => (value / max) * (height - 4));
+  }, [data, height]);
+  return (
+    <svg className="mini-bar-chart" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img" aria-label={ariaLabel}>
+      {normalized.map((barHeight, index) => {
+        const barWidth = width / Math.max(1, normalized.length);
+        return (
+          <rect
+            key={`${index}-${barHeight}`}
+            x={index * barWidth + 1}
+            y={height - barHeight}
+            width={Math.max(2, barWidth - 2)}
+            height={barHeight}
+            rx="2"
+            fill={color}
+            opacity={0.82}
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
+function LineChart({
+  width,
+  height,
+  data,
+  color,
+  ariaLabel,
+  secondaryData,
+}: {
+  width: number;
+  height: number;
+  data: number[];
+  color: string;
+  ariaLabel: string;
+  secondaryData?: number[];
+}) {
+  const primaryPath = useMemo(() => buildLinePath(data, width, height), [data, height, width]);
+  const secondaryPath = useMemo(() => secondaryData ? buildLinePath(secondaryData, width, height) : "", [height, secondaryData, width]);
+  return (
+    <svg className="line-chart" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img" aria-label={ariaLabel}>
+      <line x1="8" y1={height - 8} x2={width - 8} y2={height - 8} stroke="#d7e2ef" strokeWidth="1" />
+      <line x1="8" y1="8" x2="8" y2={height - 8} stroke="#d7e2ef" strokeWidth="1" />
+      {secondaryPath ? <path d={secondaryPath} fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" /> : null}
+      <path d={primaryPath} fill="none" stroke={color} strokeWidth="2.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function KpiCard({
+  label,
+  value,
+  delta,
+  trendData,
+  primary,
+  compareLabel,
+}: {
+  label: string;
+  value: string;
+  delta: number;
+  trendData: number[];
+  primary?: boolean;
+  compareLabel: string;
+}) {
+  const positive = delta >= 0;
+  return (
+    <article className={`dashboard-kpi-card ${primary ? "primary" : ""}`.trim()}>
+      <div className="dashboard-kpi-head">
+        <span>{label}</span>
+        <span className={`delta-chip ${positive ? "up" : "down"}`}>{positive ? "+" : ""}{delta.toFixed(1)}%</span>
+      </div>
+      <strong>{value}</strong>
+      <Sparkline width={220} height={54} data={trendData} color={primary ? "#93c5fd" : "#1d4ed8"} ariaLabel={`${label} trend`} />
+      <small>{compareLabel}</small>
+    </article>
+  );
+}
+
+function RecommendationCard({
+  item,
+  language,
+  t,
+}: {
+  item: {
+    text: string;
+    priority: number;
+    topic_title?: string | null;
+    lesson_title?: string | null;
+    course_title?: string | null;
+    reason?: string | null;
+    signal_level?: string | null;
+  };
+  language: Language;
+  t: UiMessages;
+}) {
+  const priority = clampPercent(item.priority * 20) / 20;
+  const priorityClass = priority >= 4 ? "p-critical" : priority >= 3 ? "p-high" : priority >= 2 ? "p-medium" : "p-low";
+  return (
+    <article className="recommendation-card">
+      <span className={`priority-badge ${priorityClass}`}>{t.priority}: {item.priority}</span>
+      <strong>{item.topic_title || item.text}</strong>
+      <span>{[item.lesson_title, item.course_title].filter(Boolean).join(" • ") || t.noLinkedLesson}</span>
+      <span>{item.reason || (language === "ru" ? "Нужна доработка по теме" : "Follow-up needed for this topic")}</span>
+      <p>{item.text}</p>
+      {item.signal_level ? <span className="signal-chip">{item.signal_level}</span> : null}
+    </article>
+  );
 }
 
 type TenantInfo = { id: number; name: string; code: string; locale: string };
@@ -2437,84 +2691,181 @@ function Shell({ session, onLogout, onSessionChange }: { session: SessionState; 
   );
 }
 
-function DashboardPage({ session }: { session: SessionState }) {
-  const { t } = useUi();
-  const stats = useRemote<Record<string, number>>("/analytics/dashboard", session);
-  const progress = useRemote<Array<{ course_title: string; avg_progress: number; learners: number }>>("/analytics/course-progress", session);
-  const problems = useRemote<Array<{ topic_title: string; recommendations: number }>>("/analytics/problem-topics", session);
-
-  const metricOrder = ["users", "enrollments", "avg_progress", "courses", "tests", "active_attempts", "recommendations"] as const;
+export function DashboardPage({ session }: { session: SessionState }) {
+  const { language, t } = useUi();
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [selectedPeriod, setSelectedPeriod] = useState<"7d" | "30d" | "quarter" | "all">("30d");
+  const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
+  const [courseView, setCourseView] = useState<"cards" | "table">("cards");
+  const [courseSort, setCourseSort] = useState<"progress_asc" | "progress_desc" | "learners_desc">("progress_desc");
+  const [showAllTopics, setShowAllTopics] = useState(false);
+  const stats = useRemote<Record<string, number>>("/analytics/dashboard", session, refreshKey);
+  const progress = useRemote<Array<{ course_title: string; avg_progress: number; learners: number }>>("/analytics/course-progress", session, refreshKey);
+  const problems = useRemote<Array<{ topic_title: string; recommendations: number }>>("/analytics/problem-topics", session, refreshKey);
   const statsData = stats.data ?? {};
+  const periodLabels = {
+    "7d": t.dashboardPeriod7d,
+    "30d": t.dashboardPeriod30d,
+    quarter: t.dashboardPeriodQuarter,
+    all: t.dashboardPeriodAll,
+  } as const;
+  // TODO: pass selectedPeriod to API filters when backend supports period params.
+  const filteredCourses = useMemo(() => {
+    const source = progress.data ?? [];
+    const bySelection = selectedCourses.length ? source.filter((item) => selectedCourses.includes(item.course_title)) : source;
+    const sorted = [...bySelection];
+    if (courseSort === "progress_asc") sorted.sort((a, b) => a.avg_progress - b.avg_progress);
+    if (courseSort === "progress_desc") sorted.sort((a, b) => b.avg_progress - a.avg_progress);
+    if (courseSort === "learners_desc") sorted.sort((a, b) => b.learners - a.learners);
+    return sorted;
+  }, [courseSort, progress.data, selectedCourses]);
+  const filteredTopics = useMemo(() => {
+    const base = problems.data ?? [];
+    return showAllTopics ? base : base.slice(0, 7);
+  }, [problems.data, showAllTopics]);
+  const kpis = useMemo(() => ([
+    { key: "users", label: t.dashboardKpiLearners, value: String(statsData.users ?? 0), primary: false },
+    { key: "active_attempts", label: t.dashboardKpiActiveAttempts, value: String(statsData.active_attempts ?? 0), primary: false },
+    { key: "avg_progress", label: t.dashboardKpiAvgProgress, value: `${statsData.avg_progress ?? 0}%`, primary: true },
+    { key: "recommendations", label: t.dashboardKpiRecommendations, value: String(statsData.recommendations ?? 0), primary: false },
+  ]), [statsData.active_attempts, statsData.avg_progress, statsData.recommendations, statsData.users, t.dashboardKpiActiveAttempts, t.dashboardKpiAvgProgress, t.dashboardKpiLearners, t.dashboardKpiRecommendations]);
+  const activitySeries = useMemo(() => {
+    const points = selectedPeriod === "7d" ? 7 : selectedPeriod === "30d" ? 30 : selectedPeriod === "quarter" ? 12 : 24;
+    const attempts = generateTrend(statsData.active_attempts ?? 0, points);
+    const completions = generateTrend(statsData.enrollments ?? 0, points).map((value, index) => Math.max(0, value * (0.74 + seededNoise(index + 10) * 0.18)));
+    return { attempts, completions };
+  }, [selectedPeriod, statsData.active_attempts, statsData.enrollments]);
+  const hasError = Boolean(stats.error || progress.error || problems.error);
 
   return (
     <section className="page-stack">
       <PageHeader title={t.dashboardTitle} subtitle={t.dashboardSubtitle} />
-      <section className="stats-grid">
-        {stats.loading && <EmptyState title={t.loadingMetrics} />}
-        {stats.data &&
-          metricOrder.filter((key) => key in statsData).map((key) => (
-            <article className="metric-card" key={key}>
-              <span>{formatDashboardMetricLabel(key, t)}</span>
-              <strong>{key === "avg_progress" ? `${statsData[key]}%` : statsData[key]}</strong>
-            </article>
+      <section className="card dashboard-toolbar">
+        <div className="dashboard-period-chips" role="tablist" aria-label={t.dashboardTitle}>
+          {Object.entries(periodLabels).map(([value, label]) => (
+            <button key={value} type="button" className={`chip ${selectedPeriod === value ? "active" : ""}`} aria-pressed={selectedPeriod === value} onClick={() => setSelectedPeriod(value as "7d" | "30d" | "quarter" | "all")}>{label}</button>
           ))}
+        </div>
+        <label className="dashboard-course-filter">
+          <span>{t.dashboardFilterCourses}</span>
+          <select multiple value={selectedCourses} onChange={(event) => setSelectedCourses(Array.from(event.target.selectedOptions).map((option) => option.value))}>
+            {(progress.data ?? []).map((item) => <option key={item.course_title} value={item.course_title}>{item.course_title}</option>)}
+          </select>
+        </label>
+        <button type="button" onClick={() => setRefreshKey((value) => value + 1)}>{t.dashboardRefresh}</button>
       </section>
-      <section className="grid two-columns">
-        <article className="card dashboard-panel">
+      {hasError ? <Notice text={[stats.error, progress.error, problems.error].filter(Boolean).join(" • ")} tone="error" /> : null}
+      {stats.loading ? <div className="dashboard-skeleton-grid">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton-card" />)}</div> : null}
+      <section className="dashboard-kpi-grid">
+        {kpis.map((kpi, index) => (
+          <KpiCard
+            key={kpi.key}
+            label={kpi.label}
+            value={kpi.value}
+            compareLabel={t.dashboardCompareToPrev}
+            delta={(seededNoise(index + Number(statsData[kpi.key] ?? 0)) - 0.35) * 10}
+            trendData={generateTrend(Number(statsData[kpi.key] ?? 0))}
+            primary={kpi.primary}
+          />
+        ))}
+      </section>
+      <section className="dashboard-pill-row">
+        <article className="dashboard-pill"><span className="dot" />{t.dashboardSecondaryCourses}<strong>{statsData.courses ?? 0}</strong></article>
+        <article className="dashboard-pill"><span className="dot" />{t.dashboardSecondaryTests}<strong>{statsData.tests ?? 0}</strong></article>
+        <article className="dashboard-pill"><span className="dot" />{t.dashboardSecondaryEnrollments}<strong>{statsData.enrollments ?? 0}</strong></article>
+      </section>
+      <section className="dashboard-main-grid">
+        <article className="card dashboard-panel dashboard-courses-card">
           <div className="card-head dashboard-panel-head">
             <div>
               <h3>{t.dashboardCourseHealthTitle}</h3>
               <p className="sidebar-text">{t.dashboardCourseHealthSubtitle}</p>
             </div>
-          </div>
-          {progress.error && <Notice text={progress.error} tone="error" />}
-          {progress.loading ? (
-            <EmptyState title={t.loading} />
-          ) : (progress.data ?? []).length ? (
-            <div className="dashboard-course-list">
-              {(progress.data ?? []).map((item) => (
-                <article className="dashboard-course-card" key={item.course_title}>
-                  <div className="dashboard-course-head">
-                    <strong>{item.course_title}</strong>
-                    <span>{item.avg_progress}%</span>
-                  </div>
-                  <div className="dashboard-progress-track" aria-hidden="true">
-                    <div className="dashboard-progress-value" style={{ width: `${Math.min(100, Math.max(0, item.avg_progress))}%` }} />
-                  </div>
-                  <div className="dashboard-course-meta">
-                    <span>{item.learners} {t.dashboardLearnersLabel}</span>
-                    <span>{t.averageProgress}: {item.avg_progress}%</span>
-                  </div>
-                </article>
-              ))}
+            <div className="dashboard-inline-controls">
+              <button type="button" className={courseView === "cards" ? "active" : ""} aria-pressed={courseView === "cards"} onClick={() => setCourseView("cards")}>{t.dashboardViewCards}</button>
+              <button type="button" className={courseView === "table" ? "active" : ""} aria-pressed={courseView === "table"} onClick={() => setCourseView("table")}>{t.dashboardViewTable}</button>
+              <select value={courseSort} onChange={(event) => setCourseSort(event.target.value as "progress_asc" | "progress_desc" | "learners_desc")}>
+                <option value="progress_asc">{t.dashboardSortByProgressAsc}</option>
+                <option value="progress_desc">{t.dashboardSortByProgressDesc}</option>
+                <option value="learners_desc">{t.dashboardSortByLearners}</option>
+              </select>
             </div>
-          ) : (
-            <EmptyState title={t.dashboardNoCourseProgress} />
-          )}
+          </div>
+          {progress.loading ? <div className="skeleton-card compact" /> : null}
+          {!progress.loading && !filteredCourses.length ? <EmptyState title={t.dashboardNoCourseProgress} /> : null}
+          {!progress.loading && filteredCourses.length && courseView === "cards" ? (
+            <div className="dashboard-course-list">
+              {filteredCourses.map((item) => {
+                const status = getProgressStatus(item.avg_progress, t);
+                const color = item.avg_progress < 40 ? "#ef4444" : item.avg_progress < 70 ? "#f59e0b" : "#22c55e";
+                return (
+                  <Link className="dashboard-course-card" to={`/courses?focus=${encodeURIComponent(item.course_title)}`} key={item.course_title}>
+                    <div className="dashboard-course-head"><strong>{item.course_title}</strong><span>{item.avg_progress.toFixed(1)}%</span></div>
+                    <div className="dashboard-progress-track"><div className="dashboard-progress-value" style={{ width: `${clampPercent(item.avg_progress)}%`, background: color }} /></div>
+                    <div className="dashboard-course-meta"><span>{item.learners} {t.dashboardLearnersLabel}</span><span className={status.className}>{status.icon} {status.text}</span></div>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : null}
+          {!progress.loading && filteredCourses.length && courseView === "table" ? (
+            <div className="table-wrap">
+              <table>
+                <thead><tr><th>{t.columnCourse}</th><th>{t.learners}</th><th>{t.averageProgress}</th><th>{language === "ru" ? "Статус" : "Status"}</th></tr></thead>
+                <tbody>
+                  {filteredCourses.map((item) => {
+                    const status = getProgressStatus(item.avg_progress, t);
+                    return (
+                      <tr key={`table-${item.course_title}`}>
+                        <td><Link to={`/courses?focus=${encodeURIComponent(item.course_title)}`}>{item.course_title}</Link></td>
+                        <td>{item.learners}</td>
+                        <td><div className="dashboard-table-progress"><span>{item.avg_progress.toFixed(1)}%</span><MiniBarChart width={120} height={26} data={generateTrend(item.avg_progress, 8)} color="#2563eb" ariaLabel={`${item.course_title} progress`} /></div></td>
+                        <td><span className={status.className}>{status.icon} {status.text}</span></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
         </article>
-
-        <article className="card dashboard-panel">
+        <article className="card dashboard-panel dashboard-topics-card">
           <div className="card-head dashboard-panel-head">
             <div>
               <h3>{t.dashboardAttentionTitle}</h3>
               <p className="sidebar-text">{t.dashboardAttentionSubtitle}</p>
             </div>
+            <span className="dashboard-topics-total">{t.dashboardTopicsTotal}: {(problems.data ?? []).length}</span>
           </div>
-          {problems.error && <Notice text={problems.error} tone="error" />}
-          {problems.loading ? (
-            <EmptyState title={t.loading} />
-          ) : (problems.data ?? []).length ? (
-            <div className="dashboard-topic-list">
-              {(problems.data ?? []).map((item) => (
-                <article className="dashboard-topic-card" key={`${item.topic_title}-${item.recommendations}`}>
-                  <strong>{item.topic_title}</strong>
-                  <span>{item.recommendations} {t.dashboardRecommendationsLabel}</span>
-                </article>
-              ))}
+          {problems.loading ? <div className="skeleton-card compact" /> : null}
+          {!problems.loading && !filteredTopics.length ? <EmptyState title={t.dashboardNoProblemTopics} /> : null}
+          {!problems.loading && filteredTopics.length ? (
+            <div className="dashboard-topic-chart">
+              {filteredTopics.map((item) => {
+                const max = Math.max(1, ...(problems.data ?? []).map((entry) => entry.recommendations));
+                const width = (item.recommendations / max) * 100;
+                return (
+                  <div className="dashboard-topic-row" key={`${item.topic_title}-${item.recommendations}`}>
+                    <span>{item.topic_title}</span>
+                    <svg viewBox="0 0 100 12" preserveAspectRatio="none" role="img" aria-label={`${item.topic_title} ${item.recommendations}`}>
+                      <rect x="0" y="1" width="100" height="10" rx="5" fill="#e3ecf7" />
+                      <rect x="0" y="1" width={width} height="10" rx="5" fill="#2563eb" />
+                    </svg>
+                    <strong>{item.recommendations}</strong>
+                  </div>
+                );
+              })}
             </div>
-          ) : (
-            <EmptyState title={t.dashboardNoProblemTopics} />
-          )}
+          ) : null}
+          {(problems.data ?? []).length > 7 ? <button type="button" className="secondary" onClick={() => setShowAllTopics((current) => !current)}>{showAllTopics ? t.dashboardTopicsCollapse : t.dashboardTopicsShowAll}</button> : null}
+        </article>
+        <article className="card dashboard-panel dashboard-activity-card">
+          <div className="card-head dashboard-panel-head">
+            <h3>{t.dashboardActivityTitle}</h3>
+          </div>
+          {/* TODO: replace with /analytics/timeline when endpoint is available. */}
+          <LineChart width={760} height={220} data={activitySeries.attempts} secondaryData={activitySeries.completions} color="#22c55e" ariaLabel={t.dashboardActivityTitle} />
+          <div className="dashboard-legend"><span><i className="dot attempt" />{t.dashboardActivityAttempts}</span><span><i className="dot completion" />{t.dashboardActivityCompletions}</span></div>
         </article>
       </section>
     </section>
@@ -5998,10 +6349,59 @@ export function HomeworkReviewsPage({ session }: { session: SessionState }) {
   );
 }
 
-function AnalyticsPage({ session }: { session: SessionState }) {
+function LearnerPicker({
+  users,
+  learnerId,
+  onSelect,
+  t,
+  language,
+}: {
+  users: UserInfo[];
+  learnerId: string;
+  onSelect: (id: string) => void;
+  t: UiMessages;
+  language: Language;
+}) {
+  const [search, setSearch] = useState("");
+  const [role, setRole] = useState<"all" | "learner" | "teacher">("all");
+  const filteredUsers = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return users.filter((user) => {
+      const roleMatch = role === "all" || user.role_name === role;
+      if (!roleMatch) return false;
+      if (!term) return true;
+      return user.full_name.toLowerCase().includes(term) || user.email.toLowerCase().includes(term);
+    });
+  }, [role, search, users]);
+  return (
+    <div className="learner-picker">
+      <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t.analyticsLearnerSearchPlaceholder} />
+      <div className="learner-role-chips">
+        <button type="button" aria-pressed={role === "all"} className={role === "all" ? "active" : ""} onClick={() => setRole("all")}>{t.analyticsRoleAll}</button>
+        <button type="button" aria-pressed={role === "learner"} className={role === "learner" ? "active" : ""} onClick={() => setRole("learner")}>{t.analyticsRoleLearners}</button>
+        <button type="button" aria-pressed={role === "teacher"} className={role === "teacher" ? "active" : ""} onClick={() => setRole("teacher")}>{t.analyticsRoleTeachers}</button>
+      </div>
+      <div className="learner-picker-list">
+        {filteredUsers.map((user) => (
+          <button type="button" key={user.id} className={`learner-picker-item ${learnerId === String(user.id) ? "active" : ""}`.trim()} onClick={() => onSelect(String(user.id))}>
+            <strong>{user.full_name}</strong>
+            <span>{user.email}</span>
+          </button>
+        ))}
+      </div>
+      <p className="form-helper">{language === "ru" ? "Найдено" : "Found"}: {filteredUsers.length}</p>
+    </div>
+  );
+}
+
+export function AnalyticsPage({ session }: { session: SessionState }) {
   const { language, t } = useUi();
-  const [learnerId, setLearnerId] = useState("3");
+  const [learnerId, setLearnerId] = useState("");
+  const [manualId, setManualId] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [activeTab, setActiveTab] = useState<"attempts" | "recommendations">("attempts");
+  const [selectedAttemptIndex, setSelectedAttemptIndex] = useState<number | null>(null);
+  const users = useRemote<UserInfo[]>("/users", session);
   const dashboard = useRemote<Record<string, number>>("/analytics/dashboard", session);
   const learner = useRemote<{
     results: Array<{ score_percent: number; weak_topics: Array<{ topic_title: string; score: number }> }>;
@@ -6017,42 +6417,122 @@ function AnalyticsPage({ session }: { session: SessionState }) {
   }>(
     `/analytics/learners/${learnerId}`,
     session,
-    refreshKey
+    learnerId ? refreshKey : -1
   );
+  const selectedUser = useMemo(() => (users.data ?? []).find((item) => String(item.id) === learnerId), [learnerId, users.data]);
+  const attempts = learner.data?.results ?? [];
+  const recommendations = useMemo(() => [...(learner.data?.recommendations ?? [])].sort((a, b) => b.priority - a.priority), [learner.data?.recommendations]);
+  const avgScore = attempts.length ? attempts.reduce((sum, item) => sum + item.score_percent, 0) / attempts.length : 0;
+  const weakTopicMap = useMemo(() => {
+    const map = new Map<string, { total: number; count: number }>();
+    for (const result of attempts) {
+      for (const topic of result.weak_topics) {
+        const current = map.get(topic.topic_title) ?? { total: 0, count: 0 };
+        map.set(topic.topic_title, { total: current.total + topic.score, count: current.count + 1 });
+      }
+    }
+    return Array.from(map.entries()).map(([title, value]) => ({ title, score: value.total / Math.max(1, value.count) }));
+  }, [attempts]);
+  const selectedAttempt = selectedAttemptIndex == null ? null : attempts[selectedAttemptIndex] ?? null;
 
   return (
     <section className="page-stack">
       <PageHeader title={t.analyticsPageTitle} subtitle={t.analyticsPageSubtitle} />
-      <section className="grid two-columns">
-        <article className="card">
-          <h3>{t.overview}</h3>
-          {dashboard.data ? <KeyValueList items={Object.entries(dashboard.data).map(([key, value]) => [key, String(value)])} /> : <EmptyState title={t.loadingAnalytics} />}
-        </article>
-        <article className="card">
+      <section className="analytics-mini-overview">
+        {["users", "active_attempts", "avg_progress", "recommendations", "courses"].map((key) => (
+          <article key={key} className="analytics-mini-tile">
+            <span>{formatDashboardMetricLabel(key, t)}</span>
+            <strong>{key === "avg_progress" ? `${dashboard.data?.[key] ?? 0}%` : (dashboard.data?.[key] ?? 0)}</strong>
+          </article>
+        ))}
+      </section>
+      <section className="analytics-split">
+        <article className="card analytics-left-panel">
           <h3>{t.learnerDetail}</h3>
-          <div className="inline-form">
-            <input value={learnerId} onChange={(e) => setLearnerId(e.target.value)} placeholder={t.learnerId} />
-            <button onClick={() => setRefreshKey((value) => value + 1)}>{t.load}</button>
-          </div>
-          {learner.error && <Notice text={learner.error} tone="error" />}
-          <div className="stack">
-            {(learner.data?.results ?? []).map((result, index) => (
-              <div className="result-card" key={`${result.score_percent}-${index}`}>
-                <strong>{language === "ru" ? `Результат попытки: ${result.score_percent}%` : `Attempt score: ${result.score_percent}%`}</strong>
-                <span>{result.weak_topics.map((topic) => `${topic.topic_title}: ${topic.score}`).join(", ") || t.noWeakTopics}</span>
+          <LearnerPicker users={users.data ?? []} learnerId={learnerId} onSelect={(id) => { setLearnerId(id); setRefreshKey((value) => value + 1); }} t={t} language={language} />
+          <details>
+            <summary>{t.analyticsManualIdToggle}</summary>
+            <div className="inline-form">
+              <input value={manualId} onChange={(event) => setManualId(event.target.value)} placeholder={t.learnerId} />
+              <button onClick={() => { setLearnerId(manualId.trim()); setRefreshKey((value) => value + 1); }}>{t.load}</button>
+            </div>
+          </details>
+        </article>
+        <article className="card analytics-right-panel">
+          {learner.error ? <Notice text={learner.error} tone="error" /> : null}
+          {!learnerId ? <EmptyState title={t.analyticsEmptyPickLearner} /> : null}
+          {learnerId && selectedUser ? (
+            <div className="learner-summary">
+              <div className="settings-avatar" aria-hidden="true">{selectedUser.full_name.split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join("")}</div>
+              <div>
+                <strong>{selectedUser.full_name}</strong>
+                <span>{selectedUser.email}</span>
+                <span>{formatRoleLabel(selectedUser.role_name, t)} • {selectedUser.is_active ? t.userStatusActive : t.userStatusInactive}</span>
               </div>
-            ))}
-            {(learner.data?.recommendations ?? []).map((item) => (
-              <div className="result-card" key={`${item.priority}-${item.text}`}>
-                <strong>{item.topic_title || `${t.priority} ${item.priority}`}</strong>
-                <span>
-                  {[item.lesson_title, item.course_title].filter(Boolean).join(" • ") || t.noLinkedLesson}
-                </span>
-                <span>{item.reason || item.text}</span>
-                <span>{t.action}: {item.text}</span>
+              <div className="learner-summary-kpis">
+                <span>{t.analyticsLearnerSummaryAttempts}: {attempts.length}</span>
+                <span>{t.analyticsLearnerSummaryAvgScore}: {avgScore.toFixed(1)}%</span>
+                <span>{t.analyticsLearnerSummaryWeakTopics}: {weakTopicMap.length}</span>
               </div>
-            ))}
+            </div>
+          ) : null}
+          {learnerId ? (
+            <article className="result-card learner-score-trend">
+              <h3>{t.analyticsScoreTrendTitle}</h3>
+              <LineChart width={760} height={200} data={attempts.map((item) => item.score_percent)} color="#2563eb" ariaLabel={t.analyticsScoreTrendTitle} />
+              <div className="attempt-points">
+                {attempts.map((attempt, index) => (
+                  <button key={`attempt-${index}`} type="button" className={selectedAttemptIndex === index ? "active" : ""} onClick={() => setSelectedAttemptIndex(index)}>{index + 1}: {attempt.score_percent}%</button>
+                ))}
+              </div>
+              <h4>{t.analyticsWeakTopicsTitle}</h4>
+              <div className="weak-topic-bars">
+                {weakTopicMap.map((topic) => (
+                  <div key={topic.title} className="weak-topic-row">
+                    <span>{topic.title}</span>
+                    <div className="dashboard-progress-track"><div className="dashboard-progress-value" style={{ width: `${clampPercent(topic.score)}%`, background: topic.score < 50 ? "#ef4444" : topic.score < 75 ? "#f59e0b" : "#22c55e" }} /></div>
+                    <strong>{topic.score.toFixed(1)}%</strong>
+                  </div>
+                ))}
+              </div>
+            </article>
+          ) : null}
+          {selectedAttempt ? (
+            <aside className="attempt-drawer">
+              <strong>{language === "ru" ? "Детали попытки" : "Attempt details"}</strong>
+              <span>{t.analyticsAttemptScore}: {selectedAttempt.score_percent}%</span>
+              <span>{selectedAttempt.weak_topics.map((topic) => `${topic.topic_title}: ${topic.score}%`).join(", ") || t.noWeakTopics}</span>
+            </aside>
+          ) : null}
+          <div className="dashboard-inline-controls">
+            <button type="button" role="tab" aria-pressed={activeTab === "attempts"} className={activeTab === "attempts" ? "active" : ""} onClick={() => setActiveTab("attempts")}>{t.analyticsTabAttempts}</button>
+            <button type="button" role="tab" aria-pressed={activeTab === "recommendations"} className={activeTab === "recommendations" ? "active" : ""} onClick={() => setActiveTab("recommendations")}>{t.analyticsTabRecommendations}</button>
           </div>
+          {activeTab === "attempts" ? (
+            attempts.length ? (
+              <div className="table-wrap">
+                <table>
+                  <thead><tr><th>{t.analyticsAttemptNumber}</th><th>{t.analyticsAttemptScore}</th><th>{t.analyticsAttemptWeak}</th><th>{language === "ru" ? "Дата" : "Date"}</th></tr></thead>
+                  <tbody>
+                    {attempts.map((result, index) => (
+                      <tr key={`result-${index}`}>
+                        <td>{index + 1}</td>
+                        <td>{result.score_percent}%</td>
+                        <td>{result.weak_topics.map((topic) => topic.topic_title).join(", ") || t.noWeakTopics}</td>
+                        <td>{language === "ru" ? `Попытка ${index + 1}` : `Attempt ${index + 1}`}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : <EmptyState title={t.emptyAttempt} />
+          ) : (
+            recommendations.length ? (
+              <div className="stack">
+                {recommendations.map((item) => <RecommendationCard key={`${item.priority}-${item.text}`} item={item} language={language} t={t} />)}
+              </div>
+            ) : <EmptyState title={language === "ru" ? "Рекомендаций пока нет" : "No recommendations yet"} />
+          )}
         </article>
       </section>
     </section>

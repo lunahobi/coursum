@@ -130,6 +130,15 @@ String attemptHistoryEmptyLabel(AppStrings strings) => strings.isRu
     ? 'Пока нет завершенных попыток. Пройдите адаптивный тест, и история появится здесь.'
     : 'No completed attempts yet. Finish an adaptive test and the history will appear here.';
 
+String attemptHistoryPageLabel(AppStrings strings, int page, int totalPages) =>
+    strings.isRu ? 'Страница $page из $totalPages' : 'Page $page of $totalPages';
+
+String previousPageLabel(AppStrings strings) =>
+    strings.isRu ? 'Назад' : 'Previous';
+
+String nextPageLabel(AppStrings strings) =>
+    strings.isRu ? 'Далее' : 'Next';
+
 String viewAttemptHistoryLabel(AppStrings strings) =>
     strings.isRu ? 'История попыток' : 'Attempt history';
 
@@ -615,6 +624,32 @@ class AttemptHistoryItem {
             ? null
             : DateTime.tryParse(json['finished_at'] as String),
       );
+}
+
+class AttemptHistoryPage {
+  const AttemptHistoryPage({
+    required this.items,
+    required this.page,
+    required this.pageSize,
+    required this.total,
+  });
+
+  final List<AttemptHistoryItem> items;
+  final int page;
+  final int pageSize;
+  final int total;
+
+  factory AttemptHistoryPage.fromJson(Map<String, dynamic> json) {
+    final itemsPayload = json['items'] as List<dynamic>? ?? const [];
+    return AttemptHistoryPage(
+      items: itemsPayload
+          .map((item) => AttemptHistoryItem.fromJson(jsonMap(item)))
+          .toList(),
+      page: json['page'] as int? ?? 1,
+      pageSize: json['page_size'] as int? ?? 20,
+      total: json['total'] as int? ?? 0,
+    );
+  }
 }
 
 class AttemptReviewOption {
@@ -1455,16 +1490,31 @@ class ApiClient {
     };
   }
 
-  Future<List<AttemptHistoryItem>> getAttemptHistory(
+  Future<AttemptHistoryPage> getAttemptHistory(
     SessionState session, {
     int? courseId,
+    int page = 1,
+    int pageSize = 10,
   }) async {
-    final query = courseId == null ? '' : '?course_id=$courseId';
-    final payload = await request('/attempts/history$query', session: session)
-        as List<dynamic>;
-    return payload
-        .map((item) => AttemptHistoryItem.fromJson(jsonMap(item)))
-        .toList();
+    final queryParts = <String>[
+      if (courseId != null) 'course_id=$courseId',
+      'page=$page',
+      'page_size=$pageSize',
+    ];
+    final query = queryParts.isEmpty ? '' : '?${queryParts.join('&')}';
+    final payload = await request('/attempts/history$query', session: session);
+    if (payload is List<dynamic>) {
+      final items = payload
+          .map((item) => AttemptHistoryItem.fromJson(jsonMap(item)))
+          .toList();
+      return AttemptHistoryPage(
+        items: items,
+        page: page,
+        pageSize: pageSize,
+        total: items.length,
+      );
+    }
+    return AttemptHistoryPage.fromJson(jsonMap(payload));
   }
 
   Future<AttemptReviewPayload> getAttemptReview(
@@ -4706,9 +4756,12 @@ class AttemptHistoryScreen extends StatefulWidget {
 }
 
 class _AttemptHistoryScreenState extends State<AttemptHistoryScreen> {
+  static const int _pageSize = 10;
   List<AttemptHistoryItem> items = const [];
   bool loading = true;
   String error = '';
+  int currentPage = 1;
+  int totalItems = 0;
 
   @override
   void initState() {
@@ -4716,7 +4769,8 @@ class _AttemptHistoryScreenState extends State<AttemptHistoryScreen> {
     load();
   }
 
-  Future<void> load() async {
+  Future<void> load({int? page}) async {
+    final targetPage = page ?? currentPage;
     setState(() {
       loading = true;
       error = '';
@@ -4725,9 +4779,15 @@ class _AttemptHistoryScreenState extends State<AttemptHistoryScreen> {
       final payload = await widget.api.getAttemptHistory(
         widget.session,
         courseId: widget.courseId,
+        page: targetPage,
+        pageSize: _pageSize,
       );
       if (mounted) {
-        setState(() => items = payload);
+        setState(() {
+          items = payload.items;
+          currentPage = payload.page;
+          totalItems = payload.total;
+        });
       }
     } catch (exception) {
       if (mounted) {
@@ -4740,6 +4800,13 @@ class _AttemptHistoryScreenState extends State<AttemptHistoryScreen> {
         setState(() => loading = false);
       }
     }
+  }
+
+  int get totalPages {
+    if (totalItems <= 0) {
+      return 1;
+    }
+    return ((totalItems - 1) ~/ _pageSize) + 1;
   }
 
   Future<void> openAttemptReview(AttemptHistoryItem item) async {
@@ -4766,11 +4833,14 @@ class _AttemptHistoryScreenState extends State<AttemptHistoryScreen> {
       body: loading
           ? const Center(child: CircularProgressIndicator())
           : error.isNotEmpty
-              ? ErrorPanel(text: error, onRetry: load)
+              ? ErrorPanel(
+                  text: error,
+                  onRetry: () => unawaited(load(page: currentPage)),
+                )
               : items.isEmpty
                   ? ErrorPanel(text: attemptHistoryEmptyLabel(strings))
                   : RefreshIndicator(
-                      onRefresh: load,
+                      onRefresh: () => load(page: currentPage),
                       child: ListView(
                         padding: const EdgeInsets.all(16),
                         children: [
@@ -4795,6 +4865,37 @@ class _AttemptHistoryScreenState extends State<AttemptHistoryScreen> {
                               ),
                             ),
                           ),
+                          if (totalItems > _pageSize) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                OutlinedButton(
+                                  onPressed: currentPage > 1
+                                      ? () => unawaited(
+                                            load(page: currentPage - 1),
+                                          )
+                                      : null,
+                                  child: Text(previousPageLabel(strings)),
+                                ),
+                                Text(
+                                  attemptHistoryPageLabel(
+                                    strings,
+                                    currentPage,
+                                    totalPages,
+                                  ),
+                                ),
+                                OutlinedButton(
+                                  onPressed: currentPage < totalPages
+                                      ? () => unawaited(
+                                            load(page: currentPage + 1),
+                                          )
+                                      : null,
+                                  child: Text(nextPageLabel(strings)),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ),

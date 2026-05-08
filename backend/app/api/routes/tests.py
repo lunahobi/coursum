@@ -423,10 +423,12 @@ def start_test(
 @router.get("/attempts/history")
 def attempt_history(
     course_id: int | None = None,
+    page: int | None = Query(default=None, ge=1),
+    page_size: int | None = Query(default=None, ge=1, le=100),
     membership: Membership = Depends(active_membership),
     tenant: Tenant = Depends(tenant_context),
     db: Session = Depends(get_db),
-) -> list[dict]:
+) -> list[dict] | dict:
     query = (
         select(
             Attempt.id,
@@ -453,9 +455,39 @@ def attempt_history(
     )
     if course_id is not None:
         query = query.where(Course.id == course_id)
-    rows = db.execute(query).all()
+    resolved_page = page or 1
+    resolved_page_size = page_size or 20
+    if page is None and page_size is None:
+        rows = db.execute(query).all()
+        total = len(rows)
+    else:
+        count_query = (
+            select(func.count(Attempt.id))
+            .join(Result, Result.attempt_id == Attempt.id)
+            .join(Test, Test.id == Attempt.test_id)
+            .join(Course, Course.id == Test.course_id)
+            .where(
+                Attempt.tenant_id == tenant.id,
+                Attempt.user_id == membership.user_id,
+            )
+        )
+        if course_id is not None:
+            count_query = count_query.where(Course.id == course_id)
+        total = db.scalar(count_query) or 0
+        rows = db.execute(
+            query
+            .offset((resolved_page - 1) * resolved_page_size)
+            .limit(resolved_page_size)
+        ).all()
     if not rows:
-        return []
+        if page is None and page_size is None:
+            return []
+        return {
+            "items": [],
+            "page": resolved_page,
+            "page_size": resolved_page_size,
+            "total": total,
+        }
 
     attempt_ids = [row[0] for row in rows]
     answer_stats = {
@@ -521,7 +553,14 @@ def attempt_history(
                 "finished_at": finished_at,
             }
         )
-    return payload
+    if page is None and page_size is None:
+        return payload
+    return {
+        "items": payload,
+        "page": resolved_page,
+        "page_size": resolved_page_size,
+        "total": total,
+    }
 
 
 @router.get("/attempts/{attempt_id}/review")

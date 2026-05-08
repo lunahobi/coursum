@@ -84,6 +84,14 @@ def test_learner_can_complete_test_and_get_recommendations(client):
     assert first_attempt["correct_answers"] == 1
     assert first_attempt["total_questions"] == 2
     assert first_attempt["weak_topics"][0]["topic_title"] == "Passwords"
+    history_paged = client.get("/api/v1/attempts/history?page=1&page_size=1", headers=headers)
+    assert history_paged.status_code == 200
+    history_paged_payload = history_paged.json()
+    assert history_paged_payload["page"] == 1
+    assert history_paged_payload["page_size"] == 1
+    assert history_paged_payload["total"] >= 1
+    assert len(history_paged_payload["items"]) == 1
+    assert history_paged_payload["items"][0]["attempt_id"] == attempt_id
     review = client.get(f"/api/v1/attempts/{attempt_id}/review", headers=headers)
     assert review.status_code == 200
     review_payload = review.json()
