@@ -31,3 +31,25 @@ class UserRead(ORMModel):
     full_name: str
     is_active: bool
     role_name: str | None = None
+
+
+class GroupRead(ORMModel):
+    id: int
+    name: str
+    member_count: int
+
+
+class GroupCreate(BaseModel):
+    name: str
+
+
+class GroupMemberRead(ORMModel):
+    id: int
+    group_id: int
+    user_id: int
+    full_name: str
+    email: str
+
+
+class GroupMemberCreate(BaseModel):
+    user_id: int

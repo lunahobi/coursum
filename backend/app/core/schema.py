@@ -6,6 +6,9 @@ RUNTIME_COLUMN_DEFINITIONS_SQLITE = {
     "assignments": {
         "page_id": "VARCHAR(120)",
     },
+    "course_assignments": {
+        "created_at": "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP",
+    },
     "questions": {
         "shuffle_options": "BOOLEAN NOT NULL DEFAULT 0",
     },
@@ -36,6 +39,9 @@ RUNTIME_COLUMN_DEFINITIONS_SQLITE = {
 RUNTIME_COLUMN_DEFINITIONS_POSTGRES = {
     "assignments": {
         "page_id": "VARCHAR(120)",
+    },
+    "course_assignments": {
+        "created_at": "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP",
     },
     "questions": {
         "shuffle_options": "BOOLEAN NOT NULL DEFAULT FALSE",

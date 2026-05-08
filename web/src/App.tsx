@@ -286,7 +286,50 @@ const MESSAGES = {
     nextPage: "Далее",
     noQuestionsMatchSearch: "По вашему запросу вопросы не найдены.",
     assignmentsPageTitle: "Назначения",
-    assignmentsPageSubtitle: "Назначайте курс конкретному слушателю.",
+    assignmentsPageSubtitle: "Управляйте доступом к курсам для слушателей и групп.",
+    assignmentsCoursesTitle: "Курсы",
+    assignmentsCourseSearchPlaceholder: "Поиск по названию или описанию",
+    assignmentsCourseSearchEmpty: "Курсы не найдены",
+    assignmentsCourseStatus_all: "Все",
+    assignmentsCourseStatus_published: "Опубликованные",
+    assignmentsCourseStatus_draft: "Черновики",
+    assignmentsCourseStatus_archived: "Архив",
+    assignmentsTotal: "Всего",
+    assignmentsAssigneesCount: "Назначений",
+    assignmentsPickCourseHint: "Выберите курс слева, чтобы увидеть назначения",
+    assignmentsTabAssigned: "Назначены",
+    assignmentsTabAssign: "Назначить",
+    assignmentsLearnerSearchPlaceholder: "Поиск по имени или email",
+    assignmentsAlreadyAssigned: "Уже назначен",
+    assignmentsAssignAction: "Назначить",
+    assignmentsRevokeAction: "Отозвать",
+    assignmentsRevokeConfirm: "Отозвать доступ у этого слушателя?",
+    assignmentsBulkAssignAction: "Назначить выбранных ({count})",
+    assignmentsModeIndividual: "По одному",
+    assignmentsModeGroup: "По группе",
+    assignmentsGroupPlaceholder: "Выберите группу",
+    assignmentsCreateGroupPlaceholder: "Название новой группы",
+    assignmentsCreateGroupAction: "Создать группу",
+    assignmentsCreateGroupSuccess: "Группа создана",
+    assignmentsAssignWholeGroup: "Назначить всю группу: {name}",
+    assignmentsRoleAll: "Все",
+    assignmentsRoleLearner: "Слушатели",
+    assignmentsRoleTeacher: "Преподаватели",
+    assignmentsAssignedAt: "Назначено",
+    assignmentsByGroup: "По группе: {name}",
+    assignmentsNoAssigned: "У этого курса пока нет назначенных слушателей",
+    assignmentsNoLearners: "Пользователи не найдены",
+    assignmentsNoGroups: "Группы не найдены",
+    assignmentsAssignSuccess: "Назначение выполнено",
+    assignmentsRevokeSuccess: "Доступ отозван",
+    assignmentsGroupSearchPlaceholder: "Поиск группы",
+    assignmentsBulkAssigning: "Назначаем...",
+    assignmentsGroupMemberCount: "Участников: {count}",
+    assignmentsGroupMembersTitle: "Участники группы",
+    assignmentsGroupMemberSearchPlaceholder: "Поиск участника группы",
+    assignmentsNoGroupMembers: "В группе пока нет участников",
+    assignmentsAddToGroupAction: "Добавить в группу",
+    assignmentsRemoveFromGroupAction: "Убрать",
     assignCourse: "Назначить курс",
     assign: "Назначить",
     howToDemo: "Как демонстрировать",
@@ -329,6 +372,8 @@ const MESSAGES = {
     tenantSwitchSubtitle: "Переключайтесь между организациями, доступными текущей учетной записи.",
     dashboardTitle: "Дашборд",
     dashboardSubtitle: "Операционный обзор по текущей организации.",
+    dashboardSubtitleSelectedSingle: "Операционный обзор по выбранному курсу.",
+    dashboardSubtitleSelectedMany: "Операционный обзор по выбранным курсам.",
     loadingMetrics: "Загрузка метрик...",
     courseProgress: "Прогресс по курсам",
     columnCourse: "Курс",
@@ -346,8 +391,12 @@ const MESSAGES = {
     metricRecommendationsBacklog: "Активные рекомендации",
     dashboardCourseHealthTitle: "Состояние курсов",
     dashboardCourseHealthSubtitle: "По этим карточкам видно, где обучение уже двигается, а где слушатели застревают.",
+    dashboardCourseHealthSubtitleSelectedSingle: "Показатели обучения по выбранному курсу.",
+    dashboardCourseHealthSubtitleSelectedMany: "Показатели обучения по выбранным курсам.",
     dashboardAttentionTitle: "Что требует внимания",
     dashboardAttentionSubtitle: "Темы ниже чаще всего попадают в рекомендации после адаптивных тестов.",
+    dashboardAttentionSubtitleSelectedSingle: "Темы ниже чаще всего попадают в рекомендации по выбранному курсу.",
+    dashboardAttentionSubtitleSelectedMany: "Темы ниже чаще всего попадают в рекомендации по выбранным курсам.",
     dashboardNoCourseProgress: "Пока нет назначений или прогресса по курсам.",
     dashboardNoProblemTopics: "Пока нет тем, требующих внимания.",
     dashboardLearnersLabel: "слушателей",
@@ -359,6 +408,17 @@ const MESSAGES = {
     dashboardFilterCourses: "Курсы",
     dashboardRefresh: "Обновить",
     dashboardCompareToPrev: "к прошлому периоду",
+    dashboardDeltaUnavailable: "Период сравнения недоступен",
+    dashboardKpiLearnersCaption: "Активные слушатели",
+    dashboardKpiActiveAttemptsCaption: "Открытые попытки",
+    dashboardKpiAvgProgressCaption: "По всем курсам",
+    dashboardKpiAvgProgressCaptionSelectedSingle: "По выбранному курсу",
+    dashboardKpiAvgProgressCaptionSelectedMany: "По выбранным курсам",
+    dashboardKpiRecommendationsCaption: "Рекомендации к действию",
+    dashboardCourseFilterTrigger: "Все курсы",
+    dashboardCourseFilterTriggerSelected: "Выбрано: {n}",
+    dashboardCourseFilterClear: "Очистить",
+    attemptDrawerClose: "Закрыть",
     dashboardKpiLearners: "Слушатели",
     dashboardKpiActiveAttempts: "Активные попытки",
     dashboardKpiAvgProgress: "Средний прогресс",
@@ -377,6 +437,7 @@ const MESSAGES = {
     dashboardActivityTitle: "Активность за период",
     dashboardActivityAttempts: "Попытки",
     dashboardActivityCompletions: "Завершения",
+    dashboardActivityExplanation: "Синяя линия — попытки, зеленая — завершения. График показывает динамику количества событий по шагам выбранного периода.",
     dashboardTopicsTotal: "Всего тем под риском",
     dashboardTopicsShowAll: "Показать все",
     dashboardTopicsCollapse: "Свернуть",
@@ -686,7 +747,50 @@ const MESSAGES = {
     nextPage: "Next",
     noQuestionsMatchSearch: "No questions match your search.",
     assignmentsPageTitle: "Assignments",
-    assignmentsPageSubtitle: "Assign a course to an individual learner.",
+    assignmentsPageSubtitle: "Manage course access for learners and groups.",
+    assignmentsCoursesTitle: "Courses",
+    assignmentsCourseSearchPlaceholder: "Search by title or description",
+    assignmentsCourseSearchEmpty: "No courses found",
+    assignmentsCourseStatus_all: "All",
+    assignmentsCourseStatus_published: "Published",
+    assignmentsCourseStatus_draft: "Drafts",
+    assignmentsCourseStatus_archived: "Archive",
+    assignmentsTotal: "Total",
+    assignmentsAssigneesCount: "Assignees",
+    assignmentsPickCourseHint: "Choose a course on the left to view assignments",
+    assignmentsTabAssigned: "Assigned",
+    assignmentsTabAssign: "Assign",
+    assignmentsLearnerSearchPlaceholder: "Search by name or email",
+    assignmentsAlreadyAssigned: "Already assigned",
+    assignmentsAssignAction: "Assign",
+    assignmentsRevokeAction: "Revoke",
+    assignmentsRevokeConfirm: "Revoke access for this learner?",
+    assignmentsBulkAssignAction: "Assign selected ({count})",
+    assignmentsModeIndividual: "Individual",
+    assignmentsModeGroup: "By group",
+    assignmentsGroupPlaceholder: "Choose group",
+    assignmentsCreateGroupPlaceholder: "New group name",
+    assignmentsCreateGroupAction: "Create group",
+    assignmentsCreateGroupSuccess: "Group created",
+    assignmentsAssignWholeGroup: "Assign whole group: {name}",
+    assignmentsRoleAll: "All",
+    assignmentsRoleLearner: "Learners",
+    assignmentsRoleTeacher: "Teachers",
+    assignmentsAssignedAt: "Assigned",
+    assignmentsByGroup: "By group: {name}",
+    assignmentsNoAssigned: "This course does not have assigned learners yet",
+    assignmentsNoLearners: "No users found",
+    assignmentsNoGroups: "No groups found",
+    assignmentsAssignSuccess: "Assignment complete",
+    assignmentsRevokeSuccess: "Access revoked",
+    assignmentsGroupSearchPlaceholder: "Search group",
+    assignmentsBulkAssigning: "Assigning...",
+    assignmentsGroupMemberCount: "Members: {count}",
+    assignmentsGroupMembersTitle: "Group members",
+    assignmentsGroupMemberSearchPlaceholder: "Search group member",
+    assignmentsNoGroupMembers: "This group has no members yet",
+    assignmentsAddToGroupAction: "Add to group",
+    assignmentsRemoveFromGroupAction: "Remove",
     assignCourse: "Assign course",
     assign: "Assign",
     howToDemo: "How to demo",
@@ -729,6 +833,8 @@ const MESSAGES = {
     tenantSwitchSubtitle: "Move between organizations available to the current account.",
     dashboardTitle: "Dashboard",
     dashboardSubtitle: "Operational overview for the current organization.",
+    dashboardSubtitleSelectedSingle: "Operational overview for the selected course.",
+    dashboardSubtitleSelectedMany: "Operational overview for selected courses.",
     loadingMetrics: "Loading metrics...",
     courseProgress: "Course progress",
     columnCourse: "Course",
@@ -746,8 +852,12 @@ const MESSAGES = {
     metricRecommendationsBacklog: "Active recommendations",
     dashboardCourseHealthTitle: "Course health",
     dashboardCourseHealthSubtitle: "These cards show which courses are progressing well and which ones are stalling.",
+    dashboardCourseHealthSubtitleSelectedSingle: "Learning metrics for the selected course.",
+    dashboardCourseHealthSubtitleSelectedMany: "Learning metrics for selected courses.",
     dashboardAttentionTitle: "Needs attention",
     dashboardAttentionSubtitle: "The topics below appear most often in adaptive-test recommendations.",
+    dashboardAttentionSubtitleSelectedSingle: "The topics below appear most often in recommendations for the selected course.",
+    dashboardAttentionSubtitleSelectedMany: "The topics below appear most often in recommendations for selected courses.",
     dashboardNoCourseProgress: "No course assignments or progress yet.",
     dashboardNoProblemTopics: "No priority topics yet.",
     dashboardLearnersLabel: "learners",
@@ -759,6 +869,17 @@ const MESSAGES = {
     dashboardFilterCourses: "Courses",
     dashboardRefresh: "Refresh",
     dashboardCompareToPrev: "vs previous period",
+    dashboardDeltaUnavailable: "No comparison period",
+    dashboardKpiLearnersCaption: "Active learners",
+    dashboardKpiActiveAttemptsCaption: "Open attempts",
+    dashboardKpiAvgProgressCaption: "Across all courses",
+    dashboardKpiAvgProgressCaptionSelectedSingle: "For selected course",
+    dashboardKpiAvgProgressCaptionSelectedMany: "For selected courses",
+    dashboardKpiRecommendationsCaption: "Action items",
+    dashboardCourseFilterTrigger: "All courses",
+    dashboardCourseFilterTriggerSelected: "Selected: {n}",
+    dashboardCourseFilterClear: "Clear",
+    attemptDrawerClose: "Close",
     dashboardKpiLearners: "Learners",
     dashboardKpiActiveAttempts: "Active attempts",
     dashboardKpiAvgProgress: "Avg progress",
@@ -777,6 +898,7 @@ const MESSAGES = {
     dashboardActivityTitle: "Activity over period",
     dashboardActivityAttempts: "Attempts",
     dashboardActivityCompletions: "Completions",
+    dashboardActivityExplanation: "Blue line shows attempts, green line shows completions. The chart displays event-count trend over the selected period steps.",
     dashboardTopicsTotal: "Topics at risk",
     dashboardTopicsShowAll: "Show all",
     dashboardTopicsCollapse: "Collapse",
@@ -1032,6 +1154,33 @@ function buildLinePath(data: number[], width: number, height: number, padding = 
   }).join(" ");
 }
 
+const SPARKLINE_PADDING = 6;
+const LINE_CHART_PADDING = 8;
+
+function maxValueIndex(data: number[]) {
+  if (!data.length) {
+    return -1;
+  }
+  let best = 0;
+  for (let i = 1; i < data.length; i++) {
+    if (data[i] > data[best]) {
+      best = i;
+    }
+  }
+  return best;
+}
+
+function linePointAtIndex(data: number[], index: number, width: number, height: number, padding: number) {
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const span = Math.max(1, max - min);
+  const x = padding + ((width - padding * 2) * index) / Math.max(1, data.length - 1);
+  const y = height - padding - ((data[index] - min) / span) * (height - padding * 2);
+  return { x: Number(x.toFixed(2)), y: Number(y.toFixed(2)) };
+}
+
+type LineChartSeries = { name: string; data: number[]; color: string };
+
 function seededNoise(seed: number) {
   const value = Math.sin(seed * 12.9898) * 43758.5453;
   return value - Math.floor(value);
@@ -1056,11 +1205,30 @@ function getProgressStatus(progress: number, t: UiMessages) {
   return { text: t.dashboardStatusOnTrack, icon: "✓", className: "status-chip ok" };
 }
 
-function Sparkline({ width, height, data, color, ariaLabel }: { width: number; height: number; data: number[]; color: string; ariaLabel: string }) {
-  const path = useMemo(() => buildLinePath(data, width, height), [color, data, height, width]);
+function Sparkline({
+  width,
+  height,
+  data,
+  color,
+  ariaLabel,
+  primary,
+}: {
+  width: number;
+  height: number;
+  data: number[];
+  color: string;
+  ariaLabel: string;
+  primary?: boolean;
+}) {
+  const path = useMemo(() => buildLinePath(data, width, height, SPARKLINE_PADDING), [data, height, width]);
+  const areaPath =
+    primary && path
+      ? `${path} L ${width - SPARKLINE_PADDING} ${height - SPARKLINE_PADDING} L ${SPARKLINE_PADDING} ${height - SPARKLINE_PADDING} Z`
+      : "";
   return (
-    <svg className="sparkline" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img" aria-label={ariaLabel}>
-      <path d={path} fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" />
+    <svg className="sparkline" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" role="img" aria-label={ariaLabel}>
+      {areaPath ? <path d={areaPath} fill="rgba(255,255,255,0.12)" stroke="none" /> : null}
+      <path d={path} fill="none" stroke={color} strokeWidth="2.4" strokeLinecap="round" />
     </svg>
   );
 }
@@ -1091,29 +1259,40 @@ function MiniBarChart({ width, height, data, color, ariaLabel }: { width: number
   );
 }
 
-function LineChart({
-  width,
-  height,
-  data,
-  color,
-  ariaLabel,
-  secondaryData,
-}: {
-  width: number;
-  height: number;
-  data: number[];
-  color: string;
-  ariaLabel: string;
-  secondaryData?: number[];
-}) {
-  const primaryPath = useMemo(() => buildLinePath(data, width, height), [data, height, width]);
-  const secondaryPath = useMemo(() => secondaryData ? buildLinePath(secondaryData, width, height) : "", [height, secondaryData, width]);
+function LineChart({ width, height, ariaLabel, series }: { width: number; height: number; ariaLabel: string; series: LineChartSeries[] }) {
+  const p = LINE_CHART_PADDING;
+  const innerTop = p;
+  const innerBottom = height - p;
+  const innerH = innerBottom - innerTop;
+  const gridYs = [innerTop + innerH * 0.25, innerTop + innerH * 0.5, innerTop + innerH * 0.75];
+  const seriesPaths = useMemo(
+    () =>
+      series.map((s) => ({
+        name: s.name,
+        color: s.color,
+        data: s.data,
+        path: buildLinePath(s.data, width, height, p),
+        maxIdx: maxValueIndex(s.data),
+      })),
+    [height, series, width],
+  );
   return (
-    <svg className="line-chart" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img" aria-label={ariaLabel}>
-      <line x1="8" y1={height - 8} x2={width - 8} y2={height - 8} stroke="#d7e2ef" strokeWidth="1" />
-      <line x1="8" y1="8" x2="8" y2={height - 8} stroke="#d7e2ef" strokeWidth="1" />
-      {secondaryPath ? <path d={secondaryPath} fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" /> : null}
-      <path d={primaryPath} fill="none" stroke={color} strokeWidth="2.4" strokeLinecap="round" />
+    <svg className="line-chart" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet" role="img" aria-label={ariaLabel}>
+      {gridYs.map((y, index) => (
+        <line key={`grid-${index}`} x1={p} y1={y} x2={width - p} y2={y} stroke="#eef2f7" strokeWidth="1" />
+      ))}
+      <line x1={p} y1={innerBottom} x2={width - p} y2={innerBottom} stroke="#d7e2ef" strokeWidth="1" />
+      <line x1={p} y1={p} x2={p} y2={innerBottom} stroke="#d7e2ef" strokeWidth="1" />
+      {seriesPaths.map((s) =>
+        s.path ? <path key={s.name} d={s.path} fill="none" stroke={s.color} strokeWidth="2.2" strokeLinecap="round" /> : null,
+      )}
+      {seriesPaths.map((s) => {
+        if (s.maxIdx < 0 || !s.data.length) {
+          return null;
+        }
+        const pt = linePointAtIndex(s.data, s.maxIdx, width, height, p);
+        return <circle key={`${s.name}-peak`} cx={pt.x} cy={pt.y} r="3.5" fill={s.color} />;
+      })}
     </svg>
   );
 }
@@ -1121,28 +1300,36 @@ function LineChart({
 function KpiCard({
   label,
   value,
-  delta,
   trendData,
   primary,
   compareLabel,
+  caption,
 }: {
   label: string;
   value: string;
-  delta: number;
   trendData: number[];
   primary?: boolean;
   compareLabel: string;
+  caption: string;
 }) {
-  const positive = delta >= 0;
   return (
     <article className={`dashboard-kpi-card ${primary ? "primary" : ""}`.trim()}>
       <div className="dashboard-kpi-head">
         <span>{label}</span>
-        <span className={`delta-chip ${positive ? "up" : "down"}`}>{positive ? "+" : ""}{delta.toFixed(1)}%</span>
+        <span className="kpi-meta-chip">{compareLabel}</span>
       </div>
       <strong>{value}</strong>
-      <Sparkline width={220} height={54} data={trendData} color={primary ? "#93c5fd" : "#1d4ed8"} ariaLabel={`${label} trend`} />
-      <small>{compareLabel}</small>
+      {primary ? (
+        <Sparkline
+          width={220}
+          height={54}
+          data={trendData}
+          color="rgba(255,255,255,0.85)"
+          ariaLabel={`${label} trend`}
+          primary
+        />
+      ) : null}
+      <span className="kpi-caption">{caption}</span>
     </article>
   );
 }
@@ -1164,16 +1351,18 @@ function RecommendationCard({
   language: Language;
   t: UiMessages;
 }) {
-  const priority = clampPercent(item.priority * 20) / 20;
+  const priority = Math.max(1, Math.min(5, Math.round(item.priority)));
   const priorityClass = priority >= 4 ? "p-critical" : priority >= 3 ? "p-high" : priority >= 2 ? "p-medium" : "p-low";
   return (
     <article className="recommendation-card">
-      <span className={`priority-badge ${priorityClass}`}>{t.priority}: {item.priority}</span>
+      <header className="recommendation-head">
+        <span className={`priority-badge ${priorityClass}`}>{t.priority}: {priority}</span>
+        {item.signal_level ? <span className="signal-chip">{item.signal_level}</span> : null}
+      </header>
       <strong>{item.topic_title || item.text}</strong>
-      <span>{[item.lesson_title, item.course_title].filter(Boolean).join(" • ") || t.noLinkedLesson}</span>
-      <span>{item.reason || (language === "ru" ? "Нужна доработка по теме" : "Follow-up needed for this topic")}</span>
-      <p>{item.text}</p>
-      {item.signal_level ? <span className="signal-chip">{item.signal_level}</span> : null}
+      <span className="recommendation-meta">{[item.lesson_title, item.course_title].filter(Boolean).join(" • ") || t.noLinkedLesson}</span>
+      <span className="recommendation-reason">{item.reason || (language === "ru" ? "Нужна доработка по теме" : "Follow-up needed")}</span>
+      <p className="recommendation-action">{item.text}</p>
     </article>
   );
 }
@@ -1276,6 +1465,16 @@ type AssignmentInfo = {
   due_at?: string | null;
   created_at: string;
 };
+type CourseAssignmentInfo = {
+  id: number;
+  user_id: number | null;
+  group_id: number | null;
+  assigned_by_id: number | null;
+  created_at: string;
+  effective_user_ids: number[];
+};
+type GroupInfo = { id: number; name: string; member_count: number };
+type GroupMemberInfo = { id: number; group_id: number; user_id: number; full_name: string; email: string };
 type AssignmentSubmissionInfo = {
   id: number;
   assignment_id: number;
@@ -2401,6 +2600,15 @@ function LessonPagePreviewCard({ page }: { page: LessonPageDraft }) {
   );
 }
 
+function useDebouncedValue<T>(value: T, delay = 200) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebounced(value), delay);
+    return () => window.clearTimeout(id);
+  }, [delay, value]);
+  return debounced;
+}
+
 function useRemote<T>(path: string | null, session: SessionState | null, refreshKey = 0) {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(Boolean(path && session));
@@ -2437,6 +2645,40 @@ function useRemote<T>(path: string | null, session: SessionState | null, refresh
   }, [path, refreshKey, session]);
 
   return { data, loading, error, setData };
+}
+
+function SearchInput({ value, onChange, placeholder }: { value: string; onChange: (value: string) => void; placeholder: string }) {
+  return (
+    <label className="search-input">
+      <svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16">
+        <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" strokeWidth="2" />
+        <path d="M20 20l-3.5-3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+      <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />
+      {value ? (
+        <button type="button" className="button-ghost search-clear" aria-label="Clear" onClick={() => onChange("")}>
+          x
+        </button>
+      ) : null}
+    </label>
+  );
+}
+
+function Pagination({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (page: number) => void }) {
+  if (totalPages <= 1) {
+    return null;
+  }
+  return (
+    <nav className="pagination" aria-label="pagination">
+      <button type="button" className="button-ghost" disabled={page <= 1} onClick={() => onChange(page - 1)}>
+        &lt;
+      </button>
+      <span>{page} / {totalPages}</span>
+      <button type="button" className="button-ghost" disabled={page >= totalPages} onClick={() => onChange(page + 1)}>
+        &gt;
+      </button>
+    </nav>
+  );
 }
 
 export function LoginPage({
@@ -2691,18 +2933,121 @@ function Shell({ session, onLogout, onSessionChange }: { session: SessionState; 
   );
 }
 
+function CourseMultiSelect({
+  options,
+  value,
+  onChange,
+  t,
+}: {
+  options: Array<{ id: number; title: string }>;
+  value: number[];
+  onChange: (next: number[]) => void;
+  t: UiMessages;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    function handleMouseDown(event: MouseEvent) {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleMouseDown);
+    return () => document.removeEventListener("mousedown", handleMouseDown);
+  }, [open]);
+
+  const triggerLabel =
+    value.length === 0
+      ? t.dashboardCourseFilterTrigger
+      : t.dashboardCourseFilterTriggerSelected.replace("{n}", String(value.length));
+
+  function toggleCourse(courseId: number) {
+    onChange(value.includes(courseId) ? value.filter((entry) => entry !== courseId) : [...value, courseId]);
+  }
+
+  return (
+    <div className="course-multiselect" ref={rootRef}>
+      <button type="button" className="button-ghost" onClick={() => setOpen((current) => !current)}>
+        {triggerLabel}
+      </button>
+      {open ? (
+        <div className="course-multiselect-popover" role="listbox">
+          {options.map((option) => (
+            <label key={option.id}>
+              <input type="checkbox" checked={value.includes(option.id)} onChange={() => toggleCourse(option.id)} />
+              <span>{option.title}</span>
+            </label>
+          ))}
+          <button
+            type="button"
+            className="button-ghost course-multiselect-clear"
+            onClick={() => {
+              onChange([]);
+            }}
+          >
+            {t.dashboardCourseFilterClear}
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function DashboardPage({ session }: { session: SessionState }) {
   const { language, t } = useUi();
+  const coursesPageSize = 4;
+  const topicsPageSize = 4;
   const [refreshKey, setRefreshKey] = useState(0);
   const [selectedPeriod, setSelectedPeriod] = useState<"7d" | "30d" | "quarter" | "all">("30d");
-  const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
+  const [selectedCourses, setSelectedCourses] = useState<number[]>([]);
   const [courseView, setCourseView] = useState<"cards" | "table">("cards");
   const [courseSort, setCourseSort] = useState<"progress_asc" | "progress_desc" | "learners_desc">("progress_desc");
-  const [showAllTopics, setShowAllTopics] = useState(false);
-  const stats = useRemote<Record<string, number>>("/analytics/dashboard", session, refreshKey);
-  const progress = useRemote<Array<{ course_title: string; avg_progress: number; learners: number }>>("/analytics/course-progress", session, refreshKey);
-  const problems = useRemote<Array<{ topic_title: string; recommendations: number }>>("/analytics/problem-topics", session, refreshKey);
+  const [coursesPage, setCoursesPage] = useState(1);
+  const [topicsPage, setTopicsPage] = useState(1);
+  const dashboardFilterQuery = useMemo(() => {
+    const params = new URLSearchParams();
+    for (const courseId of selectedCourses) {
+      params.append("course_id", String(courseId));
+    }
+    const query = params.toString();
+    return query ? `?${query}` : "";
+  }, [selectedCourses]);
+  const stats = useRemote<Record<string, number>>(`/analytics/dashboard${dashboardFilterQuery}`, session, refreshKey);
+  const progress = useRemote<Array<{ course_id: number; course_title: string; avg_progress: number; learners: number }>>(
+    `/analytics/course-progress${dashboardFilterQuery}`,
+    session,
+    refreshKey,
+  );
+  const problems = useRemote<Array<{ topic_title: string; recommendations: number }>>(`/analytics/problem-topics${dashboardFilterQuery}`, session, refreshKey);
   const statsData = stats.data ?? {};
+  const dashboardSubtitle =
+    selectedCourses.length === 1
+      ? t.dashboardSubtitleSelectedSingle
+      : selectedCourses.length > 1
+        ? t.dashboardSubtitleSelectedMany
+        : t.dashboardSubtitle;
+  const courseHealthSubtitle =
+    selectedCourses.length === 1
+      ? t.dashboardCourseHealthSubtitleSelectedSingle
+      : selectedCourses.length > 1
+        ? t.dashboardCourseHealthSubtitleSelectedMany
+        : t.dashboardCourseHealthSubtitle;
+  const attentionSubtitle =
+    selectedCourses.length === 1
+      ? t.dashboardAttentionSubtitleSelectedSingle
+      : selectedCourses.length > 1
+        ? t.dashboardAttentionSubtitleSelectedMany
+        : t.dashboardAttentionSubtitle;
+  const avgProgressCaption =
+    selectedCourses.length === 1
+      ? t.dashboardKpiAvgProgressCaptionSelectedSingle
+      : selectedCourses.length > 1
+        ? t.dashboardKpiAvgProgressCaptionSelectedMany
+        : t.dashboardKpiAvgProgressCaption;
   const periodLabels = {
     "7d": t.dashboardPeriod7d,
     "30d": t.dashboardPeriod30d,
@@ -2712,74 +3057,131 @@ export function DashboardPage({ session }: { session: SessionState }) {
   // TODO: pass selectedPeriod to API filters when backend supports period params.
   const filteredCourses = useMemo(() => {
     const source = progress.data ?? [];
-    const bySelection = selectedCourses.length ? source.filter((item) => selectedCourses.includes(item.course_title)) : source;
+    const bySelection = selectedCourses.length ? source.filter((item) => selectedCourses.includes(item.course_id)) : source;
     const sorted = [...bySelection];
     if (courseSort === "progress_asc") sorted.sort((a, b) => a.avg_progress - b.avg_progress);
     if (courseSort === "progress_desc") sorted.sort((a, b) => b.avg_progress - a.avg_progress);
     if (courseSort === "learners_desc") sorted.sort((a, b) => b.learners - a.learners);
     return sorted;
   }, [courseSort, progress.data, selectedCourses]);
-  const filteredTopics = useMemo(() => {
-    const base = problems.data ?? [];
-    return showAllTopics ? base : base.slice(0, 7);
-  }, [problems.data, showAllTopics]);
-  const kpis = useMemo(() => ([
-    { key: "users", label: t.dashboardKpiLearners, value: String(statsData.users ?? 0), primary: false },
-    { key: "active_attempts", label: t.dashboardKpiActiveAttempts, value: String(statsData.active_attempts ?? 0), primary: false },
-    { key: "avg_progress", label: t.dashboardKpiAvgProgress, value: `${statsData.avg_progress ?? 0}%`, primary: true },
-    { key: "recommendations", label: t.dashboardKpiRecommendations, value: String(statsData.recommendations ?? 0), primary: false },
-  ]), [statsData.active_attempts, statsData.avg_progress, statsData.recommendations, statsData.users, t.dashboardKpiActiveAttempts, t.dashboardKpiAvgProgress, t.dashboardKpiLearners, t.dashboardKpiRecommendations]);
+  const filteredTopics = useMemo(() => problems.data ?? [], [problems.data]);
+  const coursesPageCount = Math.max(1, Math.ceil(filteredCourses.length / coursesPageSize));
+  const topicsPageCount = Math.max(1, Math.ceil(filteredTopics.length / topicsPageSize));
+  const pagedCourses = useMemo(() => {
+    const start = (coursesPage - 1) * coursesPageSize;
+    return filteredCourses.slice(start, start + coursesPageSize);
+  }, [coursesPage, coursesPageSize, filteredCourses]);
+  const pagedTopics = useMemo(() => {
+    const start = (topicsPage - 1) * topicsPageSize;
+    return filteredTopics.slice(start, start + topicsPageSize);
+  }, [filteredTopics, topicsPage, topicsPageSize]);
+  const kpis = useMemo(
+    () => [
+      { key: "users", label: t.dashboardKpiLearners, value: String(statsData.users ?? 0), primary: false, caption: t.dashboardKpiLearnersCaption },
+      {
+        key: "active_attempts",
+        label: t.dashboardKpiActiveAttempts,
+        value: String(statsData.active_attempts ?? 0),
+        primary: false,
+        caption: t.dashboardKpiActiveAttemptsCaption,
+      },
+      { key: "avg_progress", label: t.dashboardKpiAvgProgress, value: `${statsData.avg_progress ?? 0}%`, primary: true, caption: avgProgressCaption },
+      {
+        key: "recommendations",
+        label: t.dashboardKpiRecommendations,
+        value: String(statsData.recommendations ?? 0),
+        primary: false,
+        caption: t.dashboardKpiRecommendationsCaption,
+      },
+    ],
+    [
+      statsData.active_attempts,
+      statsData.avg_progress,
+      statsData.recommendations,
+      statsData.users,
+      t.dashboardKpiActiveAttempts,
+      t.dashboardKpiActiveAttemptsCaption,
+      t.dashboardKpiAvgProgress,
+      avgProgressCaption,
+      t.dashboardKpiLearners,
+      t.dashboardKpiLearnersCaption,
+      t.dashboardKpiRecommendations,
+      t.dashboardKpiRecommendationsCaption,
+    ],
+  );
   const activitySeries = useMemo(() => {
     const points = selectedPeriod === "7d" ? 7 : selectedPeriod === "30d" ? 30 : selectedPeriod === "quarter" ? 12 : 24;
     const attempts = generateTrend(statsData.active_attempts ?? 0, points);
     const completions = generateTrend(statsData.enrollments ?? 0, points).map((value, index) => Math.max(0, value * (0.74 + seededNoise(index + 10) * 0.18)));
     return { attempts, completions };
   }, [selectedPeriod, statsData.active_attempts, statsData.enrollments]);
+  const activityLineSeries = useMemo(
+    () => [
+      { name: t.dashboardActivityAttempts, data: activitySeries.attempts, color: "#2563eb" },
+      { name: t.dashboardActivityCompletions, data: activitySeries.completions, color: "#22c55e" },
+    ],
+    [activitySeries.attempts, activitySeries.completions, t.dashboardActivityAttempts, t.dashboardActivityCompletions],
+  );
+  const courseFilterOptions = useMemo(() => (progress.data ?? []).map((item) => ({ id: item.course_id, title: item.course_title })), [progress.data]);
   const hasError = Boolean(stats.error || progress.error || problems.error);
+
+  useEffect(() => {
+    setCoursesPage(1);
+  }, [selectedCourses, courseSort, courseView]);
+
+  useEffect(() => {
+    setCoursesPage((current) => Math.min(current, coursesPageCount));
+  }, [coursesPageCount]);
+
+  useEffect(() => {
+    setTopicsPage((current) => Math.min(current, topicsPageCount));
+  }, [topicsPageCount]);
 
   return (
     <section className="page-stack">
-      <PageHeader title={t.dashboardTitle} subtitle={t.dashboardSubtitle} />
+      <PageHeader title={t.dashboardTitle} subtitle={dashboardSubtitle} />
       <section className="card dashboard-toolbar">
         <div className="dashboard-period-chips" role="tablist" aria-label={t.dashboardTitle}>
           {Object.entries(periodLabels).map(([value, label]) => (
             <button key={value} type="button" className={`chip ${selectedPeriod === value ? "active" : ""}`} aria-pressed={selectedPeriod === value} onClick={() => setSelectedPeriod(value as "7d" | "30d" | "quarter" | "all")}>{label}</button>
           ))}
         </div>
-        <label className="dashboard-course-filter">
-          <span>{t.dashboardFilterCourses}</span>
-          <select multiple value={selectedCourses} onChange={(event) => setSelectedCourses(Array.from(event.target.selectedOptions).map((option) => option.value))}>
-            {(progress.data ?? []).map((item) => <option key={item.course_title} value={item.course_title}>{item.course_title}</option>)}
-          </select>
-        </label>
-        <button type="button" onClick={() => setRefreshKey((value) => value + 1)}>{t.dashboardRefresh}</button>
+        <CourseMultiSelect options={courseFilterOptions} value={selectedCourses} onChange={setSelectedCourses} t={t} />
+        <button type="button" className="toolbar-refresh" onClick={() => setRefreshKey((value) => value + 1)}>{t.dashboardRefresh}</button>
       </section>
       {hasError ? <Notice text={[stats.error, progress.error, problems.error].filter(Boolean).join(" • ")} tone="error" /> : null}
-      {stats.loading ? <div className="dashboard-skeleton-grid">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton-card" />)}</div> : null}
-      <section className="dashboard-kpi-grid">
-        {kpis.map((kpi, index) => (
-          <KpiCard
-            key={kpi.key}
-            label={kpi.label}
-            value={kpi.value}
-            compareLabel={t.dashboardCompareToPrev}
-            delta={(seededNoise(index + Number(statsData[kpi.key] ?? 0)) - 0.35) * 10}
-            trendData={generateTrend(Number(statsData[kpi.key] ?? 0))}
-            primary={kpi.primary}
-          />
-        ))}
-      </section>
+      {stats.loading ? (
+        <section className="dashboard-skeleton-grid" aria-busy="true">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="skeleton-card" />
+          ))}
+        </section>
+      ) : (
+        <section className="dashboard-kpi-grid">
+          {kpis.map((kpi) => (
+            <KpiCard
+              key={kpi.key}
+              label={kpi.label}
+              value={kpi.value}
+              compareLabel={t.dashboardDeltaUnavailable}
+              trendData={generateTrend(Number(statsData[kpi.key] ?? 0))}
+              primary={kpi.primary}
+              caption={kpi.caption}
+            />
+          ))}
+        </section>
+      )}
       <section className="dashboard-pill-row">
-        <article className="dashboard-pill"><span className="dot" />{t.dashboardSecondaryCourses}<strong>{statsData.courses ?? 0}</strong></article>
-        <article className="dashboard-pill"><span className="dot" />{t.dashboardSecondaryTests}<strong>{statsData.tests ?? 0}</strong></article>
-        <article className="dashboard-pill"><span className="dot" />{t.dashboardSecondaryEnrollments}<strong>{statsData.enrollments ?? 0}</strong></article>
+        <article className="dashboard-pill courses"><span className="dot" />{t.dashboardSecondaryCourses}<strong>{statsData.courses ?? 0}</strong></article>
+        <article className="dashboard-pill tests"><span className="dot" />{t.dashboardSecondaryTests}<strong>{statsData.tests ?? 0}</strong></article>
+        <article className="dashboard-pill enrollments"><span className="dot" />{t.dashboardSecondaryEnrollments}<strong>{statsData.enrollments ?? 0}</strong></article>
       </section>
       <section className="dashboard-main-grid">
         <article className="card dashboard-panel dashboard-courses-card">
           <div className="card-head dashboard-panel-head">
             <div>
               <h3>{t.dashboardCourseHealthTitle}</h3>
-              <p className="sidebar-text">{t.dashboardCourseHealthSubtitle}</p>
+              <p className="sidebar-text">{courseHealthSubtitle}</p>
             </div>
             <div className="dashboard-inline-controls">
               <button type="button" className={courseView === "cards" ? "active" : ""} aria-pressed={courseView === "cards"} onClick={() => setCourseView("cards")}>{t.dashboardViewCards}</button>
@@ -2791,11 +3193,13 @@ export function DashboardPage({ session }: { session: SessionState }) {
               </select>
             </div>
           </div>
-          {progress.loading ? <div className="skeleton-card compact" /> : null}
-          {!progress.loading && !filteredCourses.length ? <EmptyState title={t.dashboardNoCourseProgress} /> : null}
-          {!progress.loading && filteredCourses.length && courseView === "cards" ? (
+          {progress.loading ? (
+            <div className="skeleton-card compact" aria-busy="true" />
+          ) : !filteredCourses.length ? (
+            <EmptyState title={t.dashboardNoCourseProgress} />
+          ) : courseView === "cards" ? (
             <div className="dashboard-course-list">
-              {filteredCourses.map((item) => {
+              {pagedCourses.map((item) => {
                 const status = getProgressStatus(item.avg_progress, t);
                 const color = item.avg_progress < 40 ? "#ef4444" : item.avg_progress < 70 ? "#f59e0b" : "#22c55e";
                 return (
@@ -2807,13 +3211,12 @@ export function DashboardPage({ session }: { session: SessionState }) {
                 );
               })}
             </div>
-          ) : null}
-          {!progress.loading && filteredCourses.length && courseView === "table" ? (
+          ) : (
             <div className="table-wrap">
               <table>
                 <thead><tr><th>{t.columnCourse}</th><th>{t.learners}</th><th>{t.averageProgress}</th><th>{language === "ru" ? "Статус" : "Status"}</th></tr></thead>
                 <tbody>
-                  {filteredCourses.map((item) => {
+                  {pagedCourses.map((item) => {
                     const status = getProgressStatus(item.avg_progress, t);
                     return (
                       <tr key={`table-${item.course_title}`}>
@@ -2827,45 +3230,89 @@ export function DashboardPage({ session }: { session: SessionState }) {
                 </tbody>
               </table>
             </div>
+          )}
+          {filteredCourses.length > 0 && coursesPageCount > 1 ? (
+            <div className="dashboard-pagination">
+              <button type="button" className="button-ghost" onClick={() => setCoursesPage((p) => Math.max(1, p - 1))} disabled={coursesPage <= 1}>
+                {language === "ru" ? "Назад" : "Prev"}
+              </button>
+              <span>{language === "ru" ? `Страница ${coursesPage} из ${coursesPageCount}` : `Page ${coursesPage} of ${coursesPageCount}`}</span>
+              <button
+                type="button"
+                className="button-ghost"
+                onClick={() => setCoursesPage((p) => Math.min(coursesPageCount, p + 1))}
+                disabled={coursesPage >= coursesPageCount}
+              >
+                {language === "ru" ? "Далее" : "Next"}
+              </button>
+            </div>
           ) : null}
         </article>
         <article className="card dashboard-panel dashboard-topics-card">
           <div className="card-head dashboard-panel-head">
             <div>
               <h3>{t.dashboardAttentionTitle}</h3>
-              <p className="sidebar-text">{t.dashboardAttentionSubtitle}</p>
+              <p className="sidebar-text">{attentionSubtitle}</p>
             </div>
             <span className="dashboard-topics-total">{t.dashboardTopicsTotal}: {(problems.data ?? []).length}</span>
           </div>
-          {problems.loading ? <div className="skeleton-card compact" /> : null}
-          {!problems.loading && !filteredTopics.length ? <EmptyState title={t.dashboardNoProblemTopics} /> : null}
-          {!problems.loading && filteredTopics.length ? (
+          {problems.loading ? (
+            <div className="skeleton-card compact" aria-busy="true" />
+          ) : !filteredTopics.length ? (
+            <EmptyState title={t.dashboardNoProblemTopics} />
+          ) : (
             <div className="dashboard-topic-chart">
-              {filteredTopics.map((item) => {
+              {pagedTopics.map((item) => {
                 const max = Math.max(1, ...(problems.data ?? []).map((entry) => entry.recommendations));
-                const width = (item.recommendations / max) * 100;
+                const barWidthPct = (item.recommendations / max) * 100;
+                const ratio = item.recommendations / max;
+                const heatClass = ratio <= 0.33 ? "cool" : ratio <= 0.66 ? "warm" : "hot";
                 return (
                   <div className="dashboard-topic-row" key={`${item.topic_title}-${item.recommendations}`}>
                     <span>{item.topic_title}</span>
-                    <svg viewBox="0 0 100 12" preserveAspectRatio="none" role="img" aria-label={`${item.topic_title} ${item.recommendations}`}>
-                      <rect x="0" y="1" width="100" height="10" rx="5" fill="#e3ecf7" />
-                      <rect x="0" y="1" width={width} height="10" rx="5" fill="#2563eb" />
-                    </svg>
+                    <div className="topic-bar-track" role="img" aria-label={`${item.topic_title} ${item.recommendations}`}>
+                      <div className={`topic-bar-fill ${heatClass}`} style={{ width: `${barWidthPct}%` }} />
+                    </div>
                     <strong>{item.recommendations}</strong>
                   </div>
                 );
               })}
             </div>
+          )}
+          {filteredTopics.length > 0 && topicsPageCount > 1 ? (
+            <div className="dashboard-pagination">
+              <button type="button" className="button-ghost" onClick={() => setTopicsPage((p) => Math.max(1, p - 1))} disabled={topicsPage <= 1}>
+                {language === "ru" ? "Назад" : "Prev"}
+              </button>
+              <span>{language === "ru" ? `Страница ${topicsPage} из ${topicsPageCount}` : `Page ${topicsPage} of ${topicsPageCount}`}</span>
+              <button
+                type="button"
+                className="button-ghost"
+                onClick={() => setTopicsPage((p) => Math.min(topicsPageCount, p + 1))}
+                disabled={topicsPage >= topicsPageCount}
+              >
+                {language === "ru" ? "Далее" : "Next"}
+              </button>
+            </div>
           ) : null}
-          {(problems.data ?? []).length > 7 ? <button type="button" className="secondary" onClick={() => setShowAllTopics((current) => !current)}>{showAllTopics ? t.dashboardTopicsCollapse : t.dashboardTopicsShowAll}</button> : null}
         </article>
         <article className="card dashboard-panel dashboard-activity-card">
           <div className="card-head dashboard-panel-head">
-            <h3>{t.dashboardActivityTitle}</h3>
+            <div>
+              <h3>{t.dashboardActivityTitle}</h3>
+              <p className="sidebar-text">{t.dashboardActivityExplanation}</p>
+            </div>
           </div>
           {/* TODO: replace with /analytics/timeline when endpoint is available. */}
-          <LineChart width={760} height={220} data={activitySeries.attempts} secondaryData={activitySeries.completions} color="#22c55e" ariaLabel={t.dashboardActivityTitle} />
-          <div className="dashboard-legend"><span><i className="dot attempt" />{t.dashboardActivityAttempts}</span><span><i className="dot completion" />{t.dashboardActivityCompletions}</span></div>
+          <LineChart width={760} height={220} ariaLabel={t.dashboardActivityTitle} series={activityLineSeries} />
+          <div className="dashboard-legend">
+            {activityLineSeries.map((s) => (
+              <span key={s.name}>
+                <i className="dot" style={{ background: s.color }} />
+                {s.name}
+              </span>
+            ))}
+          </div>
         </article>
       </section>
     </section>
@@ -5850,81 +6297,669 @@ export function TestsPage({ session }: { session: SessionState }) {
   );
 }
 
-function AssignmentsPage({ session }: { session: SessionState }) {
-  const { language, t } = useUi();
-  const courses = useRemote<CourseInfo[]>("/courses", session);
-  const users = useRemote<UserInfo[]>("/users", session);
-  const [form, setForm] = useState({ courseId: "", userId: "" });
-  const [status, setStatus] = useState("");
+type CourseStatusFilter = "all" | "published" | "draft" | "archived";
+type AssignmentTab = "assigned" | "assign";
+type AssignmentMode = "individual" | "group";
+type AssignmentRoleFilter = "all" | "learner" | "teacher";
+type AssignedLearnerRow = {
+  assignment: CourseAssignmentInfo;
+  userId: number;
+  user: UserInfo | null;
+};
+
+function courseStatusMeta(course: CourseInfo, t: UiMessages) {
+  if (course.status === "archived") {
+    return { label: t.assignmentsCourseStatus_archived, className: "status-chip blocked" };
+  }
+  if (course.is_published) {
+    return { label: t.assignmentsCourseStatus_published, className: "status-chip ok" };
+  }
+  return { label: t.assignmentsCourseStatus_draft, className: "status-chip risk" };
+}
+
+function formatAssignmentDate(value: string, language: Language) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+  return parsed.toLocaleString(language === "ru" ? "ru-RU" : "en-US");
+}
+
+function CourseListPanel({
+  courses,
+  loading,
+  selectedId,
+  onSelect,
+  session,
+  refreshKey,
+}: {
+  courses: CourseInfo[];
+  loading: boolean;
+  selectedId: number | null;
+  onSelect: (id: number) => void;
+  session: SessionState;
+  refreshKey: number;
+}) {
+  const { t } = useUi();
+  const [query, setQuery] = useState("");
+  const debouncedQuery = useDebouncedValue(query);
+  const [statusFilter, setStatusFilter] = useState<CourseStatusFilter>("all");
+  const [page, setPage] = useState(1);
+  const [assignmentCounts, setAssignmentCounts] = useState<Record<number, number>>({});
+  const pageSize = 10;
+  const filtered = useMemo(() => {
+    const normalizedQuery = debouncedQuery.trim().toLowerCase();
+    return courses.filter((course) => {
+      const matchQuery =
+        !normalizedQuery ||
+        course.title.toLowerCase().includes(normalizedQuery) ||
+        (course.description ?? "").toLowerCase().includes(normalizedQuery);
+      const matchStatus =
+        statusFilter === "all" ||
+        (statusFilter === "published" && course.is_published) ||
+        (statusFilter === "draft" && !course.is_published && course.status !== "archived") ||
+        (statusFilter === "archived" && course.status === "archived");
+      return matchQuery && matchStatus;
+    });
+  }, [courses, debouncedQuery, statusFilter]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const visibleCourses = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const visibleCourseIdsKey = visibleCourses.map((course) => course.id).join(",");
 
   useEffect(() => {
-    const firstCourse = courses.data?.[0];
-    const firstUser = users.data?.[0];
-    if (!form.courseId && firstCourse) {
-      setForm((current) => ({ ...current, courseId: String(firstCourse.id) }));
-    }
-    if (!form.userId && firstUser) {
-      setForm((current) => ({ ...current, userId: String(firstUser.id) }));
-    }
-  }, [courses.data, form.courseId, form.userId, users.data]);
+    setPage(1);
+  }, [debouncedQuery, statusFilter]);
 
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    const result = await apiPost(`/courses/${form.courseId}/assign`, session, { user_id: Number(form.userId) });
-    setStatus(language === "ru" ? `Назначено для ${result.assigned_users} пользовател${result.assigned_users === 1 ? "я" : "ей"}` : `Assigned to ${result.assigned_users} user(s)`);
+  useEffect(() => {
+    let active = true;
+    async function loadCounts() {
+      const nextCounts: Record<number, number> = {};
+      await Promise.all(
+        visibleCourses.map(async (course) => {
+          try {
+            const rows = (await apiRequest(`/courses/${course.id}/assignments`, session)) as CourseAssignmentInfo[];
+            nextCounts[course.id] = rows.length;
+          } catch {
+            nextCounts[course.id] = -1;
+          }
+        }),
+      );
+      if (active) {
+        setAssignmentCounts((current) => ({ ...current, ...nextCounts }));
+      }
+    }
+    if (visibleCourses.length) {
+      void loadCounts();
+    }
+    return () => {
+      active = false;
+    };
+  }, [refreshKey, session, visibleCourseIdsKey]);
+
+  return (
+    <article className="card assignments-courses-panel">
+      <header className="assignments-panel-head">
+        <h3>{t.assignmentsCoursesTitle}</h3>
+        <span className="assignments-counter">{t.assignmentsTotal}: {filtered.length}</span>
+      </header>
+      <SearchInput value={query} onChange={setQuery} placeholder={t.assignmentsCourseSearchPlaceholder} />
+      <div className="assignments-status-chips" role="tablist">
+        {(["all", "published", "draft", "archived"] as const).map((key) => (
+          <button
+            key={key}
+            type="button"
+            className={`button-ghost ${statusFilter === key ? "active" : ""}`.trim()}
+            aria-pressed={statusFilter === key}
+            onClick={() => setStatusFilter(key)}
+          >
+            {t[`assignmentsCourseStatus_${key}`]}
+          </button>
+        ))}
+      </div>
+      {loading ? <div className="skeleton-card compact" aria-busy="true" /> : null}
+      {!loading && !visibleCourses.length ? <EmptyState title={t.assignmentsCourseSearchEmpty} /> : null}
+      <ul className="assignments-courses-list">
+        {visibleCourses.map((course) => {
+          const status = courseStatusMeta(course, t);
+          const count = assignmentCounts[course.id];
+          return (
+            <li key={course.id}>
+              <button
+                type="button"
+                className={`course-tile ${selectedId === course.id ? "active" : ""}`.trim()}
+                onClick={() => onSelect(course.id)}
+              >
+                <span className="course-tile-thumb" aria-hidden="true">
+                  {course.image_url ? <img src={resolveMediaUrl(course.image_url)} alt="" /> : course.title.trim().charAt(0).toUpperCase()}
+                </span>
+                <span className="course-tile-body">
+                  <strong>{course.title}</strong>
+                  <span className="course-tile-meta">
+                    <span className={status.className}>{status.label}</span>
+                    <span className="course-tile-count">
+                      {count === undefined || count < 0 ? "-" : count} {t.assignmentsAssigneesCount}
+                    </span>
+                  </span>
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <Pagination page={safePage} totalPages={totalPages} onChange={setPage} />
+    </article>
+  );
+}
+
+function LearnerAssignPanel({
+  course,
+  session,
+  refreshKey,
+  onRefresh,
+  onStatus,
+}: {
+  course: CourseInfo | null;
+  session: SessionState;
+  refreshKey: number;
+  onRefresh: () => void;
+  onStatus: (message: string) => void;
+}) {
+  const { language, t } = useUi();
+  const [tab, setTab] = useState<AssignmentTab>("assigned");
+  const [mode, setMode] = useState<AssignmentMode>("individual");
+  const [assignedQuery, setAssignedQuery] = useState("");
+  const [assignQuery, setAssignQuery] = useState("");
+  const [groupQuery, setGroupQuery] = useState("");
+  const debouncedAssignedQuery = useDebouncedValue(assignedQuery);
+  const debouncedAssignQuery = useDebouncedValue(assignQuery);
+  const debouncedGroupQuery = useDebouncedValue(groupQuery);
+  const [roleFilter, setRoleFilter] = useState<AssignmentRoleFilter>("all");
+  const [assignedPage, setAssignedPage] = useState(1);
+  const [assignPage, setAssignPage] = useState(1);
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<number>>(() => new Set());
+  const [selectedGroupId, setSelectedGroupId] = useState("");
+  const [newGroupName, setNewGroupName] = useState("");
+  const [groupMemberSearch, setGroupMemberSearch] = useState("");
+  const [addMemberUserId, setAddMemberUserId] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const users = useRemote<UserInfo[]>("/users", session, refreshKey);
+  const groups = useRemote<GroupInfo[]>("/groups", session, refreshKey);
+  const assignments = useRemote<CourseAssignmentInfo[]>(
+    course ? `/courses/${course.id}/assignments` : null,
+    session,
+    refreshKey + (course?.id ?? 0),
+  );
+  const groupMembers = useRemote<GroupMemberInfo[]>(
+    selectedGroupId ? `/groups/${selectedGroupId}/members` : null,
+    session,
+    refreshKey + Number(selectedGroupId || 0),
+  );
+  const pageSize = 20;
+  const userById = useMemo(() => new Map((users.data ?? []).map((user) => [user.id, user])), [users.data]);
+  const groupById = useMemo(() => new Map((groups.data ?? []).map((group) => [group.id, group])), [groups.data]);
+  const assignedRows = useMemo<AssignedLearnerRow[]>(() => {
+    return (assignments.data ?? []).flatMap((assignment) => {
+      const userIds = assignment.effective_user_ids.length ? assignment.effective_user_ids : assignment.user_id ? [assignment.user_id] : [];
+      return userIds.map((userId) => ({
+        assignment,
+        userId,
+        user: userById.get(userId) ?? null,
+      }));
+    });
+  }, [assignments.data, userById]);
+  const assignedUserIds = useMemo(() => new Set(assignedRows.map((row) => row.userId)), [assignedRows]);
+  const assignedTotal = assignedRows.length;
+
+  useEffect(() => {
+    setAssignedPage(1);
+  }, [debouncedAssignedQuery]);
+
+  useEffect(() => {
+    setAssignPage(1);
+  }, [debouncedAssignQuery, roleFilter, mode, debouncedGroupQuery]);
+
+  useEffect(() => {
+    setSelectedUserIds(new Set());
+    setAssignedPage(1);
+    setAssignPage(1);
+    setSelectedGroupId("");
+  }, [course?.id]);
+
+  const filteredAssignedRows = useMemo(() => {
+    const normalizedQuery = debouncedAssignedQuery.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return assignedRows;
+    }
+    return assignedRows.filter((row) => {
+      const haystack = [row.user?.full_name ?? "", row.user?.email ?? "", String(row.userId)].join(" ").toLowerCase();
+      return haystack.includes(normalizedQuery);
+    });
+  }, [assignedRows, debouncedAssignedQuery]);
+  const assignedTotalPages = Math.max(1, Math.ceil(filteredAssignedRows.length / pageSize));
+  const assignedSafePage = Math.min(assignedPage, assignedTotalPages);
+  const visibleAssignedRows = filteredAssignedRows.slice((assignedSafePage - 1) * pageSize, assignedSafePage * pageSize);
+
+  const filteredUsers = useMemo(() => {
+    const normalizedQuery = debouncedAssignQuery.trim().toLowerCase();
+    return (users.data ?? []).filter((user) => {
+      const matchQuery = !normalizedQuery || `${user.full_name} ${user.email}`.toLowerCase().includes(normalizedQuery);
+      const matchRole =
+        roleFilter === "all" ||
+        (roleFilter === "learner" && user.role_name === "learner") ||
+        (roleFilter === "teacher" && user.role_name === "teacher");
+      return matchQuery && matchRole;
+    });
+  }, [debouncedAssignQuery, roleFilter, users.data]);
+  const assignTotalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+  const assignSafePage = Math.min(assignPage, assignTotalPages);
+  const visibleUsers = filteredUsers.slice((assignSafePage - 1) * pageSize, assignSafePage * pageSize);
+  const filteredGroups = useMemo(() => {
+    const normalizedQuery = debouncedGroupQuery.trim().toLowerCase();
+    return (groups.data ?? []).filter((group) => !normalizedQuery || group.name.toLowerCase().includes(normalizedQuery));
+  }, [debouncedGroupQuery, groups.data]);
+  const selectedGroup = filteredGroups.find((group) => String(group.id) === selectedGroupId) ?? null;
+  const selectedAssignableIds = Array.from(selectedUserIds).filter((userId) => !assignedUserIds.has(userId));
+  const groupMemberUserIds = useMemo(() => new Set((groupMembers.data ?? []).map((member) => member.user_id)), [groupMembers.data]);
+  const addableUsers = useMemo(
+    () => (users.data ?? []).filter((user) => !groupMemberUserIds.has(user.id)),
+    [users.data, groupMemberUserIds],
+  );
+  const filteredGroupMembers = useMemo(() => {
+    const normalizedQuery = groupMemberSearch.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return groupMembers.data ?? [];
+    }
+    return (groupMembers.data ?? []).filter((member) => `${member.full_name} ${member.email}`.toLowerCase().includes(normalizedQuery));
+  }, [groupMemberSearch, groupMembers.data]);
+
+  async function assignUser(userId: number) {
+    if (!course || assignedUserIds.has(userId)) {
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await apiPost(`/courses/${course.id}/assign`, session, { user_id: userId });
+      onStatus(t.assignmentsAssignSuccess);
+      setSelectedUserIds(new Set());
+      onRefresh();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function assignSelectedUsers() {
+    if (!course || !selectedAssignableIds.length) {
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await Promise.all(selectedAssignableIds.map((userId) => apiPost(`/courses/${course.id}/assign`, session, { user_id: userId })));
+      onStatus(t.assignmentsAssignSuccess);
+      setSelectedUserIds(new Set());
+      onRefresh();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function assignGroup() {
+    if (!course || !selectedGroup) {
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await apiPost(`/courses/${course.id}/assign`, session, { group_id: selectedGroup.id });
+      onStatus(t.assignmentsAssignSuccess);
+      setSelectedGroupId("");
+      onRefresh();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function createGroup() {
+    const trimmed = newGroupName.trim();
+    if (!trimmed) {
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const created = (await apiPost("/groups", session, { name: trimmed })) as GroupInfo;
+      onStatus(t.assignmentsCreateGroupSuccess);
+      setNewGroupName("");
+      setSelectedGroupId(String(created.id));
+      onRefresh();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function addMemberToGroup() {
+    if (!selectedGroupId || !addMemberUserId) {
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await apiPost(`/groups/${selectedGroupId}/members`, session, { user_id: Number(addMemberUserId) });
+      setAddMemberUserId("");
+      onRefresh();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function removeMemberFromGroup(userId: number) {
+    if (!selectedGroupId) {
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await apiDelete(`/groups/${selectedGroupId}/members/${userId}`, session);
+      onRefresh();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function revokeAssignment(assignment: CourseAssignmentInfo) {
+    if (!course || !window.confirm(t.assignmentsRevokeConfirm)) {
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await apiDelete(`/courses/${course.id}/assignments/${assignment.id}`, session);
+      onStatus(t.assignmentsRevokeSuccess);
+      onRefresh();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function toggleSelectedUser(userId: number) {
+    setSelectedUserIds((current) => {
+      const next = new Set(current);
+      if (next.has(userId)) {
+        next.delete(userId);
+      } else {
+        next.add(userId);
+      }
+      return next;
+    });
+  }
+
+  if (!course) {
+    return (
+      <article className="card assignments-empty">
+        <EmptyState title={t.assignmentsPickCourseHint} />
+      </article>
+    );
+  }
+
+  const courseStatus = courseStatusMeta(course, t);
+  return (
+    <article className="card assignments-learners-panel">
+      <header className="assignments-panel-head">
+        <div className="assignments-panel-title">
+          <h3>{course.title}</h3>
+          <span className="assignments-counter">
+            <span className={courseStatus.className}>{courseStatus.label}</span>
+            {t.assignmentsAssigneesCount}: {assignments.loading ? "-" : assignedTotal}
+          </span>
+        </div>
+        <div className="dashboard-inline-controls" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            className={`button-ghost ${tab === "assigned" ? "active" : ""}`.trim()}
+            aria-pressed={tab === "assigned"}
+            onClick={() => setTab("assigned")}
+          >
+            {t.assignmentsTabAssigned}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            className={`button-ghost ${tab === "assign" ? "active" : ""}`.trim()}
+            aria-pressed={tab === "assign"}
+            onClick={() => setTab("assign")}
+          >
+            {t.assignmentsTabAssign}
+          </button>
+        </div>
+      </header>
+
+      {tab === "assigned" ? (
+        <section className="assignments-panel-section">
+          <SearchInput value={assignedQuery} onChange={setAssignedQuery} placeholder={t.assignmentsLearnerSearchPlaceholder} />
+          {assignments.loading || users.loading ? <div className="skeleton-card compact" aria-busy="true" /> : null}
+          {!assignments.loading && !users.loading && !visibleAssignedRows.length ? <EmptyState title={t.assignmentsNoAssigned} /> : null}
+          <div className="assignments-users-list">
+            {visibleAssignedRows.map((row) => {
+              const group = row.assignment.group_id ? groupById.get(row.assignment.group_id) : null;
+              return (
+                <article key={`${row.assignment.id}-${row.userId}`} className="assignment-row is-assigned">
+                  <span className="role-chip">{formatRoleLabel(row.user?.role_name, t)}</span>
+                  <div className="meta">
+                    <strong>{row.user?.full_name ?? `${t.learner} #${row.userId}`}</strong>
+                    <span>{row.user?.email ?? `user_id=${row.userId}`}</span>
+                    <span>
+                      {t.assignmentsAssignedAt}: {formatAssignmentDate(row.assignment.created_at, language)}
+                      {group ? ` · ${t.assignmentsByGroup.replace("{name}", group.name)}` : ""}
+                    </span>
+                  </div>
+                  <button type="button" className="button-ghost row-action" disabled={submitting} onClick={() => void revokeAssignment(row.assignment)}>
+                    {t.assignmentsRevokeAction}
+                  </button>
+                </article>
+              );
+            })}
+          </div>
+          <Pagination page={assignedSafePage} totalPages={assignedTotalPages} onChange={setAssignedPage} />
+        </section>
+      ) : (
+        <section className="assignments-panel-section">
+          <div className="dashboard-inline-controls">
+            <button
+              type="button"
+              className={`button-ghost ${mode === "individual" ? "active" : ""}`.trim()}
+              aria-pressed={mode === "individual"}
+              onClick={() => setMode("individual")}
+            >
+              {t.assignmentsModeIndividual}
+            </button>
+            <button
+              type="button"
+              className={`button-ghost ${mode === "group" ? "active" : ""}`.trim()}
+              aria-pressed={mode === "group"}
+              onClick={() => setMode("group")}
+            >
+              {t.assignmentsModeGroup}
+            </button>
+          </div>
+          {mode === "individual" ? (
+            <>
+              <SearchInput value={assignQuery} onChange={setAssignQuery} placeholder={t.assignmentsLearnerSearchPlaceholder} />
+              <div className="assignments-status-chips">
+                {(["all", "learner", "teacher"] as const).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`button-ghost ${roleFilter === key ? "active" : ""}`.trim()}
+                    aria-pressed={roleFilter === key}
+                    onClick={() => setRoleFilter(key)}
+                  >
+                    {key === "all" ? t.assignmentsRoleAll : key === "learner" ? t.assignmentsRoleLearner : t.assignmentsRoleTeacher}
+                  </button>
+                ))}
+              </div>
+              {users.loading || assignments.loading ? <div className="skeleton-card compact" aria-busy="true" /> : null}
+              {!users.loading && !visibleUsers.length ? <EmptyState title={t.assignmentsNoLearners} /> : null}
+              <div className="assignments-users-list">
+                {visibleUsers.map((user) => {
+                  const alreadyAssigned = assignedUserIds.has(user.id);
+                  return (
+                    <article key={user.id} className={`assignment-row ${alreadyAssigned ? "is-assigned" : ""}`.trim()}>
+                      <input
+                        type="checkbox"
+                        aria-label={user.full_name}
+                        checked={selectedUserIds.has(user.id)}
+                        disabled={alreadyAssigned || submitting}
+                        onChange={() => toggleSelectedUser(user.id)}
+                      />
+                      <div className="meta">
+                        <strong>{user.full_name}</strong>
+                        <span>{user.email}</span>
+                      </div>
+                      <span className="role-chip">{formatRoleLabel(user.role_name, t)}</span>
+                      {alreadyAssigned ? (
+                        <span className="status-chip ok row-action">{t.assignmentsAlreadyAssigned}</span>
+                      ) : (
+                        <button type="button" className="button-ghost row-action" disabled={submitting} onClick={() => void assignUser(user.id)}>
+                          {t.assignmentsAssignAction}
+                        </button>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+              <Pagination page={assignSafePage} totalPages={assignTotalPages} onChange={setAssignPage} />
+              {selectedAssignableIds.length ? (
+                <div className="assignments-bulk-bar">
+                  <span>{t.assignmentsBulkAssignAction.replace("{count}", String(selectedAssignableIds.length))}</span>
+                  <button type="button" disabled={submitting} onClick={() => void assignSelectedUsers()}>
+                    {submitting ? t.assignmentsBulkAssigning : t.assignmentsBulkAssignAction.replace("{count}", String(selectedAssignableIds.length))}
+                  </button>
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <section className="assignments-panel-section">
+              <div className="inline-form">
+                <input
+                  value={newGroupName}
+                  onChange={(event) => setNewGroupName(event.target.value)}
+                  placeholder={t.assignmentsCreateGroupPlaceholder}
+                />
+                <button type="button" disabled={submitting || !newGroupName.trim()} onClick={() => void createGroup()}>
+                  {t.assignmentsCreateGroupAction}
+                </button>
+              </div>
+              <SearchInput value={groupQuery} onChange={setGroupQuery} placeholder={t.assignmentsGroupSearchPlaceholder} />
+              {groups.loading ? <div className="skeleton-card compact" aria-busy="true" /> : null}
+              {!groups.loading && !filteredGroups.length ? <EmptyState title={t.assignmentsNoGroups} /> : null}
+              {filteredGroups.length ? (
+                <label>
+                  {t.assignmentsGroupPlaceholder}
+                  <select value={selectedGroupId} onChange={(event) => setSelectedGroupId(event.target.value)}>
+                    <option value="">{t.assignmentsGroupPlaceholder}</option>
+                    {filteredGroups.map((group) => (
+                      <option key={group.id} value={group.id}>
+                        {group.name} ({t.assignmentsGroupMemberCount.replace("{count}", String(group.member_count))})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              {selectedGroup ? (
+                <>
+                  <section className="assignments-panel-section">
+                    <strong>{t.assignmentsGroupMembersTitle}</strong>
+                    <SearchInput value={groupMemberSearch} onChange={setGroupMemberSearch} placeholder={t.assignmentsGroupMemberSearchPlaceholder} />
+                    <div className="inline-form">
+                      <select value={addMemberUserId} onChange={(event) => setAddMemberUserId(event.target.value)}>
+                        <option value="">{t.learner}</option>
+                        {addableUsers.map((user) => (
+                          <option key={user.id} value={user.id}>
+                            {user.full_name} ({user.email})
+                          </option>
+                        ))}
+                      </select>
+                      <button type="button" className="button-ghost" disabled={submitting || !addMemberUserId} onClick={() => void addMemberToGroup()}>
+                        {t.assignmentsAddToGroupAction}
+                      </button>
+                    </div>
+                    {groupMembers.loading ? <div className="skeleton-card compact" aria-busy="true" /> : null}
+                    {!groupMembers.loading && !filteredGroupMembers.length ? <EmptyState title={t.assignmentsNoGroupMembers} /> : null}
+                    <div className="assignments-users-list">
+                      {filteredGroupMembers.map((member) => (
+                        <article key={member.id} className="assignment-row">
+                          <span className="role-chip">#{member.user_id}</span>
+                          <div className="meta">
+                            <strong>{member.full_name}</strong>
+                            <span>{member.email}</span>
+                          </div>
+                          <span />
+                          <button type="button" className="button-ghost row-action" disabled={submitting} onClick={() => void removeMemberFromGroup(member.user_id)}>
+                            {t.assignmentsRemoveFromGroupAction}
+                          </button>
+                        </article>
+                      ))}
+                    </div>
+                  </section>
+                  <button type="button" disabled={submitting} onClick={() => void assignGroup()}>
+                    {t.assignmentsAssignWholeGroup.replace("{name}", selectedGroup.name)}
+                  </button>
+                </>
+              ) : null}
+            </section>
+          )}
+        </section>
+      )}
+    </article>
+  );
+}
+
+export function AssignmentsPage({ session }: { session: SessionState }) {
+  const { language, t } = useUi();
+  const courses = useRemote<CourseInfo[]>("/courses", session);
+  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [status, setStatus] = useState("");
+  const statusTimeoutRef = useRef<number | null>(null);
+  const selectedCourse = (courses.data ?? []).find((course) => course.id === selectedCourseId) ?? null;
+
+  useEffect(() => {
+    return () => {
+      if (statusTimeoutRef.current !== null) {
+        window.clearTimeout(statusTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  function showStatus(message: string) {
+    setStatus(message);
+    if (statusTimeoutRef.current !== null) {
+      window.clearTimeout(statusTimeoutRef.current);
+    }
+    statusTimeoutRef.current = window.setTimeout(() => setStatus(""), 4500);
   }
 
   return (
     <section className="page-stack">
       <PageHeader title={t.assignmentsPageTitle} subtitle={t.assignmentsPageSubtitle} />
+      <p className="page-helper">
+        {language === "ru"
+          ? "Назначайте курсы отдельным слушателям и группам, отзывайте доступ при ошибках."
+          : "Assign courses to individual learners or groups, and revoke access when needed."}
+      </p>
       {status && <Notice text={status} />}
-      <section className="assignments-layout">
-        <div className="assignment-primary-grid">
-          <FormCard title={t.assignCourse} onSubmit={submit} className="assignment-primary-card">
-            <p className="form-helper form-helper-intro">
-              {language === "ru"
-                ? "Основной сценарий страницы: выберите курс и слушателя, чтобы открыть ученику доступ к обучению."
-                : "Primary workflow: choose a course and a learner to grant access to the learning path."}
-            </p>
-            <div className="assignment-form-row">
-              <label>
-                {t.courseLabel}
-                <select value={form.courseId} onChange={(e) => setForm({ ...form, courseId: e.target.value })}>
-                  {(courses.data ?? []).map((course) => (
-                    <option key={course.id} value={course.id}>
-                      {course.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                {t.learner}
-                <select value={form.userId} onChange={(e) => setForm({ ...form, userId: e.target.value })}>
-                  {(users.data ?? []).map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.full_name} ({user.email})
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <div className="assignment-actions">
-              <button type="submit" className="assignment-primary-action" disabled={!form.courseId || !form.userId}>
-                {t.assign}
-              </button>
-            </div>
-          </FormCard>
-
-          <article className="card assignment-guide-card">
-            <span className="section-kicker">{language === "ru" ? "Как это работает" : "How it works"}</span>
-            <h3>{t.howToDemo}</h3>
-            <ol className="assignment-guide-list">
-              <li>{t.howToDemo1}</li>
-              <li>{t.howToDemo2}</li>
-              <li>{t.howToDemo3}</li>
-            </ol>
-          </article>
-        </div>
+      <section className="assignments-shell">
+        <CourseListPanel
+          courses={courses.data ?? []}
+          loading={courses.loading}
+          selectedId={selectedCourseId}
+          onSelect={setSelectedCourseId}
+          session={session}
+          refreshKey={refreshKey}
+        />
+        <LearnerAssignPanel
+          course={selectedCourse}
+          session={session}
+          refreshKey={refreshKey}
+          onRefresh={() => setRefreshKey((value) => value + 1)}
+          onStatus={showStatus}
+        />
       </section>
     </section>
   );
@@ -6396,11 +7431,14 @@ function LearnerPicker({
 
 export function AnalyticsPage({ session }: { session: SessionState }) {
   const { language, t } = useUi();
+  const pageSize = 4;
   const [learnerId, setLearnerId] = useState("");
   const [manualId, setManualId] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const [activeTab, setActiveTab] = useState<"attempts" | "recommendations">("attempts");
   const [selectedAttemptIndex, setSelectedAttemptIndex] = useState<number | null>(null);
+  const [attemptsPage, setAttemptsPage] = useState(1);
+  const [recommendationsPage, setRecommendationsPage] = useState(1);
   const users = useRemote<UserInfo[]>("/users", session);
   const dashboard = useRemote<Record<string, number>>("/analytics/dashboard", session);
   const learner = useRemote<{
@@ -6422,6 +7460,16 @@ export function AnalyticsPage({ session }: { session: SessionState }) {
   const selectedUser = useMemo(() => (users.data ?? []).find((item) => String(item.id) === learnerId), [learnerId, users.data]);
   const attempts = learner.data?.results ?? [];
   const recommendations = useMemo(() => [...(learner.data?.recommendations ?? [])].sort((a, b) => b.priority - a.priority), [learner.data?.recommendations]);
+  const attemptsPageCount = Math.max(1, Math.ceil(attempts.length / pageSize));
+  const recommendationsPageCount = Math.max(1, Math.ceil(recommendations.length / pageSize));
+  const pagedAttempts = useMemo(() => {
+    const start = (attemptsPage - 1) * pageSize;
+    return attempts.slice(start, start + pageSize);
+  }, [attempts, attemptsPage, pageSize]);
+  const pagedRecommendations = useMemo(() => {
+    const start = (recommendationsPage - 1) * pageSize;
+    return recommendations.slice(start, start + pageSize);
+  }, [pageSize, recommendations, recommendationsPage]);
   const avgScore = attempts.length ? attempts.reduce((sum, item) => sum + item.score_percent, 0) / attempts.length : 0;
   const weakTopicMap = useMemo(() => {
     const map = new Map<string, { total: number; count: number }>();
@@ -6434,6 +7482,24 @@ export function AnalyticsPage({ session }: { session: SessionState }) {
     return Array.from(map.entries()).map(([title, value]) => ({ title, score: value.total / Math.max(1, value.count) }));
   }, [attempts]);
   const selectedAttempt = selectedAttemptIndex == null ? null : attempts[selectedAttemptIndex] ?? null;
+  const scoreLineSeries = useMemo(
+    () => [{ name: t.analyticsScoreTrendTitle, data: attempts.map((item) => item.score_percent), color: "#2563eb" }],
+    [attempts, t.analyticsScoreTrendTitle],
+  );
+
+  useEffect(() => {
+    setAttemptsPage(1);
+    setRecommendationsPage(1);
+    setSelectedAttemptIndex(null);
+  }, [learnerId]);
+
+  useEffect(() => {
+    setAttemptsPage((current) => Math.min(current, attemptsPageCount));
+  }, [attemptsPageCount]);
+
+  useEffect(() => {
+    setRecommendationsPage((current) => Math.min(current, recommendationsPageCount));
+  }, [recommendationsPageCount]);
 
   return (
     <section className="page-stack">
@@ -6464,7 +7530,7 @@ export function AnalyticsPage({ session }: { session: SessionState }) {
           {learnerId && selectedUser ? (
             <div className="learner-summary">
               <div className="settings-avatar" aria-hidden="true">{selectedUser.full_name.split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join("")}</div>
-              <div>
+              <div className="stack-tight">
                 <strong>{selectedUser.full_name}</strong>
                 <span>{selectedUser.email}</span>
                 <span>{formatRoleLabel(selectedUser.role_name, t)} • {selectedUser.is_active ? t.userStatusActive : t.userStatusInactive}</span>
@@ -6479,12 +7545,32 @@ export function AnalyticsPage({ session }: { session: SessionState }) {
           {learnerId ? (
             <article className="result-card learner-score-trend">
               <h3>{t.analyticsScoreTrendTitle}</h3>
-              <LineChart width={760} height={200} data={attempts.map((item) => item.score_percent)} color="#2563eb" ariaLabel={t.analyticsScoreTrendTitle} />
+              <LineChart width={760} height={200} ariaLabel={t.analyticsScoreTrendTitle} series={scoreLineSeries} />
               <div className="attempt-points">
                 {attempts.map((attempt, index) => (
-                  <button key={`attempt-${index}`} type="button" className={selectedAttemptIndex === index ? "active" : ""} onClick={() => setSelectedAttemptIndex(index)}>{index + 1}: {attempt.score_percent}%</button>
+                  <button
+                    key={`attempt-${index}`}
+                    type="button"
+                    className={selectedAttemptIndex === index ? "active" : ""}
+                    aria-pressed={selectedAttemptIndex === index}
+                    onClick={() => setSelectedAttemptIndex(index)}
+                  >
+                    {index + 1}: {attempt.score_percent}%
+                  </button>
                 ))}
               </div>
+              {selectedAttempt ? (
+                <div className="attempt-drawer-inline">
+                  <strong>
+                    {language === "ru" ? "Попытка" : "Attempt"} #{(selectedAttemptIndex ?? 0) + 1}
+                  </strong>
+                  <span>{t.analyticsAttemptScore}: {selectedAttempt.score_percent}%</span>
+                  <span>{selectedAttempt.weak_topics.map((topic) => `${topic.topic_title}: ${topic.score}%`).join(", ") || t.noWeakTopics}</span>
+                  <button type="button" className="button-ghost" onClick={() => setSelectedAttemptIndex(null)}>
+                    {t.attemptDrawerClose}
+                  </button>
+                </div>
+              ) : null}
               <h4>{t.analyticsWeakTopicsTitle}</h4>
               <div className="weak-topic-bars">
                 {weakTopicMap.map((topic) => (
@@ -6497,40 +7583,79 @@ export function AnalyticsPage({ session }: { session: SessionState }) {
               </div>
             </article>
           ) : null}
-          {selectedAttempt ? (
-            <aside className="attempt-drawer">
-              <strong>{language === "ru" ? "Детали попытки" : "Attempt details"}</strong>
-              <span>{t.analyticsAttemptScore}: {selectedAttempt.score_percent}%</span>
-              <span>{selectedAttempt.weak_topics.map((topic) => `${topic.topic_title}: ${topic.score}%`).join(", ") || t.noWeakTopics}</span>
-            </aside>
-          ) : null}
           <div className="dashboard-inline-controls">
             <button type="button" role="tab" aria-pressed={activeTab === "attempts"} className={activeTab === "attempts" ? "active" : ""} onClick={() => setActiveTab("attempts")}>{t.analyticsTabAttempts}</button>
             <button type="button" role="tab" aria-pressed={activeTab === "recommendations"} className={activeTab === "recommendations" ? "active" : ""} onClick={() => setActiveTab("recommendations")}>{t.analyticsTabRecommendations}</button>
           </div>
           {activeTab === "attempts" ? (
             attempts.length ? (
-              <div className="table-wrap">
-                <table>
-                  <thead><tr><th>{t.analyticsAttemptNumber}</th><th>{t.analyticsAttemptScore}</th><th>{t.analyticsAttemptWeak}</th><th>{language === "ru" ? "Дата" : "Date"}</th></tr></thead>
-                  <tbody>
-                    {attempts.map((result, index) => (
-                      <tr key={`result-${index}`}>
-                        <td>{index + 1}</td>
-                        <td>{result.score_percent}%</td>
-                        <td>{result.weak_topics.map((topic) => topic.topic_title).join(", ") || t.noWeakTopics}</td>
-                        <td>{language === "ru" ? `Попытка ${index + 1}` : `Attempt ${index + 1}`}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <>
+                <div className="table-wrap">
+                  <table>
+                    <thead><tr><th>{t.analyticsAttemptNumber}</th><th>{t.analyticsAttemptScore}</th><th>{t.analyticsAttemptWeak}</th><th>{language === "ru" ? "Дата" : "Date"}</th></tr></thead>
+                    <tbody>
+                      {pagedAttempts.map((result, index) => {
+                        const rowNumber = (attemptsPage - 1) * pageSize + index + 1;
+                        return (
+                          <tr key={`result-${rowNumber}`}>
+                            <td>{rowNumber}</td>
+                            <td>{result.score_percent}%</td>
+                            <td>{result.weak_topics.map((topic) => topic.topic_title).join(", ") || t.noWeakTopics}</td>
+                            <td>{language === "ru" ? `Попытка ${rowNumber}` : `Attempt ${rowNumber}`}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                {attemptsPageCount > 1 ? (
+                  <div className="analytics-pagination">
+                    <button type="button" className="button-ghost" onClick={() => setAttemptsPage((p) => Math.max(1, p - 1))} disabled={attemptsPage <= 1}>
+                      {language === "ru" ? "Назад" : "Prev"}
+                    </button>
+                    <span>{language === "ru" ? `Страница ${attemptsPage} из ${attemptsPageCount}` : `Page ${attemptsPage} of ${attemptsPageCount}`}</span>
+                    <button
+                      type="button"
+                      className="button-ghost"
+                      onClick={() => setAttemptsPage((p) => Math.min(attemptsPageCount, p + 1))}
+                      disabled={attemptsPage >= attemptsPageCount}
+                    >
+                      {language === "ru" ? "Далее" : "Next"}
+                    </button>
+                  </div>
+                ) : null}
+              </>
             ) : <EmptyState title={t.emptyAttempt} />
           ) : (
             recommendations.length ? (
-              <div className="stack">
-                {recommendations.map((item) => <RecommendationCard key={`${item.priority}-${item.text}`} item={item} language={language} t={t} />)}
-              </div>
+              <>
+                <div className="stack">
+                  {pagedRecommendations.map((item, index) => (
+                    <RecommendationCard key={`${item.priority}-${item.text}-${index}`} item={item} language={language} t={t} />
+                  ))}
+                </div>
+                {recommendationsPageCount > 1 ? (
+                  <div className="analytics-pagination">
+                    <button
+                      type="button"
+                      className="button-ghost"
+                      onClick={() => setRecommendationsPage((p) => Math.max(1, p - 1))}
+                      disabled={recommendationsPage <= 1}
+                    >
+                      {language === "ru" ? "Назад" : "Prev"}
+                    </button>
+                    <span>{language === "ru" ? `Страница ${recommendationsPage} из ${recommendationsPageCount}` : `Page ${recommendationsPage} of ${recommendationsPageCount}`}</span>
+                    <button
+                      type="button"
+                      className="button-ghost"
+                      onClick={() => setRecommendationsPage((p) => Math.min(recommendationsPageCount, p + 1))}
+                      disabled={recommendationsPage >= recommendationsPageCount}
+                    >
+                      {language === "ru" ? "Далее" : "Next"}
+                    </button>
+                  </div>
+                ) : null}
+              </>
             ) : <EmptyState title={language === "ru" ? "Рекомендаций пока нет" : "No recommendations yet"} />
           )}
         </article>
@@ -6884,4 +8009,3 @@ export function App() {
     </LanguageContext.Provider>
   );
 }
-

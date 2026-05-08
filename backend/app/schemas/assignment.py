@@ -46,6 +46,15 @@ class AssignmentRead(ORMModel):
     created_at: datetime
 
 
+class CourseAssignmentRead(ORMModel):
+    id: int
+    user_id: int | None = None
+    group_id: int | None = None
+    assigned_by_id: int | None = None
+    created_at: datetime
+    effective_user_ids: list[int] = Field(default_factory=list)
+
+
 class SubmissionUpsert(BaseModel):
     status: str = "draft"
     text_answer: str = ""

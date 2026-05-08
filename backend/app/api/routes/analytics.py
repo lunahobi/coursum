@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_roles, tenant_context
@@ -11,18 +11,33 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 
 @router.get("/dashboard")
-def dashboard(_: Membership = Depends(require_roles(RoleName.org_admin, RoleName.teacher, RoleName.system_admin)), tenant: Tenant = Depends(tenant_context), db: Session = Depends(get_db)) -> dict:
-    return dashboard_stats(db, tenant.id)
+def dashboard(
+    course_id: list[int] | None = Query(default=None),
+    _: Membership = Depends(require_roles(RoleName.org_admin, RoleName.teacher, RoleName.system_admin)),
+    tenant: Tenant = Depends(tenant_context),
+    db: Session = Depends(get_db),
+) -> dict:
+    return dashboard_stats(db, tenant.id, course_id)
 
 
 @router.get("/course-progress")
-def analytics_course_progress(_: Membership = Depends(require_roles(RoleName.org_admin, RoleName.teacher, RoleName.system_admin)), tenant: Tenant = Depends(tenant_context), db: Session = Depends(get_db)) -> list[dict]:
-    return course_progress(db, tenant.id)
+def analytics_course_progress(
+    course_id: list[int] | None = Query(default=None),
+    _: Membership = Depends(require_roles(RoleName.org_admin, RoleName.teacher, RoleName.system_admin)),
+    tenant: Tenant = Depends(tenant_context),
+    db: Session = Depends(get_db),
+) -> list[dict]:
+    return course_progress(db, tenant.id, course_id)
 
 
 @router.get("/problem-topics")
-def analytics_problem_topics(_: Membership = Depends(require_roles(RoleName.org_admin, RoleName.teacher, RoleName.system_admin)), tenant: Tenant = Depends(tenant_context), db: Session = Depends(get_db)) -> list[dict]:
-    return problem_topics(db, tenant.id)
+def analytics_problem_topics(
+    course_id: list[int] | None = Query(default=None),
+    _: Membership = Depends(require_roles(RoleName.org_admin, RoleName.teacher, RoleName.system_admin)),
+    tenant: Tenant = Depends(tenant_context),
+    db: Session = Depends(get_db),
+) -> list[dict]:
+    return problem_topics(db, tenant.id, course_id)
 
 
 @router.get("/learners/{user_id}")

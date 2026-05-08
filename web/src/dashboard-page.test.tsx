@@ -71,4 +71,12 @@ describe("DashboardPage", () => {
     const cards = screen.getAllByRole("link").filter((node) => node.getAttribute("href")?.startsWith("/courses?focus="));
     expect(within(cards[0]).getByText("A course")).toBeInTheDocument();
   });
+
+  it("marks the 30-day period chip as pressed when selected", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const chip30 = await screen.findByRole("button", { name: "30 days" });
+    await user.click(chip30);
+    expect(chip30).toHaveAttribute("aria-pressed", "true");
+  });
 });

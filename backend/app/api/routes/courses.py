@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
@@ -56,6 +56,7 @@ from app.schemas.course import (
     LessonStateUpdate,
     LessonUpdate,
 )
+from app.schemas.assignment import CourseAssignmentRead
 from app.services.lesson_player import (
     build_course_outline,
     build_lesson_player,
@@ -97,6 +98,53 @@ def _require_user_membership_in_tenant(db: Session, tenant_id: int, user_id: int
     )
     if membership is None:
         raise HTTPException(status_code=422, detail="User must belong to the current tenant")
+
+
+def _effective_user_ids_for_assignment(db: Session, tenant_id: int, assignment: CourseAssignment) -> list[int]:
+    if assignment.user_id is not None:
+        return [assignment.user_id]
+    if assignment.group_id is None:
+        return []
+    return list(
+        db.scalars(
+            select(GroupMember.user_id).where(
+                GroupMember.tenant_id == tenant_id,
+                GroupMember.group_id == assignment.group_id,
+            )
+        ).all()
+    )
+
+
+def _has_course_assignment_access(db: Session, tenant_id: int, course_id: int, user_id: int) -> bool:
+    direct_assignment = db.scalar(
+        select(CourseAssignment.id).where(
+            CourseAssignment.tenant_id == tenant_id,
+            CourseAssignment.course_id == course_id,
+            CourseAssignment.user_id == user_id,
+        )
+    )
+    if direct_assignment is not None:
+        return True
+
+    group_ids = list(
+        db.scalars(
+            select(GroupMember.group_id).where(
+                GroupMember.tenant_id == tenant_id,
+                GroupMember.user_id == user_id,
+            )
+        ).all()
+    )
+    if not group_ids:
+        return False
+    legacy_group_assignment = db.scalar(
+        select(CourseAssignment.id).where(
+            CourseAssignment.tenant_id == tenant_id,
+            CourseAssignment.course_id == course_id,
+            CourseAssignment.user_id.is_(None),
+            CourseAssignment.group_id.in_(group_ids),
+        )
+    )
+    return legacy_group_assignment is not None
 
 
 def _normalize_course_status(value: str | None) -> str:
@@ -728,26 +776,122 @@ def assign_course(
     db: Session = Depends(get_db),
 ) -> dict:
     _require_course_in_tenant(db, tenant.id, course_id)
-    if payload.user_id:
+    if (payload.user_id is None and payload.group_id is None) or (payload.user_id is not None and payload.group_id is not None):
+        raise HTTPException(status_code=422, detail="Provide exactly one of user_id or group_id")
+    target_user_ids: set[int] = set()
+    if payload.user_id is not None:
         _require_user_membership_in_tenant(db, tenant.id, payload.user_id)
-    if payload.group_id:
+        target_user_ids.add(payload.user_id)
+    if payload.group_id is not None:
         group = db.scalar(select(Group.id).where(Group.id == payload.group_id, Group.tenant_id == tenant.id))
         if group is None:
             raise HTTPException(status_code=404, detail="Group not found")
-    db.add(CourseAssignment(tenant_id=tenant.id, course_id=course_id, user_id=payload.user_id, group_id=payload.group_id, assigned_by_id=membership.user_id))
-    enrolled_users: set[int] = set()
-    if payload.user_id:
-        enrolled_users.add(payload.user_id)
-    if payload.group_id:
-        for member in db.scalars(select(GroupMember).where(GroupMember.group_id == payload.group_id, GroupMember.tenant_id == tenant.id)).all():
-            enrolled_users.add(member.user_id)
-    for user_id in enrolled_users:
+        target_user_ids.update(
+            db.scalars(
+                select(GroupMember.user_id).where(
+                    GroupMember.group_id == payload.group_id,
+                    GroupMember.tenant_id == tenant.id,
+                )
+            ).all()
+        )
+
+    for user_id in target_user_ids:
+        assignment_exists = db.scalar(
+            select(CourseAssignment.id).where(
+                CourseAssignment.tenant_id == tenant.id,
+                CourseAssignment.course_id == course_id,
+                CourseAssignment.user_id == user_id,
+            )
+        )
+        if assignment_exists is None:
+            db.add(
+                CourseAssignment(
+                    tenant_id=tenant.id,
+                    course_id=course_id,
+                    user_id=user_id,
+                    group_id=payload.group_id,
+                    assigned_by_id=membership.user_id,
+                )
+            )
         if db.scalar(select(Enrollment).where(Enrollment.tenant_id == tenant.id, Enrollment.course_id == course_id, Enrollment.user_id == user_id)) is None:
             db.add(Enrollment(tenant_id=tenant.id, course_id=course_id, user_id=user_id))
         send_mock_notification(db, tenant_id=tenant.id, user_id=user_id, payload={"type": "course_assigned", "course_id": course_id})
     write_audit_log(db, action="courses.assign", actor_user_id=membership.user_id, tenant_id=tenant.id, entity_type="course", entity_id=course_id)
     db.commit()
-    return {"assigned_users": len(enrolled_users)}
+    return {"assigned_users": len(target_user_ids)}
+
+
+@router.get("/courses/{course_id}/assignments", response_model=list[CourseAssignmentRead])
+def list_course_assignments(
+    course_id: int,
+    _: Membership = Depends(active_membership),
+    tenant: Tenant = Depends(tenant_context),
+    db: Session = Depends(get_db),
+) -> list[CourseAssignmentRead]:
+    _require_course_in_tenant(db, tenant.id, course_id)
+    rows = db.scalars(
+        select(CourseAssignment)
+        .where(
+            CourseAssignment.tenant_id == tenant.id,
+            CourseAssignment.course_id == course_id,
+        )
+        .order_by(CourseAssignment.created_at.desc(), CourseAssignment.id.desc())
+    ).all()
+    return [
+        CourseAssignmentRead(
+            id=row.id,
+            user_id=row.user_id,
+            group_id=row.group_id,
+            assigned_by_id=row.assigned_by_id,
+            created_at=row.created_at,
+            effective_user_ids=_effective_user_ids_for_assignment(db, tenant.id, row),
+        )
+        for row in rows
+    ]
+
+
+@router.delete("/courses/{course_id}/assignments/{assignment_id}", status_code=204)
+def delete_course_assignment(
+    course_id: int,
+    assignment_id: int,
+    membership: Membership = Depends(require_roles(RoleName.org_admin, RoleName.teacher, RoleName.system_admin)),
+    tenant: Tenant = Depends(tenant_context),
+    db: Session = Depends(get_db),
+) -> Response:
+    _require_course_in_tenant(db, tenant.id, course_id)
+    target = db.scalar(
+        select(CourseAssignment).where(
+            CourseAssignment.id == assignment_id,
+            CourseAssignment.course_id == course_id,
+            CourseAssignment.tenant_id == tenant.id,
+        )
+    )
+    if target is None:
+        raise HTTPException(status_code=404, detail="assignment not found")
+    target_user_ids = _effective_user_ids_for_assignment(db, tenant.id, target)
+    db.delete(target)
+    db.flush()
+    for user_id in target_user_ids:
+        if not _has_course_assignment_access(db, tenant.id, course_id, user_id):
+            enrollment = db.scalar(
+                select(Enrollment).where(
+                    Enrollment.tenant_id == tenant.id,
+                    Enrollment.course_id == course_id,
+                    Enrollment.user_id == user_id,
+                )
+            )
+            if enrollment is not None:
+                db.delete(enrollment)
+    write_audit_log(
+        db,
+        action="courses.assignment.delete",
+        actor_user_id=membership.user_id,
+        tenant_id=tenant.id,
+        entity_type="course_assignment",
+        entity_id=assignment_id,
+    )
+    db.commit()
+    return Response(status_code=204)
 
 
 @router.get("/courses/{course_id}/staff")

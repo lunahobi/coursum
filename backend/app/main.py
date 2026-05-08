@@ -12,7 +12,7 @@ from app.api.routes.media import router as media_router
 from app.api.routes.recommendations import router as recommendations_router
 from app.api.routes.tenants import router as tenants_router
 from app.api.routes.tests import router as tests_router
-from app.api.routes.users import router as users_router
+from app.api.routes.users import groups_router, router as users_router
 from app.core.config import get_settings
 from app.core.db import Base, engine
 from app.core.schema import ensure_runtime_schema
@@ -45,5 +45,5 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-for router in [auth_router, tenants_router, users_router, courses_router, media_router, tests_router, recommendations_router, assignments_router, analytics_router]:
+for router in [auth_router, tenants_router, users_router, groups_router, courses_router, media_router, tests_router, recommendations_router, assignments_router, analytics_router]:
     app.include_router(router, prefix=settings.api_prefix)

@@ -69,6 +69,18 @@ describe("AnalyticsPage", () => {
     expect(await screen.findByText("Revise listening")).toBeInTheDocument();
   });
 
+  it("shows attempt drawer with Close after selecting an attempt", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole("button", { name: /Alice Learner/i }));
+    const attemptBtn = await screen.findByRole("button", { name: /1: 72%/ });
+    await user.click(attemptBtn);
+    const closeBtn = screen.getByRole("button", { name: "Close" });
+    expect(closeBtn.closest(".attempt-drawer-inline")).toBeTruthy();
+    await user.click(closeBtn);
+    expect(screen.queryByRole("button", { name: "Close" })).not.toBeInTheDocument();
+  });
+
   it("shows empty state before learner selection", async () => {
     renderPage();
     expect(await screen.findByText("Pick a learner on the left to view progress")).toBeInTheDocument();

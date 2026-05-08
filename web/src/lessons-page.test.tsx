@@ -479,7 +479,7 @@ describe("LessonsPage", () => {
 
     await waitFor(() => expect(screen.getAllByRole("button", { name: "Attach video" }).length).toBeGreaterThan(0));
     const advancedPanels = Array.from(container.querySelectorAll("details.advanced-panel")) as HTMLDetailsElement[];
-    expect(advancedPanels.length).toBeGreaterThanOrEqual(2);
+    expect(advancedPanels.length).toBeGreaterThanOrEqual(1);
     expect(advancedPanels.every((panel) => panel.open === false)).toBe(true);
     expect(screen.getAllByLabelText("Lesson title")[0]).toBeVisible();
     expect(screen.getAllByLabelText("Chapter title")[0]).toBeVisible();

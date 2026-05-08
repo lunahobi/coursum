@@ -8,37 +8,78 @@ from app.services.recommendation_payloads import (
 )
 
 
-def dashboard_stats(db: Session, tenant_id: int) -> dict:
-    avg_progress = db.scalar(
-        select(func.avg(Enrollment.progress_percent)).where(Enrollment.tenant_id == tenant_id)
+def dashboard_stats(db: Session, tenant_id: int, course_ids: list[int] | None = None) -> dict:
+    selected_course_ids = [int(course_id) for course_id in (course_ids or [])]
+    has_filter = bool(selected_course_ids)
+    enrollment_filters = [Enrollment.tenant_id == tenant_id]
+    test_filters = [Test.tenant_id == tenant_id]
+    attempt_filters = [Attempt.tenant_id == tenant_id, Attempt.status == "in_progress"]
+    course_filters = [Course.tenant_id == tenant_id]
+    if has_filter:
+        enrollment_filters.append(Enrollment.course_id.in_(selected_course_ids))
+        test_filters.append(Test.course_id.in_(selected_course_ids))
+        course_filters.append(Course.id.in_(selected_course_ids))
+    avg_progress = db.scalar(select(func.avg(Enrollment.progress_percent)).where(*enrollment_filters))
+    active_learners = (
+        db.scalar(select(func.count(func.distinct(Enrollment.user_id))).where(*enrollment_filters))
+        if has_filter
+        else db.scalar(select(func.count(Membership.id)).where(Membership.tenant_id == tenant_id, Membership.is_active.is_(True)))
     )
     return {
-        "users": db.scalar(select(func.count(Membership.id)).where(Membership.tenant_id == tenant_id, Membership.is_active.is_(True))) or 0,
-        "courses": db.scalar(select(func.count(Course.id)).where(Course.tenant_id == tenant_id)) or 0,
-        "tests": db.scalar(select(func.count(Test.id)).where(Test.tenant_id == tenant_id)) or 0,
-        "active_attempts": db.scalar(select(func.count(Attempt.id)).where(Attempt.tenant_id == tenant_id, Attempt.status == "in_progress")) or 0,
-        "enrollments": db.scalar(select(func.count(Enrollment.id)).where(Enrollment.tenant_id == tenant_id)) or 0,
+        "users": active_learners or 0,
+        "courses": db.scalar(select(func.count(Course.id)).where(*course_filters)) or 0,
+        "tests": db.scalar(select(func.count(Test.id)).where(*test_filters)) or 0,
+        "active_attempts": (
+            db.scalar(
+                select(func.count(Attempt.id))
+                .join(Test, Test.id == Attempt.test_id)
+                .where(*attempt_filters, *( [Test.course_id.in_(selected_course_ids)] if has_filter else [] ))
+            )
+            or 0
+        ),
+        "enrollments": db.scalar(select(func.count(Enrollment.id)).where(*enrollment_filters)) or 0,
         "avg_progress": int(avg_progress or 0),
-        "recommendations": db.scalar(select(func.count(Recommendation.id)).where(Recommendation.tenant_id == tenant_id)) or 0,
+        "recommendations": (
+            db.scalar(
+                select(func.count(Recommendation.id))
+                .join(Result, Result.id == Recommendation.result_id)
+                .join(Attempt, Attempt.id == Result.attempt_id)
+                .join(Test, Test.id == Attempt.test_id)
+                .where(
+                    Recommendation.tenant_id == tenant_id,
+                    *( [Test.course_id.in_(selected_course_ids)] if has_filter else [] ),
+                )
+            )
+            or 0
+        ),
     }
 
 
-def course_progress(db: Session, tenant_id: int) -> list[dict]:
-    rows = db.execute(
-        select(Course.title, func.avg(Enrollment.progress_percent), func.count(Enrollment.id))
+def course_progress(db: Session, tenant_id: int, course_ids: list[int] | None = None) -> list[dict]:
+    selected_course_ids = [int(course_id) for course_id in (course_ids or [])]
+    query = (
+        select(Course.id, Course.title, func.avg(Enrollment.progress_percent), func.count(Enrollment.id))
         .join(Enrollment, Enrollment.course_id == Course.id)
         .where(Course.tenant_id == tenant_id)
-        .group_by(Course.title)
-    ).all()
-    return [{"course_title": title, "avg_progress": int(avg_progress or 0), "learners": learners} for title, avg_progress, learners in rows]
+    )
+    if selected_course_ids:
+        query = query.where(Course.id.in_(selected_course_ids))
+    rows = db.execute(query.group_by(Course.id, Course.title)).all()
+    return [{"course_id": course_id, "course_title": title, "avg_progress": int(avg_progress or 0), "learners": learners} for course_id, title, avg_progress, learners in rows]
 
 
-def problem_topics(db: Session, tenant_id: int) -> list[dict]:
-    rows = db.execute(
+def problem_topics(db: Session, tenant_id: int, course_ids: list[int] | None = None) -> list[dict]:
+    selected_course_ids = [int(course_id) for course_id in (course_ids or [])]
+    topic_query = (
         select(Recommendation.topic_id, func.count(Recommendation.id))
+        .join(Result, Result.id == Recommendation.result_id)
+        .join(Attempt, Attempt.id == Result.attempt_id)
+        .join(Test, Test.id == Attempt.test_id)
         .where(Recommendation.tenant_id == tenant_id, Recommendation.topic_id.is_not(None))
-        .group_by(Recommendation.topic_id)
-    ).all()
+    )
+    if selected_course_ids:
+        topic_query = topic_query.where(Test.course_id.in_(selected_course_ids))
+    rows = db.execute(topic_query.group_by(Recommendation.topic_id)).all()
     if not rows:
         return []
     topic_counts = {int(topic_id): count for topic_id, count in rows if topic_id is not None}
