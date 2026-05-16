@@ -1,7 +1,7 @@
 # Coursum LMS
 
 <p>
-  <img src="./web/public/website_logo.svg" alt="Coursum" width="280">
+  <img src="./web/public/website_logo.svg" alt="Coursum" width="280" style="background:#ffffff; padding:16px 20px; border-radius:8px;">
 </p>
 
 Coursum LMS — многотенантная клиент-серверная система корпоративного обучения, подготовленная как MVP для ВКР. В репозитории находятся backend API, web-панель администратора/преподавателя и mobile-клиент слушателя.
