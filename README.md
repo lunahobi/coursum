@@ -1,17 +1,33 @@
-# Corporate LMS MVP
+# Coursum LMS
 
-Многотенантная клиент-серверная система корпоративного обучения для ВКР: backend API, web-панель на React и mobile-клиент на Flutter с адаптивным тестированием.
+<p>
+  <img src="./web/public/website_logo.svg" alt="Coursum" width="280">
+</p>
 
-[![CI](https://github.com/your-org/your-repo/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/your-repo/actions/workflows/ci.yml)
+Coursum LMS — многотенантная клиент-серверная система корпоративного обучения, подготовленная как MVP для ВКР. В репозитории находятся backend API, web-панель администратора/преподавателя и mobile-клиент слушателя.
 
-## Структура монорепозитория
+## Что входит в проект
 
-- `backend` — FastAPI + SQLAlchemy + Alembic, модель данных (PostgreSQL/SQLite)
-- `web` — панель администратора/преподавателя (React + TypeScript)
-- `mobile` — приложение слушателя (Flutter)
-- `docs` — архитектура, runbook, стратегия тестирования, ADR
+- `backend` — REST API на FastAPI, SQLAlchemy и Alembic.
+- `web` — административная web-панель на React, TypeScript и Vite.
+- `mobile` — Flutter-приложение для слушателя.
+- `docs` — архитектура, runbook деплоя, стратегия тестирования и ADR.
+- `allure-results` / `allure-report` — результаты и отчеты тестов, если они были сгенерированы локально.
 
-## Архитектура верхнего уровня
+## Основные возможности
+
+- изоляция организаций через `tenant_id` и tenant-контекст запроса;
+- роли `learner`, `teacher`, `org_admin`, `system_admin`;
+- управление пользователями, курсами, уроками, тестами и вопросами;
+- назначение курсов пользователям и группам;
+- адаптивное тестирование со сложностью вопросов от `1` до `5`;
+- рекомендации по слабым темам после завершения попытки;
+- аналитика по курсам, слушателям и проблемным темам;
+- JWT-авторизация с refresh-токенами;
+- аудит действий и расширяемый слой уведомлений;
+- UI- и API-тесты, E2E-проверки Playwright, Allure-отчеты.
+
+## Архитектура
 
 ```mermaid
 flowchart LR
@@ -21,70 +37,53 @@ flowchart LR
   API --> Media[(Хранилище медиа)]
 ```
 
-## Ключевые возможности
+Backend является основным источником бизнес-логики и данных. Web-панель используется администраторами и преподавателями, mobile-клиент — слушателями. Все клиенты обращаются к единому REST API и используют общую модель ролей и организаций.
 
-- tenant-изоляция через `tenant_id` и tenant-контекст запроса
-- роли: learner, teacher, org_admin, system_admin
-- управление курсами, уроками, тестами и вопросами
-- назначение курсов пользователям и группам
-- адаптивное тестирование со сложностью `1..5`
-- рекомендации по слабым темам после завершения попытки
-- аналитика по курсам и слушателям
-- JWT auth + refresh, аудит, mock-уведомления
+## Быстрый запуск через Docker
 
-## Индекс документации
+```bash
+docker compose up --build
+```
 
-- `docs/architecture.md` — обзор подсистем и tenant-модели
-- `docs/deployment-runbook.md` — порядок деплоя и health-check
-- `docs/testing-strategy.md` — слои API/UI/E2E тестирования
-- `docs/adr/0001-runtime-schema-and-startup.md` — решение по миграциям и startup
-- `CONTRIBUTING.md` — правила внесения изменений
-- `CHANGELOG.md` — история изменений
+После запуска доступны:
 
-## Запуск backend локально
+- backend: `http://localhost:8000`
+- web: `http://localhost:8081`
+- PostgreSQL: `localhost:5433`
+
+Загрузка демонстрационных данных:
+
+```bash
+docker compose run --rm --profile tools seed
+```
+
+Остановка контейнеров:
+
+```bash
+docker compose down
+```
+
+Полный сброс базы данных вместе с volume:
+
+```bash
+docker compose down -v
+```
+
+## Локальный запуск backend
 
 ```bash
 cd backend
 python -m venv .venv
 . .venv/Scripts/activate
 pip install -r requirements.txt
-copy ..\\.env.example .env
+copy ..\.env.example .env
 python -m scripts.seed_demo
 uvicorn app.main:app --reload
 ```
 
-API base по умолчанию: `http://localhost:8000/api/v1`
+API по умолчанию: `http://localhost:8000/api/v1`.
 
-## Запуск через Docker
-
-```bash
-docker compose up --build
-```
-
-Сервисы:
-- backend: `http://localhost:8000`
-- web: `http://localhost:8081`
-- postgres: `localhost:5432`
-
-Загрузка demo-данных в PostgreSQL:
-
-```bash
-docker compose run --rm --profile tools seed
-```
-
-Остановка:
-
-```bash
-docker compose down
-```
-
-Полный сброс volume БД:
-
-```bash
-docker compose down -v
-```
-
-## Запуск web локально
+## Локальный запуск web
 
 ```bash
 cd web
@@ -92,9 +91,9 @@ npm install
 npm run dev
 ```
 
-Web URL по умолчанию: `http://localhost:5173`
+Web-панель по умолчанию: `http://localhost:5173`.
 
-## Запуск mobile локально
+## Локальный запуск mobile
 
 ```bash
 cd mobile
@@ -102,11 +101,10 @@ flutter pub get
 flutter run
 ```
 
-Mobile-клиент не контейнеризован и подключается к локальному backend.
+Mobile-клиент подключается к локальному backend. Базовый URL API:
 
-Базовый API для mobile:
 - Android emulator: `http://10.0.2.2:8000/api/v1`
-- другие локальные цели: `http://localhost:8000/api/v1`
+- desktop/web и другие локальные цели: `http://localhost:8000/api/v1`
 
 Переопределение API:
 
@@ -114,45 +112,68 @@ Mobile-клиент не контейнеризован и подключает�
 flutter run --dart-define=API_BASE=http://<your-host-ip>:8000/api/v1
 ```
 
+## Демо-аккаунты
+
+После запуска seed-скрипта доступны пользователи:
+
+| Роль | Email | Пароль |
+| --- | --- | --- |
+| System admin | `sysadmin@example.com` | `Password123!` |
+| Tenant admin | `admin@acme.example.com` | `Password123!` |
+| Teacher | `teacher@acme.example.com` | `Password123!` |
+| Learner | `learner1@acme.example.com` | `Password123!` |
+
 ## Tenant-модель
 
-- production: tenant определяется по поддомену
-- local/dev fallback: заголовок `X-Tenant-Code`
-- все tenant-bound таблицы хранят `tenant_id`
-- защищенные маршруты требуют JWT и активный membership в текущем tenant
-
-## Demo-аккаунты
-
-- system admin: `sysadmin@example.com` / `Password123!`
-- tenant admin: `admin@acme.example.com` / `Password123!`
-- teacher: `teacher@acme.example.com` / `Password123!`
-- learner: `learner1@acme.example.com` / `Password123!`
+- В production tenant определяется по поддомену.
+- В local/dev режиме можно использовать fallback-заголовок `X-Tenant-Code`.
+- Все tenant-bound таблицы хранят `tenant_id`.
+- Защищенные маршруты требуют JWT и активное membership в текущей организации.
 
 ## Важные API-маршруты
 
-- auth: `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`, `GET /auth/me`
-- tenants: `GET /tenants`, `GET /tenants/current`, `POST /tenants/select`
-- users: `GET/POST/PATCH /users`
-- courses: `GET/POST /courses`, `GET /courses/{id}`, `POST /courses/{id}/assign`
-- lessons: `GET /lessons?course_id=`, `POST /lessons`, `POST /lessons/{id}/progress`
-- tests: `GET/POST /tests`, `POST /questions`, `POST /tests/{id}/start`, `GET /attempts/{id}/next-question`, `POST /attempts/{id}/submit-answer`, `POST /attempts/{id}/finish`
-- recommendations: `GET /recommendations/me`
-- analytics: `GET /analytics/dashboard`, `GET /analytics/course-progress`, `GET /analytics/problem-topics`, `GET /analytics/learners/{id}`
+- Auth: `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`, `GET /auth/me`
+- Tenants: `GET /tenants`, `GET /tenants/current`, `POST /tenants/select`
+- Users: `GET/POST/PATCH /users`
+- Courses: `GET/POST /courses`, `GET /courses/{id}`, `POST /courses/{id}/assign`
+- Lessons: `GET /lessons?course_id=`, `POST /lessons`, `POST /lessons/{id}/progress`
+- Tests: `GET/POST /tests`, `POST /questions`, `POST /tests/{id}/start`
+- Attempts: `GET /attempts/{id}/next-question`, `POST /attempts/{id}/submit-answer`, `POST /attempts/{id}/finish`
+- Recommendations: `GET /recommendations/me`
+- Analytics: `GET /analytics/dashboard`, `GET /analytics/course-progress`, `GET /analytics/problem-topics`, `GET /analytics/learners/{id}`
 
 ## Тесты
+
+Backend:
 
 ```bash
 cd backend
 python -m pytest
+```
 
-cd ../web
+Web:
+
+```bash
+cd web
 npm test
+```
 
-cd ../mobile
+Mobile:
+
+```bash
+cd mobile
 flutter test
 ```
 
-## Проверки качества кода
+E2E-тесты web-интерфейса:
+
+```bash
+cd web
+npm run test:e2e:install
+npm run test:e2e
+```
+
+## Проверки качества
 
 Backend:
 
@@ -173,22 +194,7 @@ npm test
 npm run build
 ```
 
-## E2E UI-тесты (Playwright)
-
-```bash
-cd web
-npm run test:e2e:install
-npm run test:e2e
-```
-
-Покрытие E2E включает:
-- рендер auth-страницы и login flow
-- activity summary и легенду на dashboard
-- smoke-навигацию по основным страницам teacher/admin UI
-
-## Allure-отчеты (API + UI)
-
-UI (Playwright) пишет результаты в `allure-results/ui`.
+## Allure-отчеты
 
 API:
 
@@ -197,15 +203,15 @@ cd backend
 python -m pytest --alluredir ../allure-results/api -q
 ```
 
-Сборка/открытие UI-отчета:
+UI-отчет:
 
 ```bash
-cd ../web
+cd web
 npm run allure:ui:generate
 npm run allure:ui:open
 ```
 
-Сборка/открытие общего API+UI отчета:
+Общий отчет API + UI:
 
 ```bash
 cd web
@@ -215,10 +221,9 @@ npm run allure:all:open
 
 ## CI
 
-Workflow: `.github/workflows/ci.yml`
+Workflow находится в `.github/workflows/ci.yml`.
 
-- backend: install deps + Ruff + scoped Mypy + Pytest
-- web: install deps + ESLint + Prettier check + tests + build
+CI проверяет backend и web: установку зависимостей, Ruff, Mypy, Pytest, ESLint, Prettier, unit-тесты и сборку web-приложения.
 
 ## Smoke-проверка assignments перед релизом
 
@@ -229,12 +234,21 @@ python backend/scripts/smoke_assignments_endpoint.py \
   --tenant-code <tenant-code>
 ```
 
-Команда должна вывести `OK` и завершиться с кодом `0`.
+Успешный результат: команда выводит `OK` и завершается с кодом `0`.
+
+## Документация
+
+- `docs/architecture.md` — обзор архитектуры, подсистем и tenant-модели.
+- `docs/deployment-runbook.md` — порядок деплоя и health-check.
+- `docs/testing-strategy.md` — стратегия API, UI и E2E-тестирования.
+- `docs/adr/0001-runtime-schema-and-startup.md` — решение по миграциям и startup-процедуре.
+- `CONTRIBUTING.md` — правила внесения изменений.
+- `CHANGELOG.md` — история изменений.
 
 ## Пояснения к защите ВКР
 
-- Адаптивный алгоритм стартует со сложности `3`.
-- Верный ответ повышает сложность (`+1`), неверный — понижает (`-1`).
-- Слабые темы усиливаются ошибками и медленными ответами.
-- Рекомендации формируются на основе слабых тем.
-- Архитектура остается монолитной для объяснимости на защите, но разделена на модули.
+- Адаптивный алгоритм стартует со сложности теста и меняет целевую сложность после каждого ответа.
+- Верный ответ повышает сложность на `1`, неверный понижает ее на `1`.
+- Слабые темы определяются по ошибкам и медленным ответам.
+- Рекомендации формируются на основе слабых тем попытки.
+- Архитектура остается монолитной для простоты демонстрации, но код разделен на понятные модули.
