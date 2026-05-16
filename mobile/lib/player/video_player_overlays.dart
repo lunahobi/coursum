@@ -110,6 +110,7 @@ class LessonVideoFrame extends StatelessWidget {
     required this.duration,
     required this.isPlaying,
     required this.controlsVisible,
+    this.buffering = false,
     required this.fullscreen,
     required this.fitMode,
     required this.onSurfaceTap,
@@ -124,6 +125,9 @@ class LessonVideoFrame extends StatelessWidget {
     this.onToggleFitMode,
     this.onSurfaceDoubleTap,
     this.onSurfaceDoubleTapDown,
+    this.resumePosition,
+    this.resumeSeeking = false,
+    this.onResumeFromPosition,
   });
 
   final String title;
@@ -132,6 +136,7 @@ class LessonVideoFrame extends StatelessWidget {
   final Duration duration;
   final bool isPlaying;
   final bool controlsVisible;
+  final bool buffering;
   final bool fullscreen;
   final VideoFitMode fitMode;
   final VoidCallback onSurfaceTap;
@@ -146,6 +151,9 @@ class LessonVideoFrame extends StatelessWidget {
   final VoidCallback? onToggleFitMode;
   final VoidCallback? onSurfaceDoubleTap;
   final GestureTapDownCallback? onSurfaceDoubleTapDown;
+  final Duration? resumePosition;
+  final bool resumeSeeking;
+  final VoidCallback? onResumeFromPosition;
 
   @override
   Widget build(BuildContext context) {
@@ -160,6 +168,36 @@ class LessonVideoFrame extends StatelessWidget {
         clampedPosition.inMilliseconds.clamp(0, maxSeconds.toInt()).toDouble();
     final labelStyle = theme.textTheme.bodySmall
         ?.copyWith(color: Colors.white.withValues(alpha: 0.92));
+    final resumePosition = this.resumePosition;
+    final resumeLabel = resumePosition == null
+        ? null
+        : strings.isRu
+            ? 'Продолжить с ${formatVideoTimestamp(resumePosition)}'
+            : 'Resume from ${formatVideoTimestamp(resumePosition)}';
+
+    final resumeButton = resumePosition == null || onResumeFromPosition == null
+        ? null
+        : Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: 12,
+                right: 12,
+                bottom: fullscreen ? 92 : 12,
+              ),
+              child: FilledButton.icon(
+                key: const ValueKey('resume-video-position-button'),
+                onPressed: resumeSeeking ? null : onResumeFromPosition,
+                icon: resumeSeeking
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.history),
+                label: Text(resumeLabel!),
+              ),
+            ),
+          );
 
     final titleRow = Row(
       children: [
@@ -240,6 +278,28 @@ class LessonVideoFrame extends StatelessWidget {
       ),
     );
 
+    final bufferingIndicator = IgnorePointer(
+      child: Center(
+        child: DecoratedBox(
+          key: const ValueKey('video-buffering-indicator'),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.46),
+            shape: BoxShape.circle,
+          ),
+          child: const Padding(
+            padding: EdgeInsets.all(16),
+            child: SizedBox.square(
+              dimension: 28,
+              child: CircularProgressIndicator(
+                strokeWidth: 3,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
     final inlineOverlay = AnimatedOpacity(
       key: const ValueKey('video-overlay-opacity'),
       opacity: controlsVisible ? 1 : 0,
@@ -273,6 +333,7 @@ class LessonVideoFrame extends StatelessWidget {
               ),
             ),
             Positioned.fill(child: centerPlayButton),
+            if (resumeButton != null) Positioned.fill(child: resumeButton),
           ],
         ),
       ),
@@ -311,6 +372,7 @@ class LessonVideoFrame extends StatelessWidget {
               ),
             ),
             Positioned.fill(child: centerPlayButton),
+            if (resumeButton != null) Positioned.fill(child: resumeButton),
             Positioned(
               left: 0,
               right: 0,
@@ -400,6 +462,7 @@ class LessonVideoFrame extends StatelessWidget {
                 child: surface,
               ),
             ),
+            if (buffering) Positioned.fill(child: bufferingIndicator),
             Positioned.fill(child: fullscreenControls),
           ],
         ),
@@ -478,6 +541,7 @@ class LessonVideoFrame extends StatelessWidget {
                 onTap: onSurfaceTap,
                 child: surface,
               ),
+              if (buffering) Positioned.fill(child: bufferingIndicator),
               Positioned.fill(child: inlineOverlay),
             ],
           ),

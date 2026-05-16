@@ -93,6 +93,68 @@ npm run dev
 
 Web-панель по умолчанию: `http://localhost:5173`.
 
+## Сайт скачивания APK
+
+Публичная страница скачивания мобильного приложения доступна по адресу:
+
+```text
+https://coursum.online/download
+```
+
+Эта страница находится в web-приложении и открывается без входа в админ-панель. Кнопка скачивания ведет на файл:
+
+```text
+/downloads/coursum.apk
+```
+
+В репозитории APK должен лежать здесь:
+
+```text
+web/public/downloads/coursum.apk
+```
+
+Сборка release APK:
+
+```bash
+cd mobile
+flutter build apk --release
+```
+
+После сборки скопируйте файл:
+
+```text
+mobile/build/app/outputs/flutter-apk/app-release.apk
+```
+
+в:
+
+```text
+web/public/downloads/coursum.apk
+```
+
+На Windows лучше собирать Flutter APK из реальной папки без кириллицы, OneDrive и junction-ссылок. Например:
+
+```powershell
+cd C:\dev\coursum_mobile_build
+flutter build apk --release
+```
+
+Загрузка APK на сервер:
+
+```powershell
+ssh root@80.93.60.63 "mkdir -p /opt/app_new/web/public/downloads"
+scp "C:\Users\79673\OneDrive\Документы\учёба\вкр\app_new\web\public\downloads\coursum.apk" root@80.93.60.63:/opt/app_new/web/public/downloads/coursum.apk
+```
+
+Если менялись файлы страницы скачивания, также нужно загрузить их и пересобрать web-контейнер/фронтенд на сервере:
+
+```powershell
+scp "C:\Users\79673\OneDrive\Документы\учёба\вкр\app_new\web\src\app-core.tsx" root@80.93.60.63:/opt/app_new/web/src/app-core.tsx
+scp "C:\Users\79673\OneDrive\Документы\учёба\вкр\app_new\web\src\main.tsx" root@80.93.60.63:/opt/app_new/web/src/main.tsx
+scp "C:\Users\79673\OneDrive\Документы\учёба\вкр\app_new\web\src\styles\pages\download.css" root@80.93.60.63:/opt/app_new/web/src/styles/pages/download.css
+scp "C:\Users\79673\OneDrive\Документы\учёба\вкр\app_new\web\nginx.conf" root@80.93.60.63:/opt/app_new/web/nginx.conf
+```
+
 ## Локальный запуск mobile
 
 ```bash

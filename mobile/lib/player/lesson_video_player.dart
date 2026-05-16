@@ -100,7 +100,10 @@ class _LessonVideoPlayerShellState extends State<_LessonVideoPlayerShell> {
   bool _loading = true;
   bool _previewPlaying = false;
   bool _lastControllerPlaying = false;
+  bool _lastControllerBuffering = false;
   bool _didReachEnd = false;
+  bool _showResumePrompt = false;
+  bool _resumeSeeking = false;
 
   TapDownDetails? _lastDoubleTapDownDetails;
   TransformationController? _fullscreenTransformationController;
@@ -128,6 +131,13 @@ class _LessonVideoPlayerShellState extends State<_LessonVideoPlayerShell> {
       return _previewPlaying;
     }
     return _controller?.value.isPlaying ?? false;
+  }
+
+  bool get _isBuffering {
+    if (_isPreview || _loading || _error != null) {
+      return false;
+    }
+    return _resumeSeeking || (_controller?.value.isBuffering ?? false);
   }
 
   Duration get _position {
@@ -195,6 +205,9 @@ class _LessonVideoPlayerShellState extends State<_LessonVideoPlayerShell> {
       _error = null;
       _didReachEnd = false;
       _lastControllerPlaying = false;
+      _lastControllerBuffering = false;
+      _showResumePrompt = false;
+      _resumeSeeking = false;
       _zoomScale = 1;
       if (widget.fullscreen && _fullscreenTransformationController == null) {
         _initializeFullscreenZoom();
@@ -328,6 +341,7 @@ class _LessonVideoPlayerShellState extends State<_LessonVideoPlayerShell> {
           _loading = false;
           _error = null;
           _lastControllerPlaying = _controller?.value.isPlaying ?? false;
+          _lastControllerBuffering = _controller?.value.isBuffering ?? false;
           _lastNativePositionMilliseconds =
               _controller?.value.position.inMilliseconds ?? 0;
         });
@@ -354,20 +368,20 @@ class _LessonVideoPlayerShellState extends State<_LessonVideoPlayerShell> {
 
     try {
       await controller.initialize();
-      if (widget.initialPositionSeconds > 0) {
-        await controller
-            .seekTo(Duration(seconds: widget.initialPositionSeconds));
-      }
       controller.addListener(_handleControllerChanged);
       if (!mounted) {
         controller.removeListener(_handleControllerChanged);
         await controller.dispose();
         return;
       }
+      final resumePosition = _initialResumePositionFor(controller);
       setState(() {
         _loading = false;
         _error = null;
+        _showResumePrompt = resumePosition != null;
+        _resumeSeeking = false;
         _lastControllerPlaying = controller.value.isPlaying;
+        _lastControllerBuffering = controller.value.isBuffering;
         _lastNativePositionMilliseconds =
             controller.value.position.inMilliseconds;
       });
@@ -387,6 +401,58 @@ class _LessonVideoPlayerShellState extends State<_LessonVideoPlayerShell> {
     }
   }
 
+  Duration? _initialResumePositionFor(VideoPlayerController controller) {
+    if (widget.initialPositionSeconds <= 0 || !controller.value.isInitialized) {
+      return null;
+    }
+    final duration = controller.value.duration;
+    if (duration <= Duration.zero) {
+      return Duration(seconds: widget.initialPositionSeconds);
+    }
+    final target = Duration(seconds: widget.initialPositionSeconds);
+    final maxResumePosition = duration - const Duration(seconds: 1);
+    if (maxResumePosition <= Duration.zero) {
+      return null;
+    }
+    return target > maxResumePosition ? maxResumePosition : target;
+  }
+
+  Future<void> _resumeFromSavedPosition() async {
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) {
+      return;
+    }
+    final target = _initialResumePositionFor(controller);
+    if (target == null) {
+      setState(() {
+        _showResumePrompt = false;
+        _resumeSeeking = false;
+      });
+      return;
+    }
+
+    setState(() => _resumeSeeking = true);
+    _showControls(restartTimer: false);
+    try {
+      await controller.seekTo(target);
+      _reportPosition(target.inSeconds);
+      if (!mounted || _controller != controller) {
+        return;
+      }
+      setState(() {
+        _showResumePrompt = false;
+        _resumeSeeking = false;
+        _lastControllerBuffering = controller.value.isBuffering;
+        _lastNativePositionMilliseconds =
+            controller.value.position.inMilliseconds;
+      });
+    } catch (_) {
+      if (mounted && _controller == controller) {
+        setState(() => _resumeSeeking = false);
+      }
+    }
+  }
+
   void _handleControllerChanged() {
     final controller = _controller;
     if (controller == null || !controller.value.isInitialized) {
@@ -399,22 +465,26 @@ class _LessonVideoPlayerShellState extends State<_LessonVideoPlayerShell> {
     final duration = controller.value.duration;
     final didReachEnd = duration > Duration.zero && position >= duration;
     final isPlaying = controller.value.isPlaying;
+    final isBuffering = controller.value.isBuffering;
     final positionMilliseconds = position.inMilliseconds;
     final didStatusChange =
         didReachEnd != _didReachEnd || isPlaying != _lastControllerPlaying;
+    final didBufferingChange = isBuffering != _lastControllerBuffering;
     final didPositionChange =
         positionMilliseconds != _lastNativePositionMilliseconds;
 
-    if (didStatusChange || didPositionChange) {
+    if (didStatusChange || didBufferingChange || didPositionChange) {
       if (mounted) {
         setState(() {
           _didReachEnd = didReachEnd;
           _lastControllerPlaying = isPlaying;
+          _lastControllerBuffering = isBuffering;
           _lastNativePositionMilliseconds = positionMilliseconds;
         });
       } else {
         _didReachEnd = didReachEnd;
         _lastControllerPlaying = isPlaying;
+        _lastControllerBuffering = isBuffering;
         _lastNativePositionMilliseconds = positionMilliseconds;
       }
     }
@@ -517,6 +587,9 @@ class _LessonVideoPlayerShellState extends State<_LessonVideoPlayerShell> {
     if (controller == null || !controller.value.isInitialized) {
       return;
     }
+    if (_showResumePrompt && !_resumeSeeking && mounted) {
+      setState(() => _showResumePrompt = false);
+    }
     if (controller.value.isPlaying) {
       await controller.pause();
       if (mounted) {
@@ -546,6 +619,12 @@ class _LessonVideoPlayerShellState extends State<_LessonVideoPlayerShell> {
 
   Future<void> _seekTo(Duration target) async {
     _showControls();
+    if (_showResumePrompt && mounted) {
+      setState(() {
+        _showResumePrompt = false;
+        _resumeSeeking = false;
+      });
+    }
     if (_isPreview) {
       final clamped = Duration(
         milliseconds:
@@ -660,6 +739,9 @@ class _LessonVideoPlayerShellState extends State<_LessonVideoPlayerShell> {
       _didReachEnd = false;
       _controlsVisible = true;
       _lastReportedSeconds = 0;
+      _lastControllerBuffering = false;
+      _showResumePrompt = false;
+      _resumeSeeking = false;
     });
     _initializePlayer();
   }
@@ -807,13 +889,15 @@ class _LessonVideoPlayerShellState extends State<_LessonVideoPlayerShell> {
     );
 
     if (widget.fullscreen && _fullscreenTransformationController != null) {
+      final canPanZoomedVideo = _zoomScale > 1.05;
       surface = InteractiveViewer(
         key: const ValueKey('fullscreen-zoom-surface'),
         transformationController: _fullscreenTransformationController,
         minScale: 1,
         maxScale: 3,
-        boundaryMargin: const EdgeInsets.all(120),
-        panEnabled: true,
+        boundaryMargin:
+            canPanZoomedVideo ? const EdgeInsets.all(120) : EdgeInsets.zero,
+        panEnabled: canPanZoomedVideo,
         scaleEnabled: true,
         clipBehavior: Clip.hardEdge,
         child: surface,
@@ -827,10 +911,17 @@ class _LessonVideoPlayerShellState extends State<_LessonVideoPlayerShell> {
       duration: _duration,
       isPlaying: _isPlaying,
       controlsVisible: _controlsVisible,
+      buffering: _isBuffering,
       fullscreen: widget.fullscreen,
       fitMode: _fitMode,
       isZoomed: widget.fullscreen && _zoomScale > 1.05,
       zoomLabel: '${_zoomScale.toStringAsFixed(1)}x',
+      resumePosition:
+          _showResumePrompt ? _initialResumePositionFor(_controller!) : null,
+      resumeSeeking: _resumeSeeking,
+      onResumeFromPosition: _showResumePrompt
+          ? () => unawaited(_resumeFromSavedPosition())
+          : null,
       onSurfaceTap: _toggleControlsVisibility,
       onSurfaceDoubleTap: widget.fullscreen ? _toggleQuickZoom : null,
       onSurfaceDoubleTapDown: widget.fullscreen ? _storeDoubleTapDown : null,

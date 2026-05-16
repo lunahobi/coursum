@@ -9,6 +9,7 @@ import "./styles/forms.css";
 import "./styles/pages/auth.css";
 import "./styles/pages/dashboard.css";
 import "./styles/pages/analytics.css";
+import "./styles/pages/download.css";
 import "./styles/pages/users.css";
 import "./styles/pages/courses.css";
 import "./styles/pages/lessons.css";

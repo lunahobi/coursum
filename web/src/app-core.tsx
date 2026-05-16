@@ -3029,6 +3029,85 @@ export function LoginPage({
   );
 }
 
+function DownloadPage() {
+  const apkUrl = "/downloads/coursum.apk";
+
+  return (
+    <main className="download-page">
+      <section className="download-hero" aria-labelledby="download-title">
+        <nav className="download-nav" aria-label="Coursum">
+          <img src={websiteLogo} alt="Coursum" />
+          <Link to="/" className="download-nav-link">
+            Войти в панель
+          </Link>
+        </nav>
+        <div className="download-hero-grid">
+          <div className="download-copy">
+            <p className="download-kicker">Android APK</p>
+            <h1 id="download-title">Coursum для Android</h1>
+            <p>
+              Мобильное приложение для прохождения курсов, просмотра уроков и работы с заданиями.
+              Установите APK на Android-устройство и войдите в свою организацию.
+            </p>
+            <div className="download-actions">
+              <a className="download-primary" href={apkUrl} download>
+                Скачать APK
+              </a>
+              <a className="download-secondary" href="/app_icon.png" target="_blank" rel="noreferrer">
+                Иконка приложения
+              </a>
+            </div>
+            <dl className="download-meta" aria-label="Информация о файле">
+              <div>
+                <dt>Платформа</dt>
+                <dd>Android</dd>
+              </div>
+              <div>
+                <dt>Файл</dt>
+                <dd>coursum.apk</dd>
+              </div>
+              <div>
+                <dt>Ссылка</dt>
+                <dd>{apkUrl}</dd>
+              </div>
+            </dl>
+          </div>
+          <div className="download-device" aria-hidden="true">
+            <div className="download-phone">
+              <div className="download-phone-top" />
+              <div className="download-app-card">
+                <img src="/app_icon.png" alt="" />
+                <strong>Coursum</strong>
+                <span>Learning app</span>
+              </div>
+              <div className="download-progress">
+                <span />
+              </div>
+              <div className="download-phone-row" />
+              <div className="download-phone-row short" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="download-steps" aria-labelledby="install-title">
+        <div>
+          <h2 id="install-title">Как установить</h2>
+          <p>
+            Если Android попросит разрешение, включите установку из браузера или файлового
+            менеджера. После установки откройте Coursum и войдите по данным организации.
+          </p>
+        </div>
+        <ol>
+          <li>Нажмите «Скачать APK».</li>
+          <li>Откройте загруженный файл на телефоне.</li>
+          <li>Подтвердите установку и запустите приложение.</li>
+        </ol>
+      </section>
+    </main>
+  );
+}
+
 export function Shell({
   session,
   onLogout,
@@ -9300,6 +9379,7 @@ export function App() {
   const [session, setSession] = useState<SessionState | null>(() => readStoredSession());
   const [savedAccounts, setSavedAccounts] = useState<SavedAccount[]>(() => readSavedAccounts());
   const [language, setLanguage] = useState<Language>(() => getInitialLanguage());
+  const location = useLocation();
   const applySession = useCallback((nextSession: SessionState | null) => {
     if (!nextSession) {
       setSession(null);
@@ -9351,7 +9431,9 @@ export function App() {
 
   return (
     <LanguageContext.Provider value={value}>
-      {session ? (
+      {location.pathname === "/download" ? (
+        <DownloadPage />
+      ) : session ? (
         <Shell session={session} onLogout={() => applySession(null)} onSessionChange={applySession} />
       ) : (
         <LoginPage onLogin={handleLogin} />
