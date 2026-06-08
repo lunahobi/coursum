@@ -144,9 +144,11 @@ def evaluate_answer(
     correct_option = next((opt for opt in options if opt.is_correct), None)
     is_correct = bool(correct_option and correct_option.id == answer_option_id)
     previous_difficulty = attempt.current_difficulty
+    target_difficulty = clamp_difficulty(
+        attempt.current_difficulty + (1 if is_correct else -1)
+    )
     attempt.asked_question_ids = [*(attempt.asked_question_ids or []), question.id]
-    attempt.current_difficulty = clamp_difficulty(attempt.current_difficulty + (1 if is_correct else -1))
-    attempt.difficulty_path = [*(attempt.difficulty_path or []), attempt.current_difficulty]
+    attempt.current_difficulty = target_difficulty
     answer = AttemptAnswer(
         tenant_id=attempt.tenant_id,
         attempt_id=attempt.id,
@@ -158,10 +160,18 @@ def evaluate_answer(
     db.add(answer)
     total_questions = attempt_total_questions(db, attempt)
     answered_questions = len(attempt.asked_question_ids or [])
+    next_question_difficulty = None
+    if answered_questions < total_questions:
+        next_question = select_next_question(db, attempt)
+        if next_question is not None:
+            next_question_difficulty = next_question.difficulty
+    attempt.difficulty_path = [*(attempt.difficulty_path or []), attempt.current_difficulty]
     return {
         "is_correct": is_correct,
         "previous_difficulty": previous_difficulty,
         "current_difficulty": attempt.current_difficulty,
+        "target_difficulty": target_difficulty,
+        "next_question_difficulty": next_question_difficulty,
         "answered_questions": answered_questions,
         "total_questions": total_questions,
         "remaining_questions": max(total_questions - answered_questions, 0),

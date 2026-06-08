@@ -446,6 +446,7 @@ class FakeAdaptiveApiClient extends ApiClient {
         'is_correct': true,
         'previous_difficulty': 3,
         'current_difficulty': 4,
+        'next_question_difficulty': 2,
         'answered_questions': 1,
         'total_questions': 2,
         'remaining_questions': 1,
@@ -460,6 +461,7 @@ class FakeAdaptiveApiClient extends ApiClient {
       'is_correct': false,
       'previous_difficulty': 2,
       'current_difficulty': 1,
+      'next_question_difficulty': null,
       'answered_questions': 2,
       'total_questions': 2,
       'remaining_questions': 0,
@@ -944,7 +946,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Correct'), findsOneWidget);
-    expect(find.textContaining('Difficulty: 3/5 -> 4/5'), findsOneWidget);
+    expect(
+        find.textContaining('Target difficulty: 3/5 -> 4/5'), findsOneWidget);
+    expect(find.text('Next question will be level 2/5'), findsOneWidget);
 
     await tester.tap(find.text('Next question'));
     await tester.pumpAndSettle();

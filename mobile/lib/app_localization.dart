@@ -243,11 +243,11 @@ class AppStrings {
   String get optionFallback => isRu ? 'Вариант' : 'Option';
   String get submitAnswer => isRu ? 'Отправить ответ' : 'Submit answer';
   String get correctAnswerDifficultyIncreased => isRu
-      ? 'Ответ верный. Сложность повышена.'
-      : 'Correct answer. Difficulty increased.';
+      ? 'Ответ верный. Целевая сложность повышена.'
+      : 'Correct answer. Target difficulty increased.';
   String get incorrectAnswerDifficultyDecreased => isRu
-      ? 'Ответ неверный. Сложность понижена.'
-      : 'Incorrect answer. Difficulty decreased.';
+      ? 'Ответ неверный. Целевая сложность понижена.'
+      : 'Incorrect answer. Target difficulty decreased.';
   String scorePercent(int score) =>
       isRu ? 'Результат: $score%' : 'Score: $score%';
   String recommendationsCount(int count) =>
@@ -289,8 +289,11 @@ class AppStrings {
   String get answerWasCorrect => isRu ? 'Верно' : 'Correct';
   String get answerWasIncorrect => isRu ? 'Есть ошибка' : 'Needs review';
   String difficultyShift(int previous, int current) => isRu
-      ? 'Сложность: $previous/5 -> $current/5'
-      : 'Difficulty: $previous/5 -> $current/5';
+      ? 'Целевая сложность: $previous/5 -> $current/5'
+      : 'Target difficulty: $previous/5 -> $current/5';
+  String nextQuestionDifficulty(int level) => isRu
+      ? 'Следующий вопрос будет уровня $level/5'
+      : 'Next question will be level $level/5';
   String correctAnswersCount(int correct, int total) => isRu
       ? 'Верных ответов: $correct из $total'
       : 'Correct answers: $correct of $total';

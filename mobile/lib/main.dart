@@ -4510,7 +4510,10 @@ class _TestFlowScreenState extends State<TestFlowScreen> {
         : 0.0;
     final previousDifficulty =
         currentFeedback?['previous_difficulty'] as int? ?? 1;
-    final currentDifficulty = currentFeedback?['current_difficulty'] as int? ?? 1;
+    final currentDifficulty =
+        currentFeedback?['current_difficulty'] as int? ?? 1;
+    final nextQuestionDifficulty =
+        currentFeedback?['next_question_difficulty'] as int?;
     final feedbackMessage = currentFeedback == null
         ? ''
         : previousDifficulty == currentDifficulty
@@ -4688,6 +4691,12 @@ class _TestFlowScreenState extends State<TestFlowScreen> {
                               previousDifficulty,
                               currentDifficulty,
                             )),
+                            if (nextQuestionDifficulty != null) ...[
+                              const SizedBox(height: 4),
+                              Text(strings.nextQuestionDifficulty(
+                                nextQuestionDifficulty,
+                              )),
+                            ],
                             if ((currentFeedback['correct_option_text']
                                         as String?)
                                     ?.isNotEmpty ==
